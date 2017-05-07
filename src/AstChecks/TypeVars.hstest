@@ -1,0 +1,3 @@
+--TypeVars Test
+type MyType a b = a -> b -> Bool
+type MyType2 c = Int -> c -> Bool
