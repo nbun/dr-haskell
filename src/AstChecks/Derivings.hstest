@@ -1,0 +1,4 @@
+--ShowInstance Test
+data MyType = Testa Int
+            | Testb Bool
+    deriving (Show,Eq)
