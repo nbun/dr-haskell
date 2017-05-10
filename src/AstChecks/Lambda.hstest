@@ -1,0 +1,8 @@
+--Lambda Test
+lam = \x -> if x > 0 then x - 1 else 1 - x
+
+lam2 = \x -> if x > 0 then x - 1 else 1 - x
+
+lam3 f x = f x
+
+lam4 z = lam3 (\y -> lam2 y) z
