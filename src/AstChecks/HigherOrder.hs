@@ -1,37 +1,16 @@
-module AstChecks.HigherOrder where
+module AstChecks.HigherOrder (
+    checkForHigherOrderFunction
+) where
 
-import           Abstract
-import           Control.Monad
+import           Check
 import           Language.Haskell.Exts
 
-runCheck :: FilePath -> IO [Response SrcSpanInfo]
-runCheck path =
-    checkAST <$> getAST path
-
-checkAST :: Module l -> [Response l]
-checkAST q =
-    concat $ checkForHigherOrderFunctions q
-
-checkForHigherOrderFunctions :: Module l -> [[Response l]]
-checkForHigherOrderFunctions (Module _ _ _ _ x) =
-    checkForHigherOrderFunctions' x
-
-checkForHigherOrderFunctions' :: [Decl l] -> [[Response l]]
-checkForHigherOrderFunctions' [] =
-    []
-checkForHigherOrderFunctions' (x:xs) =
-    case x of
-        TypeSig _ _ ys -> spotTyFun ys : checkForHigherOrderFunctions' xs
-        _              -> checkForHigherOrderFunctions' xs
-
-spotTyFun (TyFun _ x xs) =
-    spotTyParen x ++ spotTyFun xs
-spotTyFun _ =
-    []
+checkForHigherOrderFunction :: TypeCheck l
+checkForHigherOrderFunction (TyFun _ x _) = spotTyParen x
+checkForHigherOrderFunction _             = Nothing
 
 spotTyParen (TyParen info xs) =
     case xs of
-        TyFun _ _ ys -> Resp "Higher-Order-Function" info : spotTyParen ys
-        _            -> []
-spotTyParen _ =
-    []
+        TyFun{} -> Just ("Higher-Order-Function", info)
+        _       -> Nothing
+spotTyParen _ = Nothing
