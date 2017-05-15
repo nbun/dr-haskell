@@ -2,6 +2,20 @@ module ModifyAst where
 
 import Language.Haskell.Exts
 
+{-
+  Module for modifying modules while preserving positional information.
+  These things work at the moment:
+    adding a new import
+    adding a declaration to the end of the file
+    adding a declaration to the beginning of all declarations
+
+  These things are ToDo:
+    Modifying elements inline, especially expressions
+    Adding module head stuff
+    Dealing with column information?
+    Realigning comments
+-}
+
 type Modification = (Int, Int)
 
 --TODO: monad instance possible?
@@ -25,6 +39,9 @@ class SrcSpanGenerator a where
 
 instance SrcSpanGenerator ImportDecl where
   generateSrcSpanInfo = fromParseResult . parseImportDecl . prettyPrint
+
+instance SrcSpanGenerator Decl where
+  generateSrcSpanInfo = fromParseResult . parseDecl . prettyPrint
 
 modifySpanInfo :: Functor f => (SrcSpan -> SrcSpan) -> f SrcSpanInfo -> f SrcSpanInfo
 modifySpanInfo modifySpan = fmap $ modifyInfo
@@ -63,6 +80,27 @@ addImport d (ModifiedModule mods ast) =
     len = numLines annDecl
     (Module l h ps is ds) = ast
     pos = lastPos h ps is []
-    annDecl' = pushAfter 0 (pos) annDecl
+    annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
   in ModifiedModule (insertModification (pos,len) mods) (Module l' h' ps' (is'++[annDecl']) ds')
+
+prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
+prependDecl d (ModifiedModule mods ast) =
+  let
+    annDecl = generateSrcSpanInfo d
+    len = numLines annDecl
+    (Module l h ps is ds) = ast
+    pos = lastPos h ps is ds
+    annDecl' = pushAfter 0 pos annDecl
+  in ModifiedModule (insertModification (pos,len) mods) (Module l h ps is (ds++[annDecl']))
+
+appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
+appendDecl d (ModifiedModule mods ast) =
+  let
+    annDecl = generateSrcSpanInfo d
+    len = numLines annDecl
+    (Module l h ps is ds) = ast
+    pos = lastPos h ps is []
+    annDecl' = pushAfter 0 pos annDecl
+    (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
+  in ModifiedModule (insertModification (pos,len) mods) (Module l' h' ps' is' (annDecl' : ds'))
