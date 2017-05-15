@@ -1,0 +1,6 @@
+--Higher-Order Tests
+highOrd :: (a -> b) -> (b -> c) -> (a -> c)
+highOrd fa fb = fb . fa
+
+
+highOrd2 :: (a -> b) -> (b -> c) -> (a -> c)
