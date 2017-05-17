@@ -33,6 +33,19 @@ parseModified fn = do
 insertModification :: Modification -> [Modification] -> [Modification]
 insertModification a@(start, len) = (a:) . map (\(s,l) -> (s+if(s>=start) then len else 0,l))
 
+adjustSpanToZero :: (Foldable f, Functor f) => f SrcSpanInfo -> f SrcSpanInfo
+adjustSpanToZero x =
+  let minLine = foldl (\m (SrcSpanInfo (SrcSpan _ sl _ el _) _) -> minimum [sl, el, m]) maxBound x
+  in pushAfter minLine (-minLine) x
+
+fixModulePath :: Annotated f => (Module SrcSpanInfo) -> f SrcSpanInfo -> f SrcSpanInfo
+fixModulePath ast x =
+  let
+    (SrcSpanInfo (SrcSpan name _ _ _ _) _) = ann x
+    modifyFilename (SrcSpanInfo s ss) = (SrcSpanInfo (modifyFilename' s) (map modifyFilename' ss))
+    modifyFilename' (SrcSpan _ a b c d) = SrcSpan name a b c d
+  in
+    fmap modifyFilename x
 
 class SrcSpanGenerator a where
   generateSrcSpanInfo :: a b -> a SrcSpanInfo
@@ -72,17 +85,32 @@ lastPos h ps is ds = case (h, ps, is, ds) of
     lastOfElement x = let (SrcSpanInfo (SrcSpan _ _ _ el _) _) = ann x
                       in el
 
+minLine :: Annotated l => l SrcSpanInfo -> Int
+minLine x = let (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = ann x in sl
+
+resetMinLine :: Annotated l => Int -> l SrcSpanInfo -> l SrcSpanInfo
+resetMinLine l = amap (\(SrcSpanInfo (SrcSpan n _ a b c) xs) -> (SrcSpanInfo (SrcSpan n l a b c) xs))
+
+insertSrcInfo :: Int -> SrcSpan -> SrcSpanInfo -> SrcSpanInfo
+insertSrcInfo pos pt info =
+  let
+    (prev, after) = splitAt pos (srcInfoPoints info)
+    pt' = pt{srcSpanEndColumn=1}
+  in
+    info {srcInfoPoints = prev ++ pt':after}
 
 addImport :: ImportDecl l -> ModifiedModule -> ModifiedModule
 addImport d (ModifiedModule mods ast) =
   let
+    --ml = minLine ast
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
     pos = lastPos h ps is []
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
-  in ModifiedModule (insertModification (pos,len) mods) (Module l' h' ps' (is'++[annDecl']) ds')
+    --l'' = insertSrcInfo (max (length ps' + 1) 2 + length is') (srcInfoSpan $ ann annDecl') l'
+  in ModifiedModule (insertModification (pos,len) mods) (Module l h' ps' (is'++[annDecl']) ds')
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
 prependDecl d (ModifiedModule mods ast) =
