@@ -1,8 +1,8 @@
-module Hider where
+module PreludeHandling.Hider where
 
 import Data.List
 import Language.Haskell.Exts
-import ModifyAst
+import Util.ModifyAst
 
 extractDefinedFun :: ModifiedModule -> [String]
 extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds

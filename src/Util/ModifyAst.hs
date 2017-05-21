@@ -1,4 +1,12 @@
-module ModifyAst where
+module Util.ModifyAst (
+  Modification,
+  ModifiedModule(..),
+  parseModified,
+  recordModification,
+  addImport,
+  prependDecl,
+  appendDecl,
+) where
 
 import Language.Haskell.Exts
 
@@ -40,20 +48,6 @@ recordModification a@(start,len) (ModifiedModule ms m cs) =
     (insertModification a ms)
     m
     (map (pushCommentAfter start len) cs))
-
-adjustSpanToZero :: (Foldable f, Functor f) => f SrcSpanInfo -> f SrcSpanInfo
-adjustSpanToZero x =
-  let minLine = foldl (\m (SrcSpanInfo (SrcSpan _ sl _ el _) _) -> minimum [sl, el, m]) maxBound x
-  in pushAfter minLine (-minLine) x
-
-fixModulePath :: Annotated f => (Module SrcSpanInfo) -> f SrcSpanInfo -> f SrcSpanInfo
-fixModulePath ast x =
-  let
-    (SrcSpanInfo (SrcSpan name _ _ _ _) _) = ann x
-    modifyFilename (SrcSpanInfo s ss) = (SrcSpanInfo (modifyFilename' s) (map modifyFilename' ss))
-    modifyFilename' (SrcSpan _ a b c d) = SrcSpan name a b c d
-  in
-    fmap modifyFilename x
 
 class SrcSpanGenerator a where
   generateSrcSpanInfo :: a b -> a SrcSpanInfo
@@ -101,20 +95,6 @@ lastPos h ps is ds = case (h, ps, is, ds) of
     lastOfElement x = let (SrcSpanInfo (SrcSpan _ _ _ el _) _) = ann x
                       in el
 
-minLine :: Annotated l => l SrcSpanInfo -> Int
-minLine x = let (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = ann x in sl
-
-resetMinLine :: Annotated l => Int -> l SrcSpanInfo -> l SrcSpanInfo
-resetMinLine l = amap (\(SrcSpanInfo (SrcSpan n _ a b c) xs) -> (SrcSpanInfo (SrcSpan n l a b c) xs))
-
-insertSrcInfo :: Int -> SrcSpan -> SrcSpanInfo -> SrcSpanInfo
-insertSrcInfo pos pt info =
-  let
-    (prev, after) = splitAt pos (srcInfoPoints info)
-    pt' = pt{srcSpanEndColumn=1}
-  in
-    info {srcInfoPoints = prev ++ pt':after}
-
 fixFirstSpans :: Annotated a => Int -> SrcSpanInfo -> SrcSpanInfo -> a SrcSpanInfo -> SrcSpanInfo
 fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart s) ((map minStart $ take n ys) ++ drop n xs)
   where
@@ -127,7 +107,6 @@ fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart 
 addImport :: ImportDecl l -> ModifiedModule -> ModifiedModule
 addImport d m =
   let
-    --ml = minLine ast
     ast = modifiedModule m
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
@@ -135,7 +114,6 @@ addImport d m =
     pos = lastPos h ps is []
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
-    --l'' = insertSrcInfo (max (length ps' + 1) 2 + length is') (srcInfoSpan $ ann annDecl') l'
     l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l annDecl'
   in recordModification (pos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
 
