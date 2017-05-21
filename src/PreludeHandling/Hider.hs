@@ -5,7 +5,7 @@ import Language.Haskell.Exts
 import ModifyAst
 
 extractDefinedFun :: ModifiedModule -> [String]
-extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds)) = nub $ concatMap eD ds
+extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds
   where
     eD :: Decl l -> [String]
     --eD (TypeDecl _ (DHead _ (Ident _ n)) _) = Just n
@@ -20,7 +20,7 @@ extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds)) = nub $ concatMap eD ds
     eD _ = []
 
 extractDefinedData :: ModifiedModule -> [String]
-extractDefinedData (ModifiedModule _ (Module _ _ _ _ ds)) = nub $ concatMap eD ds
+extractDefinedData (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds
   where
     eD :: Decl l -> [String]
     eD (TypeDecl _ (DHead _ (Ident _ n)) _) = [n]
@@ -63,5 +63,5 @@ transformModule fp = do
   let idecl = impDeclFromMod m
   let modified = addImport idecl m
   --putStrLn $ exactPrint (modifiedModule m) []
-  putStrLn $ exactPrint (modifiedModule modified) []
+  putStrLn $ exactPrint (modifiedModule modified) (modifiedComments modified)
   return modified

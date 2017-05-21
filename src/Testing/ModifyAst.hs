@@ -8,12 +8,12 @@ import Language.Haskell.Exts
     adding a new import
     adding a declaration to the end of the file
     adding a declaration to the beginning of all declarations
+    Realigning comments
 
   These things are ToDo:
     Modifying elements inline, especially expressions
     Adding module head stuff
     Dealing with column information?
-    Realigning comments
 -}
 
 type Modification = (Int, Int)
@@ -21,17 +21,25 @@ type Modification = (Int, Int)
 --TODO: monad instance possible?
 data ModifiedModule = ModifiedModule {
   modifications :: [Modification],
-  modifiedModule :: (Module SrcSpanInfo)}
+  modifiedModule :: (Module SrcSpanInfo),
+  modifiedComments :: [Comment]}
   deriving (Show)
 
 
 parseModified :: FilePath -> IO ModifiedModule
 parseModified fn = do
-  ParseOk m <- parseFile fn
-  return $ ModifiedModule [] m
+  ParseOk (m,c) <- parseFileWithComments defaultParseMode fn
+  return $ ModifiedModule [] m c
 
 insertModification :: Modification -> [Modification] -> [Modification]
 insertModification a@(start, len) = (a:) . map (\(s,l) -> (s+if(s>=start) then len else 0,l))
+
+recordModification :: Modification -> ModifiedModule -> ModifiedModule
+recordModification a@(start,len) (ModifiedModule ms m cs) =
+  (ModifiedModule
+    (insertModification a ms)
+    m
+    (map (pushCommentAfter start len) cs))
 
 adjustSpanToZero :: (Foldable f, Functor f) => f SrcSpanInfo -> f SrcSpanInfo
 adjustSpanToZero x =
@@ -68,6 +76,14 @@ pushAfter start len = modifySpanInfo $ \(SrcSpan f sl sc el ec) ->
           sc
           (el + if el >= start then len else 0)
           ec
+
+pushCommentAfter :: Int -> Int -> Comment -> Comment
+pushCommentAfter start len (Comment ml (SrcSpan f sl sc el ec) t) = (Comment ml
+  (SrcSpan f
+           (sl + if sl >= start then len else 0)
+           sc
+           (el + if el >= start then len else 0)
+           ec) t)
 
 numLines :: Annotated f => f SrcSpanInfo -> Int
 numLines x = let (SrcSpanInfo (SrcSpan _ sl _ el _) _) = ann x
@@ -109,9 +125,10 @@ fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart 
       | otherwise = (SrcSpan f zs sc zs ec)
 
 addImport :: ImportDecl l -> ModifiedModule -> ModifiedModule
-addImport d (ModifiedModule mods ast) =
+addImport d m =
   let
     --ml = minLine ast
+    ast = modifiedModule m
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
@@ -120,25 +137,27 @@ addImport d (ModifiedModule mods ast) =
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
     --l'' = insertSrcInfo (max (length ps' + 1) 2 + length is') (srcInfoSpan $ ann annDecl') l'
     l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l annDecl'
-  in ModifiedModule (insertModification (pos,len) mods) (Module l'' h' ps' (is'++[annDecl']) ds')
+  in recordModification (pos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
-prependDecl d (ModifiedModule mods ast) =
+prependDecl d m =
   let
+    ast = modifiedModule m
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
     pos = lastPos h ps is ds
     annDecl' = pushAfter 0 pos annDecl
-  in ModifiedModule (insertModification (pos,len) mods) (Module l h ps is (ds++[annDecl']))
+  in recordModification (pos,len) m{modifiedModule=(Module l h ps is (ds++[annDecl']))}
 
 appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
-appendDecl d (ModifiedModule mods ast) =
+appendDecl d m =
   let
+    ast = modifiedModule m
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
     pos = lastPos h ps is []
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
-  in ModifiedModule (insertModification (pos,len) mods) (Module l' h' ps' is' (annDecl' : ds'))
+  in recordModification (pos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
