@@ -99,6 +99,15 @@ insertSrcInfo pos pt info =
   in
     info {srcInfoPoints = prev ++ pt':after}
 
+fixFirstSpans :: Annotated a => Int -> SrcSpanInfo -> SrcSpanInfo -> a SrcSpanInfo -> SrcSpanInfo
+fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart s) ((map minStart $ take n ys) ++ drop n xs)
+  where
+    (SrcSpanInfo (SrcSpan _ zs _ _ _) _) = ann z
+    minStart :: SrcSpan -> SrcSpan
+    minStart (SrcSpan f sr sc er ec)
+      | sr < zs   = (SrcSpan f sr sc er ec)
+      | otherwise = (SrcSpan f zs sc zs ec)
+
 addImport :: ImportDecl l -> ModifiedModule -> ModifiedModule
 addImport d (ModifiedModule mods ast) =
   let
@@ -110,7 +119,8 @@ addImport d (ModifiedModule mods ast) =
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
     --l'' = insertSrcInfo (max (length ps' + 1) 2 + length is') (srcInfoSpan $ ann annDecl') l'
-  in ModifiedModule (insertModification (pos,len) mods) (Module l h' ps' (is'++[annDecl']) ds')
+    l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l annDecl'
+  in ModifiedModule (insertModification (pos,len) mods) (Module l'' h' ps' (is'++[annDecl']) ds')
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
 prependDecl d (ModifiedModule mods ast) =
