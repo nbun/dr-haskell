@@ -1,43 +1,27 @@
-module Check where
+module AstChecks.Check where
 
 import           Control.Monad
 import           Language.Haskell.Exts
 
 type Response l = Maybe (String, l) -- TODO: change response to implementation of other user
 
-type ImportDeclCheck l = ImportDecl l -> Response l
-type DeclCheck l = Decl l -> Response l
-type ExpCheck l = Exp l -> Response l
-type TypeCheck l = Type l -> Response l
-
-importDeclCheckId :: ImportDeclCheck SrcSpanInfo
-importDeclCheckId _ = Nothing
-
-declCheckId :: DeclCheck l
-declCheckId _ = Nothing
-
-expCheckId :: ExpCheck l
-expCheckId _ = Nothing
-
-typeCheckId :: TypeCheck l
-typeCheckId _ = Nothing
+type ImportDeclCheck l a = ImportDecl l -> a
+type DeclCheck l a = Decl l -> a
+type ExpCheck l a = Exp l -> a
+type TypeCheck l a = Type l -> a
 
 getAST path = do
     (ParseOk ast) <- parseFile path
     return ast
 
-runCheck :: FilePath -> ImportDeclCheck SrcSpanInfo -> DeclCheck SrcSpanInfo -> ExpCheck SrcSpanInfo -> TypeCheck SrcSpanInfo -> IO [Response SrcSpanInfo]
+runCheck :: FilePath -> ImportDeclCheck SrcSpanInfo a -> DeclCheck SrcSpanInfo a -> ExpCheck SrcSpanInfo a -> TypeCheck SrcSpanInfo a -> IO [a]
 runCheck path idcF dcF ecF tcF =
     checkAST idcF dcF ecF tcF <$> getAST path
 
-checkAST :: ImportDeclCheck l -> DeclCheck l -> ExpCheck l -> TypeCheck l -> Module l -> [Response l]
-checkAST idcF dcF ecF tcF (Module srcInfo modulehead modulepragmas importdecls decls) =
-    filter (\x -> case x of
-                    Nothing -> False
-                    _       -> True)
-           (map idcF importdecls ++ map dcF decls ++ mapOverDecls ecF decls ++ mapOverTypes tcF decls)
+checkAST :: ImportDeclCheck l a -> DeclCheck l a -> ExpCheck l a -> TypeCheck l a -> Module l -> [a]
+checkAST idcF dcF ecF tcF (Module srcInfo modulehead modulepragmas importdecls decls) = map idcF importdecls ++ map dcF decls ++ mapOverDecls ecF decls ++ mapOverTypes tcF decls
 
-mapOverDecls :: ExpCheck l -> [Decl l] -> [Response l]
+mapOverDecls :: ExpCheck l a -> [Decl l] -> [a]
 mapOverDecls _  [] = []
 mapOverDecls ecF (x:xs) =
     case x of
@@ -46,7 +30,7 @@ mapOverDecls ecF (x:xs) =
         PatBind _ _ rhs _ -> mapOverRhs ecF rhs ++ mapOverDecls ecF xs
         _                 -> mapOverDecls ecF xs
 
-mapOverFunBind :: ExpCheck l -> [Match l] -> [Response l]
+mapOverFunBind :: ExpCheck l a -> [Match l] -> [a]
 mapOverFunBind _ [] = []
 mapOverFunBind ecF (x:xs) =
     case x of
@@ -54,14 +38,15 @@ mapOverFunBind ecF (x:xs) =
         InfixMatch _ _ _ _ rhs _ -> mapOverRhs ecF rhs
     ++ mapOverFunBind ecF xs
 
-mapOverRhs :: ExpCheck l -> Rhs l -> [Response l]
+
+mapOverRhs :: ExpCheck l a -> Rhs l -> [a]
 mapOverRhs ecF (UnGuardedRhs _ e) = ecF e : mapOverExp ecF e ++ mapOverExp ecF e
 mapOverRhs ecF (GuardedRhss _ gRhss) = concatMap (mapOverGuardedRhs ecF) gRhss
 
-mapOverGuardedRhs :: ExpCheck l -> GuardedRhs l -> [Response l]
+mapOverGuardedRhs :: ExpCheck l a -> GuardedRhs l -> [a]
 mapOverGuardedRhs ecF (GuardedRhs _ stmts e) = mapOverStmts ecF stmts ++ (ecF e : mapOverExp ecF e)
 
-mapOverStmts :: ExpCheck l -> [Stmt l] -> [Response l]
+mapOverStmts :: ExpCheck l a -> [Stmt l] -> [a]
 mapOverStmts _ [] = []
 mapOverStmts ecF (x:xs) =
     case x of
@@ -70,7 +55,7 @@ mapOverStmts ecF (x:xs) =
         (LetStmt _ bind)  -> mapOverBinds ecF [bind] ++ mapOverStmts ecF xs
         (RecStmt _ stmts) -> mapOverStmts ecF stmts ++ mapOverStmts ecF xs
 
-mapOverBinds :: ExpCheck l -> [Binds l] -> [Response l]
+mapOverBinds :: ExpCheck l a -> [Binds l] -> [a]
 mapOverBinds _ [] = []
 mapOverBinds ecF (x:xs) =
     case x of
@@ -78,7 +63,7 @@ mapOverBinds ecF (x:xs) =
         (IPBinds _ ipbinds) -> foldr (\(IPBind _ _ e) ips -> ecF e : mapOverExp ecF e ++ ips) [] ipbinds
      ++ mapOverBinds ecF xs
 
-mapOverTypes :: TypeCheck l -> [Decl l] -> [Response l]
+mapOverTypes :: TypeCheck l a -> [Decl l] -> [a]
 mapOverTypes _ [] = []
 mapOverTypes tcF (x:xs) =
     case x of
@@ -96,14 +81,14 @@ mapOverTypes tcF (x:xs) =
         SpecInlineSig _ _ _ _ t            -> map tcF t ++ mapOverTypes tcF xs
         _                                  -> mapOverTypes tcF xs
 
-mapOverExp :: ExpCheck l -> Exp l -> [Response l]
+mapOverExp :: ExpCheck l a -> Exp l -> [a]
 mapOverExp ecF e =
     case e of
         (InfixApp _ e1 _ e2)            -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
         (App _ e1 e2)                   -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
         (NegApp _ e)                    -> ecF e : mapOverExp ecF e
         (Lambda _ _ e)                  -> ecF e : mapOverExp ecF e
-        (Let _ _ e)                     -> ecF e : mapOverExp ecF e
+        (Let _ bs e)                    -> ecF e : mapOverExp ecF e ++ mapOverBinds ecF [bs]
         (If _ e1 e2 e3)                 -> ecF e1 : ecF e2 : ecF e3 : mapOverExp ecF e1 ++ mapOverExp ecF e2 ++ mapOverExp ecF e3
         (MultiIf _ gRhss)               -> foldr (\x xs -> mapOverGuardedRhs ecF x ++ xs) [] gRhss
         (Case _ e alts)                 -> ecF e : mapOverExp ecF e ++ foldr (\(Alt _ _ rhs mBinds) xs ->
@@ -134,21 +119,21 @@ mapOverExp ecF e =
         (ParArrayComp _ e qualStmtss)   -> ecF e : mapOverExp ecF e ++ foldr (\x xs -> mapOverQualStmts ecF x ++ xs) [] qualStmtss
         (ExpTypeSig _ e _)              -> ecF e : mapOverExp ecF e
         (BracketExp _ bracket)          -> mapOverBracket ecF bracket
-        _                               -> []
+        e                               -> [ecF e]
 
-mapOverBracket :: ExpCheck l -> Bracket l -> [Response l]
+mapOverBracket :: ExpCheck l a -> Bracket l -> [a]
 mapOverBracket ecF x =
     case x of
         (ExpBracket _ e)  -> ecF e : mapOverExp ecF e
         (DeclBracket _ d) -> mapOverDecls ecF d
         _                 -> []
 
-mapOverFieldsUpdates :: ExpCheck l -> [FieldUpdate l] -> [Response l]
+mapOverFieldsUpdates :: ExpCheck l a -> [FieldUpdate l] -> [a]
 mapOverFieldsUpdates ecF = concatMap (\x -> case x of
                                                 (FieldUpdate _ _ e) -> [ecF e]
                                                 _                   -> [])
 
-mapOverQualStmts :: ExpCheck l -> [QualStmt l] -> [Response l]
+mapOverQualStmts :: ExpCheck l a -> [QualStmt l] -> [a]
 mapOverQualStmts _ [] = []
 mapOverQualStmts ecF (x:xs) =
     case x of
