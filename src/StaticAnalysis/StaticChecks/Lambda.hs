@@ -1,10 +1,10 @@
-module AstChecks.Lambda (
+module StaticAnalysis.StaticChecks.Lambda (
     lambdaCheck
 ) where
 
-import           Check
+import           AstChecks.Check
 import           Language.Haskell.Exts
 
-lambdaCheck :: ExpCheck l
+lambdaCheck :: ExpCheck l (Response l)
 lambdaCheck (Lambda info _ _) = Just ("Lambda-Function", info)
 lambdaCheck _                 = Nothing

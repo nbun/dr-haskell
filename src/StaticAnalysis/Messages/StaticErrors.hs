@@ -1,6 +1,6 @@
 module StaticAnalysis.StaticChecks.Messages where
 
-import Language.Haskell.Exts
+import           Language.Haskell.Exts
 
 
 data Error l = NoFunDef (Name l) [Name l]

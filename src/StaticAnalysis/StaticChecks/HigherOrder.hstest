@@ -4,3 +4,7 @@ highOrd fa fb = fb . fa
 
 
 highOrd2 :: (a -> b) -> (b -> c) -> (a -> c)
+
+highOrd3 = ()
+
+highOrd14 = ()

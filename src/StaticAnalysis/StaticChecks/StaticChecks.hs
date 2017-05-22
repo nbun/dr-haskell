@@ -1,11 +1,11 @@
 module StaticAnalysis.StaticChecks.StaticChecks where
 
-import AstChecks.Check
-import Language.Haskell.Exts
-import Text.EditDistance
-import Data.Maybe
-import Data.Functor
-import Data.List
+import           AstChecks.Check
+import           Data.Functor
+import           Data.List
+import           Data.Maybe
+import           Language.Haskell.Exts
+import           Text.EditDistance
 
 
 
@@ -18,12 +18,12 @@ nameString (Symbol _ s) = s
 
 declName :: Decl l -> [Name l]
 declName d = case d of
-               (TypeSig _ ns _) -> ns
-               (FunBind _ ((Match _ n _ _ _) :_)) -> [n]
-               (PatBind _ (PVar _ n) _ _) -> [n] -- functions without arguments
-               _ -> []
+               (TypeSig _ ns _)                 -> ns
+               (FunBind _ (Match _ n _ _ _ :_)) -> [n]
+               (PatBind _ (PVar _ n) _ _)       -> [n] -- functions without arguments
+               _                                -> []
 
-declFilter :: (Decl l -> Bool) -> (Module l) -> [Decl l]
+declFilter :: (Decl l -> Bool) -> Module l -> [Decl l]
 declFilter p (Module _ _ _ _ decls) = filter p decls
 declFilter _ _                      = []
 
@@ -49,7 +49,7 @@ funBinds = declFilter isFunBind
 
 defNames :: Module l -> [Name l]
 defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m
-defNames _ = []
+defNames _          = []
 
 noFunDef :: Module l -> [Name l]
 noFunDef m@Module{} = [sig | sig <- sigNames, nameString sig `notElem` defStrs]
@@ -67,7 +67,7 @@ calcLev n m = levenshteinDistance defaultEditCosts s t
 
 similar :: Module l -> Name l -> [(Name l, Int)]
 similar m@Module{} n = map (\s -> (s, calcLev s n)) (defNames m)
-similar _ _ = []
+similar _ _          = []
 
 --------------------------------------------------------------------------------
 -- Undefined identifiers
@@ -87,10 +87,10 @@ qNameName (Qual _ (ModuleName _ m) name) = name
 qNameName (UnQual _ name) = name
 qNameName (Special l specialcon) = Symbol l name
   where name = case specialcon of
-                 UnitCon _ -> "()"
-                 ListCon _ -> "[]"
-                 FunCon  _ -> "->"
-                 Cons    _ -> "(:)"
+                 UnitCon _          -> "()"
+                 ListCon _          -> "[]"
+                 FunCon  _          -> "->"
+                 Cons    _          -> "(:)"
                  TupleCon _ _ n     -> '(' : replicate n ',' ++ ")"
                  UnboxedSingleCon _ -> "(# #)"
 
@@ -102,9 +102,9 @@ varsOfMaybeBind (Just bind) = varsOfBind bind
 varsOfMaybeBind Nothing     = []
 
 varsOfDecl :: Decl l -> [Name l]
-varsOfDecl (FunBind _ matches)           = concatMap varsOfMatch matches
+varsOfDecl (FunBind _ matches)     = concatMap varsOfMatch matches
 varsOfDecl (PatBind _ pat _ mbind) = varsOfPat pat ++ varsOfMaybeBind mbind
-varsOfDecl _                             = []
+varsOfDecl _                       = []
 
 varsOfMatch :: Match l -> [Name l]
 varsOfMatch (Match _ _ pats rhs mbind) =
@@ -127,18 +127,18 @@ varsOfExp exp                 = concat $ mapOverExp varsOfExp exp
 
 varsOfPat :: Pat l -> [Name l]
 varsOfPat p = case p of
-                (PVar _ name) -> [name]
+                (PVar _ name)         -> [name]
                 (PInfixApp _ p1 _ p2) -> varsOfPat p1 ++ varsOfPat p2
-                (PApp _ _ pats)    -> concatMap varsOfPat pats
-                (PTuple _ _ pats)  -> concatMap varsOfPat pats
-                (PList _ pats)     -> concatMap varsOfPat pats
-                (PParen _ pat)     -> varsOfPat pat
-                (PAsPat _ _ pat)   -> varsOfPat pat
-                (PIrrPat _ pat)    -> varsOfPat pat
-                (PatTypeSig _ pat _) -> varsOfPat pat
-                (PViewPat _ _ pat) -> varsOfPat pat
-                (PBangPat _ pat)   -> varsOfPat pat
-                _                  -> []
+                (PApp _ _ pats)       -> concatMap varsOfPat pats
+                (PTuple _ _ pats)     -> concatMap varsOfPat pats
+                (PList _ pats)        -> concatMap varsOfPat pats
+                (PParen _ pat)        -> varsOfPat pat
+                (PAsPat _ _ pat)      -> varsOfPat pat
+                (PIrrPat _ pat)       -> varsOfPat pat
+                (PatTypeSig _ pat _)  -> varsOfPat pat
+                (PViewPat _ _ pat)    -> varsOfPat pat
+                (PBangPat _ pat)      -> varsOfPat pat
+                _                     -> []
 
 varsOfBind :: Binds l -> [Name l]
 varsOfBind (BDecls _ decls) = concatMap varsOfDecl decls
@@ -150,10 +150,10 @@ undef m@Module{} = [qn | qn <- qns, (nameString . qNameName) qn `notElem` defStr
         defStrs = map nameString $ defNames m ++ varsOfModule m
 
 test = do
-  ast <- fmap void $ getAST "StaticAnalysis/StaticChecks/Test.hs"
+  ast <- void <$> getAST "StaticAnalysis/StaticChecks/Test.hs"
   print ast
   putStrLn ""
-  print $ map qNameName $ (nub $ qNamesOfExps (expsOfModule ast))
+  print $ map qNameName (nub $ qNamesOfExps (expsOfModule ast))
   putStrLn ""
   print $ varsOfModule ast
   putStrLn ""

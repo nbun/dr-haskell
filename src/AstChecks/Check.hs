@@ -3,12 +3,19 @@ module AstChecks.Check where
 import           Control.Monad
 import           Language.Haskell.Exts
 
-type Response l = Maybe (String, l) -- TODO: change response to implementation of other user
+type Response l = Maybe (String, l)
 
 type ImportDeclCheck l a = ImportDecl l -> a
 type DeclCheck l a = Decl l -> a
 type ExpCheck l a = Exp l -> a
 type TypeCheck l a = Type l -> a
+type ModuleCheck l a = Module l -> [a]
+
+checkId :: a -> Response l
+checkId _ = Nothing
+
+checkIdString :: a -> String
+checkIdString _ = ""
 
 getAST path = do
     (ParseOk ast) <- parseFile path
@@ -18,8 +25,21 @@ runCheck :: FilePath -> ImportDeclCheck SrcSpanInfo a -> DeclCheck SrcSpanInfo a
 runCheck path idcF dcF ecF tcF =
     checkAST idcF dcF ecF tcF <$> getAST path
 
+runCheckv2 :: FilePath -> ImportDeclCheck SrcSpanInfo a -> DeclCheck SrcSpanInfo a -> ExpCheck SrcSpanInfo a -> TypeCheck SrcSpanInfo a -> ModuleCheck SrcSpanInfo a -> IO [a]
+runCheckv2 path idcF dcF ecF tcF mcF =
+    checkASTv2 idcF dcF ecF tcF mcF <$> getAST path
+
+-- TODO: check for missing patternmatchings
 checkAST :: ImportDeclCheck l a -> DeclCheck l a -> ExpCheck l a -> TypeCheck l a -> Module l -> [a]
-checkAST idcF dcF ecF tcF (Module srcInfo modulehead modulepragmas importdecls decls) = map idcF importdecls ++ map dcF decls ++ mapOverDecls ecF decls ++ mapOverTypes tcF decls
+checkAST idcF dcF ecF tcF (Module srcInfo modulehead modulepragmas importdecls decls) =
+    map idcF importdecls ++
+    map dcF decls ++ -- TODO: add map over other decls like where and let
+    mapOverDecls ecF decls ++
+    mapOverTypes tcF decls
+
+checkASTv2 :: ImportDeclCheck l a -> DeclCheck l a -> ExpCheck l a -> TypeCheck l a -> ModuleCheck l a -> Module l -> [a]
+checkASTv2 idcF dcF ecF tcF mcF m@(Module srcInfo modulehead modulepragmas importdecls decls) =
+    checkAST idcF dcF ecF tcF m ++ mcF m
 
 mapOverDecls :: ExpCheck l a -> [Decl l] -> [a]
 mapOverDecls _  [] = []
