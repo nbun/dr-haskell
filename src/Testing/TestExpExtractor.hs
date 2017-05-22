@@ -1,4 +1,4 @@
-module TestExpExtractor(
+module Testing.TestExpExtractor(
     extractComments,
     extractTests,
     replaceAllTests,
@@ -11,6 +11,8 @@ import Data.List
 import Data.Char
 import Data.Functor
 import Data.Maybe
+
+import Util.ModifyAst
 
 --module for extracting tests specified in comments
 
@@ -64,17 +66,17 @@ replaceAllTests _ a = a
 
 buildTestMethod :: [Exp ()] -> IO (Decl ())
 buildTestMethod es = do
-  templateAST <- void <$> fst <$> parseFile' "templates.hs"
+  templateAST <- void <$> fst <$> parseFile' "../res/Testing/templates.hs"
   let Just runAllTestDecl = getPatBind "runAllTests" templateAST
   return $ replaceAllTests (makeTestsNode es) runAllTestDecl
 
-transformFile :: FilePath -> IO ()
+--transformFile :: FilePath -> IO ()
 transformFile fn = do
-  modAST <- parseFile' fn
-  let tests = extractTests modAST
+  m <- parseModified fn
+  let tests = extractTests ((),modifiedComments m)
   testDeclAST <- buildTestMethod tests
-  let modifiedMod = let (Module l h p i ds) = void $ fst modAST
-                     in (Module l h p (i++[ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}]) (ds++[testDeclAST]))
-  putStr $ prettyPrint modifiedMod
-  putStrLn ""
-  writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod
+  let
+    impAdded = addImport (ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}) m
+    m' = appendDecl testDeclAST impAdded
+  putStr $ exactPrint (modifiedModule m') (modifiedComments m')
+  --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod

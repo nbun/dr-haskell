@@ -126,7 +126,7 @@ appendDecl d m =
     (Module l h ps is ds) = ast
     pos = lastPos h ps is ds
     annDecl' = pushAfter 0 pos annDecl
-    Just l' = pushAfter 0 pos $ Just l
+    Just l' = pushAfter pos len $ Just l
   in recordModification (pos,len) m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
