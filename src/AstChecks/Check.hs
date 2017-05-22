@@ -1,15 +1,4 @@
-module Check (
-    runCheck,
-    importDeclCheckId,
-    declCheckId,
-    expCheckId,
-    typeCheckId,
-    Response,
-    DeclCheck,
-    ExpCheck,
-    ImportDeclCheck,
-    TypeCheck
-) where
+module Check where
 
 import           Control.Monad
 import           Language.Haskell.Exts
@@ -155,9 +144,9 @@ mapOverBracket ecF x =
         _                 -> []
 
 mapOverFieldsUpdates :: ExpCheck l -> [FieldUpdate l] -> [Response l]
-mapOverFieldsUpdates ecF fieldUpdates = concatMap (\x -> case x of
-                                                            (FieldUpdate _ _ e) -> [ecF e]
-                                                            _                   -> []) fieldUpdates
+mapOverFieldsUpdates ecF = concatMap (\x -> case x of
+                                                (FieldUpdate _ _ e) -> [ecF e]
+                                                _                   -> [])
 
 mapOverQualStmts :: ExpCheck l -> [QualStmt l] -> [Response l]
 mapOverQualStmts _ [] = []
