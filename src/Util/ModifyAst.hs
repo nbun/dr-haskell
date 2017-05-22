@@ -36,7 +36,7 @@ data ModifiedModule = ModifiedModule {
 
 parseModified :: FilePath -> IO ModifiedModule
 parseModified fn = do
-  ParseOk (m,c) <- parseFileWithComments defaultParseMode fn
+  ParseOk (m,c) <- parseFileWithComments (defaultParseMode { parseFilename = fn }) fn
   return $ ModifiedModule [] m c
 
 insertModification :: Modification -> [Modification] -> [Modification]
@@ -117,8 +117,8 @@ addImport d m =
     l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l annDecl'
   in recordModification (pos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
 
-prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
-prependDecl d m =
+appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
+appendDecl d m =
   let
     ast = modifiedModule m
     annDecl = generateSrcSpanInfo d
@@ -126,10 +126,11 @@ prependDecl d m =
     (Module l h ps is ds) = ast
     pos = lastPos h ps is ds
     annDecl' = pushAfter 0 pos annDecl
-  in recordModification (pos,len) m{modifiedModule=(Module l h ps is (ds++[annDecl']))}
+    Just l' = pushAfter 0 pos $ Just l
+  in recordModification (pos,len) m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
 
-appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
-appendDecl d m =
+prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
+prependDecl d m =
   let
     ast = modifiedModule m
     annDecl = generateSrcSpanInfo d

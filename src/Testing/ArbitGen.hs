@@ -1,4 +1,4 @@
-module ArbitGen (
+module Testing.ArbitGen (
     extractDataDecls,
     tyConToGenExp,
     typeToInstance,
@@ -12,6 +12,8 @@ import Data.List
 import Data.Char
 import Data.Functor
 import Data.Maybe
+
+import Util.ModifyAst
 
 extractDataDecls :: Module a -> [Decl a]
 extractDataDecls (Module _ _ _ _ ds) = filter isDataDecl ds
@@ -41,3 +43,17 @@ modToInstance fn = do
   let dataDecls = extractDataDecls m
       insDecls  = typeToInstance <$> dataDecls
   mapM_ (putStrLn . prettyPrint) insDecls
+
+generateArbitraryInModule :: ModifiedModule -> ModifiedModule
+generateArbitraryInModule m =
+  let
+    dataDecls = extractDataDecls $ void $ modifiedModule m
+    insDecls  = typeToInstance <$> dataDecls
+  in
+    foldl (flip appendDecl) m insDecls
+
+processModule :: FilePath -> IO ()
+processModule fn = do
+  m <- parseModified fn
+  let m' = generateArbitraryInModule m
+  putStrLn $ exactPrint (modifiedModule m') (modifiedComments m')
