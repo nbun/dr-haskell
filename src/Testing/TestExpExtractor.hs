@@ -6,11 +6,11 @@ module TestExpExtractor(
     transformFile
 ) where
 
-import Language.Haskell.Exts
-import Data.List
-import Data.Char
-import Data.Functor
-import Data.Maybe
+import           Data.Char
+import           Data.Functor
+import           Data.List
+import           Data.Maybe
+import           Language.Haskell.Exts
 
 --module for extracting tests specified in comments
 
@@ -44,7 +44,7 @@ getPatBind :: String -> Module a -> Maybe (Decl a)
 getPatBind n (Module _ _ _ _ ds) = find correctPat ds
   where
     correctPat (PatBind _ (PVar _ (Ident _ p)) _ _) = p == n
-    correctPat _ = False
+    correctPat _                                    = False
 
 replaceAllTests :: Exp a -> Decl a -> Decl a
 replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) = (PatBind l p (UnGuardedRhs l1 r') b)
@@ -52,13 +52,13 @@ replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) = (PatBind l p (
     r' = repExp r
     repStms = map repStm
     repStm (Generator l p e) = Generator l p $ repExp e
-    repStm (LetStmt l b) = LetStmt l $ repBind b
-    repStm a = a
+    repStm (LetStmt l b)     = LetStmt l $ repBind b
+    repStm a                 = a
     repExp (Var _ (UnQual _ (Ident _ "__allTests__"))) = replacement
-    repExp (Do a ss) = Do a $ repStms ss
-    repExp a = a
+    repExp (Do a ss)                                   = Do a $ repStms ss
+    repExp a                                           = a
     repBind (BDecls l ds) = BDecls l $ map (replaceAllTests replacement) ds
-    repBind a = a
+    repBind a             = a
 
 replaceAllTests _ a = a
 

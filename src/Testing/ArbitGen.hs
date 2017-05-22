@@ -7,20 +7,20 @@ module ArbitGen (
 
 --Module for automatic generation of arbitrary instances
 
-import Language.Haskell.Exts
-import Data.List
-import Data.Char
-import Data.Functor
-import Data.Maybe
+import           Data.Char
+import           Data.Functor
+import           Data.List
+import           Data.Maybe
+import           Language.Haskell.Exts
 
 extractDataDecls :: Module a -> [Decl a]
 extractDataDecls (Module _ _ _ _ ds) = filter isDataDecl ds
   where
     isDataDecl (DataDecl _ (DataType _) _ _ _ _) = True
-    isDataDecl _ = False
+    isDataDecl _                                 = False
 
 multiApplication :: Exp () -> [Exp ()] -> Exp ()
-multiApplication e [] = e
+multiApplication e []     = e
 multiApplication e (x:xs) = multiApplication (App () e x) xs
 
 tyConToGenExp :: QualConDecl () -> Exp ()
@@ -41,3 +41,4 @@ modToInstance fn = do
   let dataDecls = extractDataDecls m
       insDecls  = typeToInstance <$> dataDecls
   mapM_ (putStrLn . prettyPrint) insDecls
+

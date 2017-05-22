@@ -1,6 +1,6 @@
-module AstChecks.DerivingInstance where
+module StaticAnalysis.StaticChecks.Derivings where
 
-import           Check
+import           AstChecks.Check
 import           Language.Haskell.Exts
 
 appendRuleToModule :: String -> Module SrcSpanInfo -> Module SrcSpanInfo

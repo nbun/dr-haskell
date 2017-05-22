@@ -8,7 +8,7 @@ module Util.ModifyAst (
   appendDecl,
 ) where
 
-import Language.Haskell.Exts
+import           Language.Haskell.Exts
 
 {-
   Module for modifying modules while preserving positional information.
@@ -28,8 +28,8 @@ type Modification = (Int, Int)
 
 --TODO: monad instance possible?
 data ModifiedModule = ModifiedModule {
-  modifications :: [Modification],
-  modifiedModule :: (Module SrcSpanInfo),
+  modifications    :: [Modification],
+  modifiedModule   :: (Module SrcSpanInfo),
   modifiedComments :: [Comment]}
   deriving (Show)
 

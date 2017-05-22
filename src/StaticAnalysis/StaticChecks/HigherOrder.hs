@@ -1,11 +1,11 @@
-module AstChecks.HigherOrder (
+module StaticAnalysis.StaticChecks.HigherOrder (
     checkForHigherOrderFunction
 ) where
 
-import           Check
+import           AstChecks.Check
 import           Language.Haskell.Exts
 
-checkForHigherOrderFunction :: TypeCheck l
+checkForHigherOrderFunction :: TypeCheck l (Response l)
 checkForHigherOrderFunction (TyFun _ x _) = spotTyParen x
 checkForHigherOrderFunction _             = Nothing
 
