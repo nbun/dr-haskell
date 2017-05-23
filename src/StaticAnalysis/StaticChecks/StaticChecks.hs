@@ -104,9 +104,10 @@ varsOfMaybeBind (Just bind) = varsOfBind bind
 varsOfMaybeBind Nothing     = []
 
 varsOfDecl :: Decl l -> [Name l]
-varsOfDecl (FunBind _ matches)     = concatMap varsOfMatch matches
-varsOfDecl (PatBind _ pat _ mbind) = varsOfPat pat ++ varsOfMaybeBind mbind
-varsOfDecl _                       = []
+varsOfDecl (FunBind _ matches)       = concatMap varsOfMatch matches
+varsOfDecl (PatBind _ pat rhs mbind) =
+  varsOfPat pat ++ varsOfRhs rhs ++ varsOfMaybeBind mbind
+varsOfDecl _                         = []
 
 varsOfMatch :: Match l -> [Name l]
 varsOfMatch (Match _ _ pats rhs mbind) =
@@ -123,9 +124,9 @@ varsOfGRhs (GuardedRhs _ _ exp) = varsOfExp exp
 
 
 varsOfExp :: Exp l -> [Name l]
-varsOfExp (Let _ bind exp)    = varsOfBind bind -- ++ varsOfExp exp TODO
+varsOfExp (Let _ bind exp)    = varsOfBind bind ++ varsOfExp exp
 varsOfExp (Lambda _ pats exp) = concatMap varsOfPat pats ++ varsOfExp exp
-varsOfExp exp                 = concat $ mapOverExp varsOfExp exp
+varsOfExp exp                 = concat $ mapOverExpRec False varsOfExp exp
 
 varsOfPat :: Pat l -> [Name l]
 varsOfPat p = case p of

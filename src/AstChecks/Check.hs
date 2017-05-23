@@ -45,17 +45,17 @@ mapOverDecls :: ExpCheck l a -> [Decl l] -> [a]
 mapOverDecls _  [] = []
 mapOverDecls ecF (x:xs) =
     case x of
-        SpliceDecl _ e    -> ecF e : mapOverExp ecF e ++ mapOverDecls ecF xs
-        FunBind _ matches -> mapOverFunBind ecF matches ++ mapOverDecls ecF xs
-        PatBind _ _ rhs _ -> mapOverRhs ecF rhs ++ mapOverDecls ecF xs
-        _                 -> mapOverDecls ecF xs
+        SpliceDecl _ e        -> ecF e : mapOverExp ecF e ++ mapOverDecls ecF xs
+        FunBind _ matches     -> mapOverFunBind ecF matches ++ mapOverDecls ecF xs
+        PatBind _ _ rhs mbind -> mapOverRhs ecF rhs ++ mapOverDecls ecF xs ++ mapOverMaybeBinds ecF mbind
+        _                     -> mapOverDecls ecF xs
 
 mapOverFunBind :: ExpCheck l a -> [Match l] -> [a]
 mapOverFunBind _ [] = []
 mapOverFunBind ecF (x:xs) =
     case x of
-        Match _ _ _ rhs _        -> mapOverRhs ecF rhs
-        InfixMatch _ _ _ _ rhs _ -> mapOverRhs ecF rhs
+        Match _ _ _ rhs mbind        -> mapOverRhs ecF rhs ++ mapOverMaybeBinds ecF mbind
+        InfixMatch _ _ _ _ rhs mbind -> mapOverRhs ecF rhs ++ mapOverMaybeBinds ecF mbind
     ++ mapOverFunBind ecF xs
 
 
@@ -83,6 +83,10 @@ mapOverBinds ecF (x:xs) =
         (IPBinds _ ipbinds) -> foldr (\(IPBind _ _ e) ips -> ecF e : mapOverExp ecF e ++ ips) [] ipbinds
      ++ mapOverBinds ecF xs
 
+mapOverMaybeBinds :: ExpCheck l a -> Maybe (Binds l) -> [a]
+mapOverMaybeBinds ecF (Just bind) = mapOverBinds ecF [bind]
+mapOverMaybeBinds _   Nothing     = []
+
 mapOverTypes :: TypeCheck l a -> [Decl l] -> [a]
 mapOverTypes _ [] = []
 mapOverTypes tcF (x:xs) =
@@ -102,44 +106,47 @@ mapOverTypes tcF (x:xs) =
         _                                  -> mapOverTypes tcF xs
 
 mapOverExp :: ExpCheck l a -> Exp l -> [a]
-mapOverExp ecF e =
+mapOverExp = mapOverExpRec True
+
+mapOverExpRec :: Bool -> ExpCheck l a -> Exp l -> [a]
+mapOverExpRec rec ecF e =
     case e of
-        (InfixApp _ e1 _ e2)            -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
-        (App _ e1 e2)                   -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
-        (NegApp _ e)                    -> ecF e : mapOverExp ecF e
-        (Lambda _ _ e)                  -> ecF e : mapOverExp ecF e
-        (Let _ bs e)                    -> ecF e : mapOverExp ecF e ++ mapOverBinds ecF [bs]
-        (If _ e1 e2 e3)                 -> ecF e1 : ecF e2 : ecF e3 : mapOverExp ecF e1 ++ mapOverExp ecF e2 ++ mapOverExp ecF e3
+        (InfixApp _ e1 _ e2)            -> ecF e1 : ecF e2 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2
+        (App _ e1 e2)                   -> ecF e1 : ecF e2 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2
+        (NegApp _ e)                    -> ecF e : mapOverExpRec rec ecF e
+        (Lambda _ _ e)                  -> ecF e : mapOverExpRec rec ecF e
+        (Let _ bs e)                    -> ecF e : mapOverExpRec rec ecF e ++ mapOverBinds ecF [bs]
+        (If _ e1 e2 e3)                 -> ecF e1 : ecF e2 : ecF e3 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2 ++ mapOverExpRec rec ecF e3
         (MultiIf _ gRhss)               -> foldr (\x xs -> mapOverGuardedRhs ecF x ++ xs) [] gRhss
-        (Case _ e alts)                 -> ecF e : mapOverExp ecF e ++ foldr (\(Alt _ _ rhs mBinds) xs ->
+        (Case _ e alts)                 -> ecF e : mapOverExpRec rec ecF e ++ foldr (\(Alt _ _ rhs mBinds) xs ->
                                                                                     mapOverRhs ecF rhs ++ case mBinds of
                                                                                                                 Nothing -> []
                                                                                                                 Just bind -> mapOverBinds ecF [bind]) [] alts
         (Do _ stmts)                    -> mapOverStmts ecF stmts
         (MDo _ stmts)                   -> mapOverStmts ecF stmts
-        (Tuple _ _ exps)                -> foldr (\x xs -> mapOverExp ecF x ++ xs) [] exps
+        (Tuple _ _ exps)                -> foldr (\x xs -> mapOverExpRec rec ecF x ++ xs) [] exps
         (TupleSection _ _ mExps)        -> foldr (\x xs -> case x of
                                                             Nothing -> []
-                                                            Just e  -> ecF e : mapOverExp ecF e ++ xs) [] mExps
-        (List _ exps)                   -> foldr (\x xs -> mapOverExp ecF x ++ xs) [] exps
-        (ParArray _ exps)               -> foldr (\x xs -> mapOverExp ecF x ++ xs) [] exps
-        (Paren _ e)                     -> ecF e : mapOverExp ecF e
-        (LeftSection _ e _)             -> ecF e : mapOverExp ecF e
-        (RightSection _ _ e)            -> ecF e : mapOverExp ecF e
+                                                            Just e  -> ecF e : mapOverExpRec rec ecF e ++ xs) [] mExps
+        (List _ exps)                   -> foldr (\x xs -> mapOverExpRec rec ecF x ++ xs) [] exps
+        (ParArray _ exps)               -> foldr (\x xs -> mapOverExpRec rec ecF x ++ xs) [] exps
+        (Paren _ e)                     -> ecF e : mapOverExpRec rec ecF e
+        (LeftSection _ e _)             -> ecF e : mapOverExpRec rec ecF e
+        (RightSection _ _ e)            -> ecF e : mapOverExpRec rec ecF e
         (RecConstr _ _ fieldUpdates)    -> mapOverFieldsUpdates ecF fieldUpdates
-        (RecUpdate _ e fieldUpdates)    -> ecF e : mapOverExp ecF e ++ mapOverFieldsUpdates ecF fieldUpdates
-        (EnumFrom _ e)                  -> ecF e : mapOverExp ecF e
-        (EnumFromTo _ e1 e2)            -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
-        (EnumFromThen _ e1 e2)          -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
-        (EnumFromThenTo _ e1 e2 e3)     -> ecF e1 : ecF e2 : ecF e3 : mapOverExp ecF e1 ++ mapOverExp ecF e2 ++ mapOverExp ecF e3
-        (ParArrayFromTo _ e1 e2)        -> ecF e1 : ecF e2 : mapOverExp ecF e1 ++ mapOverExp ecF e2
-        (ParArrayFromThenTo _ e1 e2 e3) -> ecF e1 : ecF e2 : ecF e3 : mapOverExp ecF e1 ++ mapOverExp ecF e2 ++ mapOverExp ecF e3
-        (ListComp _ e qualStmts)        -> ecF e : mapOverExp ecF e ++ mapOverQualStmts ecF qualStmts
-        (ParComp _ e qualStmtss)        -> ecF e : mapOverExp ecF e ++ foldr (\x xs -> mapOverQualStmts ecF x ++ xs) [] qualStmtss
-        (ParArrayComp _ e qualStmtss)   -> ecF e : mapOverExp ecF e ++ foldr (\x xs -> mapOverQualStmts ecF x ++ xs) [] qualStmtss
-        (ExpTypeSig _ e _)              -> ecF e : mapOverExp ecF e
+        (RecUpdate _ e fieldUpdates)    -> ecF e : mapOverExpRec rec ecF e ++ mapOverFieldsUpdates ecF fieldUpdates
+        (EnumFrom _ e)                  -> ecF e : mapOverExpRec rec ecF e
+        (EnumFromTo _ e1 e2)            -> ecF e1 : ecF e2 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2
+        (EnumFromThen _ e1 e2)          -> ecF e1 : ecF e2 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2
+        (EnumFromThenTo _ e1 e2 e3)     -> ecF e1 : ecF e2 : ecF e3 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2 ++ mapOverExpRec rec ecF e3
+        (ParArrayFromTo _ e1 e2)        -> ecF e1 : ecF e2 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2
+        (ParArrayFromThenTo _ e1 e2 e3) -> ecF e1 : ecF e2 : ecF e3 : mapOverExpRec rec ecF e1 ++ mapOverExpRec rec ecF e2 ++ mapOverExpRec rec ecF e3
+        (ListComp _ e qualStmts)        -> ecF e : mapOverExpRec rec ecF e ++ mapOverQualStmts ecF qualStmts
+        (ParComp _ e qualStmtss)        -> ecF e : mapOverExpRec rec ecF e ++ foldr (\x xs -> mapOverQualStmts ecF x ++ xs) [] qualStmtss
+        (ParArrayComp _ e qualStmtss)   -> ecF e : mapOverExpRec rec ecF e ++ foldr (\x xs -> mapOverQualStmts ecF x ++ xs) [] qualStmtss
+        (ExpTypeSig _ e _)              -> ecF e : mapOverExpRec rec ecF e
         (BracketExp _ bracket)          -> mapOverBracket ecF bracket
-        e                               -> [ecF e]
+        e                               -> if rec then [ecF e] else []
 
 mapOverBracket :: ExpCheck l a -> Bracket l -> [a]
 mapOverBracket ecF x =
