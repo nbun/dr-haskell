@@ -6,6 +6,7 @@ module Util.ModifyAst (
   addImport,
   prependDecl,
   appendDecl,
+  printModified,
 ) where
 
 import           Language.Haskell.Exts
@@ -140,3 +141,6 @@ prependDecl d m =
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
   in recordModification (pos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
+
+printModified :: ModifiedModule -> String
+printModified m = exactPrint (modifiedModule m) (modifiedComments m)
