@@ -1,5 +1,6 @@
 module StaticAnalysis.StaticChecks.StaticChecks where
 
+import           StaticAnalysis.Messages.StaticErrors
 import           AstChecks.Check
 import           Data.Functor
 import           Data.List
@@ -51,10 +52,11 @@ defNames :: Module l -> [Name l]
 defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m
 defNames _          = []
 
-noFunDef :: Module l -> [Name l]
-noFunDef m@Module{} = [sig | sig <- sigNames, nameString sig `notElem` defStrs]
-  where sigNames   = concatMap declName $ typeSigs m
-        defStrs    = map nameString $ defNames m
+noFunDef :: Module l -> [Error l]
+noFunDef m@Module{} = [NoFunDef sig [] -- TODO similar names
+                      | sig <- sigNames, nameString sig `notElem` defStrs]
+  where sigNames = concatMap declName $ typeSigs m
+        defStrs  = map nameString $ defNames m
 noFunDef _ = []
 
 --------------------------------------------------------------------------------
@@ -144,17 +146,8 @@ varsOfBind :: Binds l -> [Name l]
 varsOfBind (BDecls _ decls) = concatMap varsOfDecl decls
 varsOfBind _                = []
 
-undef :: Eq l => Module l -> [QName l]
-undef m@Module{} = [qn | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
+undef :: Eq l => Module l -> [Error l]
+undef m@Module{} = [Undefined (qNameName qn) [] [] -- TODO similar names
+                   | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
   where qns     = nub $ qNamesOfExps (expsOfModule m)
         defStrs = map nameString $ defNames m ++ varsOfModule m
-
-test = do
-  ast <- void <$> getAST "StaticAnalysis/StaticChecks/Test.hs"
-  print ast
-  putStrLn ""
-  print $ map qNameName (nub $ qNamesOfExps (expsOfModule ast))
-  putStrLn ""
-  print $ varsOfModule ast
-  putStrLn ""
-  print $ undef ast
