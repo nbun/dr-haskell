@@ -1,10 +1,10 @@
 module Repl.Main where
 
-import System.Console.Haskeline
-import Control.Monad.State
-import Control.Monad.Catch
+import           Control.Monad.Catch
+import           Control.Monad.State
+import           System.Console.Haskeline
 
-import Language.Haskell.Interpreter
+import           Language.Haskell.Interpreter
 
 {-
 
@@ -39,7 +39,7 @@ instance (MonadException m, MonadMask m) => MonadMask (InputT m) where
 replRead :: ReplInput (Maybe String)
 replRead = getInputLine "Dr. Haskell> "
 replPrint :: Maybe String -> ReplInput ()
-replPrint Nothing = return ()
+replPrint Nothing  = return ()
 replPrint (Just x) = outputStrLn x
 replLoop :: ReplInterpreter ()
 replLoop = do
@@ -56,7 +56,7 @@ main = do
   res <- (runInputT defaultSettings $ runInterpreter replLoop)
   case res of
        Left err -> putStrLn $ "Error:" ++ (show err)
-       Right _ -> return ()
+       Right _  -> return ()
 
 replEval :: String -> ReplInterpreter (Maybe String)
 replEval q = case q of
