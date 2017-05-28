@@ -11,6 +11,8 @@ type ExpCheck l a        = Exp l -> [a]
 type TypeCheck l a       = Type l -> [a]
 type ModuleCheck l a     = Module l -> [a]
 
+cId _ = []
+
 checkId :: a -> Response l
 checkId _ = Nothing
 
