@@ -67,21 +67,23 @@ calcLev n m = levenshteinDistance defaultEditCosts s t
   where s = nameString n
         t = nameString m
 
-similar :: Module l -> (Module l -> [Name l]) -> Name l -> [(Name l, Int)]
-similar m@Module{} search n = map (\s -> (s, calcLev s n)) (search m)
-similar _ _ _               = []
+similar :: a -> (a -> [Name l]) -> Name l -> [(Name l, Int)]
+similar m search n = map (\s -> (s, calcLev s n)) (search m)
 
-similar3 :: Module l -> (Module l -> [Name l]) -> Name l -> [Name l]
-similar3 m@Module{} search n = take 3 $ map fst sims'
+similar3 :: a -> (a -> [Name l]) -> Name l -> [Name l]
+similar3 m search n = take 3 $ map fst sims'
   where sims  = sortBy (\x y -> compare (snd x) (snd y)) (similar m search n)
-        sims' = filter  (\x -> snd x < nlen) sims
-        nlen = length (nameString n) + 2
+        sims' = filter  (\x -> snd x <= nlen) sims
+        nlen  = (length (nameString n) `div` 2) + 1
 
 --------------------------------------------------------------------------------
 -- Undefined identifiers
 
 expsOfModule :: Module l -> [Exp l]
 expsOfModule (Module _ _ _ _ decls) = mapOverDecls id decls
+
+expsOfDecl :: Decl l -> [Exp l]
+expsOfDecl d = mapOverDecls id [d]
 
 qNamesOfExps :: [Exp l] -> [QName l]
 qNamesOfExps exps = catMaybes $ concatMap (mapOverExp expQName) exps
@@ -154,12 +156,15 @@ varsOfBind (BDecls _ decls) = concatMap varsOfDecl decls
 varsOfBind _                = []
 
 undef :: Eq l => Module l -> [Error l]
-undef m@Module{} =
-  [Undefined (qNameName qn) (similar3 m defs $ qNameName qn) []
-  | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
-  where qns     = nub $ qNamesOfExps (expsOfModule m)
-        defStrs = map nameString $ defs m
-        defs m  = defNames m ++ varsOfModule m
+undef (Module _ _ _ _ []) = []
+undef m@(Module l mh mp imps (d:ds)) =
+  [Undefined (qNameName qn) (sims qn) []
+  | qn <- qns, (nameString . qNameName) qn `notElem` (defStrs qn)]
+  ++ undef (Module l mh mp imps ds)
+  where qns        = nub $ qNamesOfExps (expsOfDecl d)
+        defStrs qn = map nameString $ sims qn
+        sims qn    = similar3 d varsOfDecl (qNameName qn)
+                     ++ similar3 m defNames (qNameName qn)
 
 --------------------------------------------------------------------------------
 -- Duplicated name in imported module
