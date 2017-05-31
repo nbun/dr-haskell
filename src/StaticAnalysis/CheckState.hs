@@ -17,12 +17,22 @@ check check = do
   CheckState m result errors <- get
   put $ CheckState m result (check m ++ errors)
 
-test :: Eq l => State (CheckState l r) ()
-test = do
-  check noFunDef
-  check undef
+checkExt :: (Module l -> a -> [Error l]) -> a -> State (CheckState l r) ()
+checkExt check ext = do
+  CheckState m result errors <- get
+  put $ CheckState m result (check m ext ++ errors)
+
+-- test :: Eq l => State (CheckState l r) ()
+-- test = do
+--   check noFunDef
+--   check undef
+--   checkExt duplicated ["asd"]
 
 main :: IO ()
 main = do
   ast <- fmap void $ getAST "StaticAnalysis/StaticChecks/Test.hs"
+  let test = do
+        check noFunDef
+        check undef
+        checkExt duplicated [ast]
   print $ execState test (CheckState ast "" [])

@@ -152,3 +152,9 @@ undef m@Module{} = [Undefined (qNameName qn) [] [] -- TODO similar names
                    | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
   where qns     = nub $ qNamesOfExps (expsOfModule m)
         defStrs = map nameString $ defNames m ++ varsOfModule m
+
+--------------------------------------------------------------------------------
+-- Duplicated name in imported module
+
+duplicated :: Eq l => Module l -> [Module l] -> [Error l]
+duplicated m ms = [Duplicated n | n <- defNames m, n `elem` concatMap defNames ms]
