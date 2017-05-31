@@ -30,9 +30,10 @@ checkExt check ext = do
 
 main :: IO ()
 main = do
-  ast <- fmap void $ getAST "StaticAnalysis/StaticChecks/Test.hs"
+  m <- fmap void $ getAST "src/StaticAnalysis/StaticChecks/Test.hs"
+  n <- fmap void $ getAST "src/Repl/Main.hs"
   let test = do
         check noFunDef
         check undef
-        checkExt duplicated [ast]
-  print $ execState test (CheckState ast "" [])
+        checkExt duplicated [n]
+  print $ execState test (CheckState m "" [])

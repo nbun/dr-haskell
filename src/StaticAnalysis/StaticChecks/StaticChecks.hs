@@ -53,7 +53,7 @@ defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m
 defNames _          = []
 
 noFunDef :: Module l -> [Error l]
-noFunDef m@Module{} = [NoFunDef sig [] -- TODO similar names
+noFunDef m@Module{} = [NoFunDef sig (similar3 m defNames sig)
                       | sig <- sigNames, nameString sig `notElem` defStrs]
   where sigNames = concatMap declName $ typeSigs m
         defStrs  = map nameString $ defNames m
@@ -67,9 +67,15 @@ calcLev n m = levenshteinDistance defaultEditCosts s t
   where s = nameString n
         t = nameString m
 
-similar :: Module l -> Name l -> [(Name l, Int)]
-similar m@Module{} n = map (\s -> (s, calcLev s n)) (defNames m)
-similar _ _          = []
+similar :: Module l -> (Module l -> [Name l]) -> Name l -> [(Name l, Int)]
+similar m@Module{} search n = map (\s -> (s, calcLev s n)) (search m)
+similar _ _ _               = []
+
+similar3 :: Module l -> (Module l -> [Name l]) -> Name l -> [Name l]
+similar3 m@Module{} search n = take 3 $ map fst sims'
+  where sims  = sortBy (\x y -> compare (snd x) (snd y)) (similar m search n)
+        sims' = filter  (\x -> snd x < nlen) sims
+        nlen = length (nameString n) + 2
 
 --------------------------------------------------------------------------------
 -- Undefined identifiers
@@ -148,13 +154,24 @@ varsOfBind (BDecls _ decls) = concatMap varsOfDecl decls
 varsOfBind _                = []
 
 undef :: Eq l => Module l -> [Error l]
-undef m@Module{} = [Undefined (qNameName qn) [] [] -- TODO similar names
-                   | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
+undef m@Module{} =
+  [Undefined (qNameName qn) (similar3 m defs $ qNameName qn) []
+  | qn <- qns, (nameString . qNameName) qn `notElem` defStrs]
   where qns     = nub $ qNamesOfExps (expsOfModule m)
-        defStrs = map nameString $ defNames m ++ varsOfModule m
+        defStrs = map nameString $ defs m
+        defs m  = defNames m ++ varsOfModule m
 
 --------------------------------------------------------------------------------
 -- Duplicated name in imported module
 
 duplicated :: Eq l => Module l -> [Module l] -> [Error l]
-duplicated m ms = [Duplicated n | n <- defNames m, n `elem` concatMap defNames ms]
+duplicated _ [] = []
+duplicated m (m':ms) =
+  [Duplicated n (nameOfModule m') | n <- defNames m, n `elem` defNames m']
+  ++ duplicated m ms
+
+nameOfModule :: Module l -> Maybe (ModuleName l)
+nameOfModule m@(Module _ mhead _ _ _) =
+  case mhead of
+    Just (ModuleHead _ mname _ _) -> Just mname
+    Nothing -> Nothing
