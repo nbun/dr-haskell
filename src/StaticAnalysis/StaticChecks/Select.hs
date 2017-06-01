@@ -93,7 +93,7 @@ expsOfModule :: Module l -> [Exp l]
 expsOfModule (Module _ _ _ _ decls) = mapOverDecls (: []) decls
 
 expsOfDecl :: Decl l -> [Exp l]
-expsOfDecl d = mapOverDecls id [d]
+expsOfDecl d = mapOverDecls (: []) [d]
 
 qNamesOfExps :: [Exp l] -> [QName l]
 qNamesOfExps exps = catMaybes $ concatMap (mapOverExp expQName) exps

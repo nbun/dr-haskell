@@ -8,6 +8,8 @@ data Error l = NoFunDef (Name l) [Name l]
              | Undefined (Name l) [Name l] [String]
              --          name,    names in scope, hints
              | Duplicated (Name l) (Maybe (ModuleName l))
+             --           name,    module that contains the duplicate
+             | TypeVarApplication (Name l)
   deriving Show
 
 prettyError :: Error SrcSpanInfo -> String
@@ -23,6 +25,9 @@ prettyError (Duplicated name maymod) =
     where mod = case maymod of
                   Just mname -> " in module " ++ prettyPrintQ mname
                   Nothing    -> ""
+prettyError (TypeVarApplication name) =
+  "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+  ++ " cannot be applied to another type."
 
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l
