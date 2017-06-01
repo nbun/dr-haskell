@@ -6,5 +6,5 @@ import           StaticAnalysis.StaticChecks.HigherOrder
 import           StaticAnalysis.StaticChecks.Lambda
 import           StaticAnalysis.StaticChecks.NoTypeDef
 import           StaticAnalysis.StaticChecks.Shadowing
-import           StaticAnalysis.StaticChecks.StaticChecks
+import           StaticAnalysis.StaticChecks.Select
 import           StaticAnalysis.StaticChecks.TypeVars

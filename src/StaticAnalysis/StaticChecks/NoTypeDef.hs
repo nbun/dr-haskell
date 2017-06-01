@@ -3,7 +3,7 @@ module StaticAnalysis.StaticChecks.NoTypeDef where
 import           AstChecks.Check
 import           Data.List
 import           Language.Haskell.Exts
-import           StaticAnalysis.StaticChecks.StaticChecks
+import           StaticAnalysis.StaticChecks.Select
 
 noTypeDef :: ModuleCheck l (Response l)
 noTypeDef m = let
