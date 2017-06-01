@@ -1,0 +1,4 @@
+funSig :: Int -> Int
+funSig n =
+    let n = 0
+    in n

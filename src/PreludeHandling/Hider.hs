@@ -1,8 +1,8 @@
 module PreludeHandling.Hider where
 
-import Data.List
-import Language.Haskell.Exts
-import Util.ModifyAst
+import           Data.List
+import           Language.Haskell.Exts
+import           Util.ModifyAst
 
 extractDefinedFun :: ModifiedModule -> [String]
 extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds
@@ -15,7 +15,7 @@ extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD 
     eD (FunBind _ ms) = map eM ms
       where
         eM :: Match l -> String
-        eM (Match _ (Ident _ n) _ _ _) = n
+        eM (Match _ (Ident _ n) _ _ _)        = n
         eM (InfixMatch _ _ (Ident _ n) _ _ _) = n
     eD _ = []
 

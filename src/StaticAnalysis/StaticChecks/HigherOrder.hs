@@ -6,8 +6,8 @@ import           AstChecks.Check
 import           Language.Haskell.Exts
 
 checkForHigherOrderFunction :: TypeCheck l (Response l)
-checkForHigherOrderFunction (TyFun _ x _) = spotTyParen x
-checkForHigherOrderFunction _             = Nothing
+checkForHigherOrderFunction (TyFun _ x _) = [spotTyParen x]
+checkForHigherOrderFunction _             = [Nothing]
 
 spotTyParen (TyParen info xs) =
     case xs of

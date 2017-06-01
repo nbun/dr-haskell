@@ -1,11 +1,11 @@
 module StaticAnalysis.StaticChecks.StaticChecks where
 
-import           StaticAnalysis.Messages.StaticErrors
 import           AstChecks.Check
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 import           Text.EditDistance
 
 
@@ -80,7 +80,7 @@ similar3 m search n = take 3 $ map fst sims'
 -- Undefined identifiers
 
 expsOfModule :: Module l -> [Exp l]
-expsOfModule (Module _ _ _ _ decls) = mapOverDecls id decls
+expsOfModule (Module _ _ _ _ decls) = mapOverDecls (: []) decls
 
 expsOfDecl :: Decl l -> [Exp l]
 expsOfDecl d = mapOverDecls id [d]
@@ -88,9 +88,9 @@ expsOfDecl d = mapOverDecls id [d]
 qNamesOfExps :: [Exp l] -> [QName l]
 qNamesOfExps exps = catMaybes $ concatMap (mapOverExp expQName) exps
 
-expQName :: Exp l -> Maybe (QName l)
-expQName (Var _ qn) = Just qn
-expQName _          = Nothing
+expQName :: Exp l -> [Maybe (QName l)]
+expQName (Var _ qn) = [Just qn]
+expQName _          = [Nothing]
 
 qNameName :: QName l -> Name l
 qNameName (Qual _ (ModuleName _ m) name) = name
@@ -134,7 +134,7 @@ varsOfGRhs (GuardedRhs _ _ exp) = varsOfExp exp
 varsOfExp :: Exp l -> [Name l]
 varsOfExp (Let _ bind exp)    = varsOfBind bind ++ varsOfExp exp
 varsOfExp (Lambda _ pats exp) = concatMap varsOfPat pats ++ varsOfExp exp
-varsOfExp exp                 = concat $ mapOverExpRec False varsOfExp exp
+varsOfExp exp                 = mapOverExpRec False varsOfExp exp
 
 varsOfPat :: Pat l -> [Name l]
 varsOfPat p = case p of
