@@ -13,14 +13,14 @@ data Error l = NoFunDef (Name l) [Name l]
              --            position
              | HigherOrder l
              --               position
-             | LambdaFunction l -- TODO: implement prettypinter
+             | LambdaFunction l
              --          name
-             | NoTypeDef (Name l) -- TODO: implement prettypinter
+             | NoTypeDef (Name l)
              --          name
-             | Shadowing (QName l) -- TODO: implement prettypinter
+             | Shadowing (QName l)
              --        name
-             | TypeVar (Name l) -- TODO: implement prettypinter
-  deriving Show --TODO: mark whether its an error or a warning
+             | TypeVar (Name l)
+  deriving (Show, Ord, Eq) --TODO: mark whether its an error or a warning
 
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
@@ -40,6 +40,26 @@ prettyError (TypeVarApplication name) =
     ++ " cannot be applied to another type."
 prettyError (HigherOrder pos) =
     "HigherOrder function located at " ++ prettyLoc pos
+prettyError (LambdaFunction pos) =
+    "Lambda function located at " ++ prettyLoc pos
+prettyError (NoTypeDef name) =
+    "No TypeSignature for function named " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+prettyError (Shadowing qname) =
+    "Found shadowing of variable " ++ getNameOfQName qname ++ " at " ++ prettyLoc (extractPositionFromQname qname)
+prettyError (TypeVar name) =
+    "Found typevariable " ++ prettyPrintQ name ++ " at "++ prettyNameLoc name
+
+extractPositionFromQname :: QName l -> l
+extractPositionFromQname (Qual l _ _) = l
+extractPositionFromQname (UnQual l _) = l
+
+getNameOfQName :: QName l -> String
+getNameOfQName (Qual _ _ name) = nameString name
+getNameOfQName (UnQual _ name) = nameString name
+
+nameString :: Name l -> String
+nameString (Ident  _ s) = s
+nameString (Symbol _ s) = s
 
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l

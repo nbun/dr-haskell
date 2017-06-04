@@ -1,6 +1,7 @@
 module StaticAnalysis.AllChecks where
 
 import           AstChecks.Check
+import           StaticAnalysis.Messages.ErrorToLint
 import           StaticAnalysis.StaticChecks.Derivings
 import           StaticAnalysis.StaticChecks.Duplicated
 import           StaticAnalysis.StaticChecks.HigherOrder

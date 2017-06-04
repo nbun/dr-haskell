@@ -2,3 +2,18 @@ funSig :: Int -> Int
 funSig n =
     let n = 0
     in n
+
+funSig :: Int -> Int
+funSig n =
+    let n = 0
+    in n
+
+funSig :: Int -> Int
+funSig n =
+    let n = 0
+    in n
+
+funSig :: Int -> Int
+funSig n =
+    let n = 0
+    in n

@@ -10,10 +10,6 @@ import           Text.EditDistance
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names
 
-nameString :: Name l -> String
-nameString (Ident  _ s) = s
-nameString (Symbol _ s) = s
-
 defNames :: Module l -> [Name l]
 defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m
 defNames _          = []
