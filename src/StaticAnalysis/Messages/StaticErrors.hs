@@ -20,7 +20,7 @@ data Error l = NoFunDef (Name l) [Name l]
              | Shadowing (QName l)
              --        name
              | TypeVar (Name l)
-  deriving Show
+  deriving Show --TODO: mark whether its an error or a warning
 
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
