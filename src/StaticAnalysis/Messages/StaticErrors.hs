@@ -13,13 +13,13 @@ data Error l = NoFunDef (Name l) [Name l]
              --            position
              | HigherOrder l
              --               position
-             | LambdaFunction l
+             | LambdaFunction l -- TODO: implement prettypinter
              --          name
-             | NoTypeDef (Name l)
+             | NoTypeDef (Name l) -- TODO: implement prettypinter
              --          name
-             | Shadowing (QName l)
+             | Shadowing (QName l) -- TODO: implement prettypinter
              --        name
-             | TypeVar (Name l)
+             | TypeVar (Name l) -- TODO: implement prettypinter
   deriving Show --TODO: mark whether its an error or a warning
 
 prettyError :: Error SrcSpanInfo -> String
@@ -36,8 +36,10 @@ prettyError (Duplicated name maymod) =
                   Just mname -> " in module " ++ prettyPrintQ mname
                   Nothing    -> ""
 prettyError (TypeVarApplication name) =
-  "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
-  ++ " cannot be applied to another type."
+    "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+    ++ " cannot be applied to another type."
+prettyError (HigherOrder pos) =
+    "HigherOrder function located at " ++ prettyLoc pos
 
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l
