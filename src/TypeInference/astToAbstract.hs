@@ -1,6 +1,6 @@
-import Language.Haskell.Exts
-import Data.Functor
-import AbstractHaskell
+import           AbstractHaskell
+import           Data.Functor
+import           Language.Haskell.Exts
 
 --- where modname: name of this module,
 ---       imports: list of modules names that are imported,
@@ -77,14 +77,14 @@ parseStms (LetStmt _ binds)   = SLet (parseBinds binds)
 parseStms _                   = undefined
 
 parseFuncPatDecls :: [Decl l] -> [LocalDecl]
-parseFuncPatDecls []                      = []
-parseFuncPatDecls ((s@(FunBind _ matches)):xs) = undefined--(LocalFunc parseFunDecl "modulname" --hier noch den typ s)
+parseFuncPatDecls []                             = []
+parseFuncPatDecls ((s@(FunBind _ matches)):xs)   = undefined--(LocalFunc parseFunDecl "modulname" --hier noch den typ s)
 parseFuncPatDecls ((PatBind _ pat rhs wbind):xs) = undefined--(LocalPat (parsePatterns pat) parseRigthHands parseLocals wbinds)
-parseFuncPatDecls _                         = []
+parseFuncPatDecls _                              = []
 
 parseBinds :: Binds l -> [LocalDecl]
 parseBinds (BDecls l decls) = parseFuncPatDecls decls
-parseBinds _ = []
+parseBinds _                = []
 
 parseAlternatives :: Alt l -> BranchExpr
 parseAlternatives (Alt _ pat rhs _) = Branch (parsePatterns pat) (rightHandtoExp rhs)
@@ -94,15 +94,15 @@ parseQOp (QVarOp _ qn) = ("",parseQName qn)
 parseQOp (QConOp _ qn) = ("", parseQName qn)
 
 parseQualsStms :: QualStmt l -> Statement
-parseQualsStms (QualStmt _  stm )= parseStms stm
-parseQualsStms _ = undefined
+parseQualsStms (QualStmt _  stm )=parseStms stm
+parseQualsStms _                  = undefined
 
 parseLiteral :: Language.Haskell.Exts.Literal l -> AbstractHaskell.Literal
 parseLiteral (Char _ c _)     = Charc c
 parseLiteral (String _ str _) = Stringc str
 parseLiteral (Int _ i _)      = Intc $ fromInteger i
 parseLiteral (Frac _ r _)     = Floatc $ fromRational r
-parseLiteral _ = undefined
+parseLiteral _                = undefined
 
 searchForType :: String -> [(Name l, Type l)] -> Type l
 searchForType name ((n , t):nts) | name == (parsename n) = t
@@ -136,18 +136,18 @@ parseArity ((InfixMatch _ _ _ _ _ _):ms)             = 2
 parseArity ((Match l name patterns rhs wbinds) : ms) = length patterns
 
 parseMatchName :: Match l -> String
-parseMatchName (Match l name patterns rhs wbinds) = parsename name
+parseMatchName (Match l name patterns rhs wbinds)       = parsename name
 parseMatchName (InfixMatch l pat1 name pat2 rhs wbinds) = parsename name
 
 parsename :: Name l -> String
-parsename (Ident l name)  = name
+parsename (Ident l name)                        = name
 parsename (Language.Haskell.Exts.Symbol l name) = name
 
 parseImportList :: ImportDecl l -> String
 parseImportList x@(ImportDecl _ name _ _ _ _ _ _ ) = parseModuleName name
 
 parseModuleHead :: Maybe (ModuleHead l) -> String
-parseModuleHead Nothing                   = ""
+parseModuleHead Nothing                     = ""
 parseModuleHead (Just (ModuleHead l n _ _)) = parseModuleName n
 
 parseModuleName :: ModuleName l -> String
@@ -160,15 +160,15 @@ parseFile' f = do
 
 parseTypeSignatur :: Module l -> [(Name l, Type l)]
 parseTypeSignatur (Module l mh mp impdec decls) = parseDecls decls
-parseTypeSignatur _ = []
+parseTypeSignatur _                             = []
 
 parseDecls :: [Decl l] -> [(Name l,(Type l))]
-parseDecls [] = []
+parseDecls []     = []
 parseDecls (x:xs) = parseOneDecl x ++ parseDecls xs
 
 parseOneDecl :: Decl l -> [(Name l,(Type l ))]
 parseOneDecl (TypeSig l names t) = concatMap (parseTypeSig t) names
-parseOneDecl _ = []
+parseOneDecl _                   = []
 
 parseTypeSig :: Type l -> Name l ->[(Name l,(Type l ))]
 parseTypeSig typ name = [(name,typ)]

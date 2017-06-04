@@ -12,7 +12,7 @@ import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
 
-import Util.ModifyAst
+import           Util.ModifyAst
 
 --module for extracting tests specified in comments
 

@@ -2,18 +2,19 @@ module StaticAnalysis.StaticChecks.Shadowing where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 
 
-shadowing :: DeclCheck l (Response l)
+shadowing :: DeclCheck l (Error l)
 shadowing p@(FunBind _ matches) = concatMap checkMatch matches
 shadowing _                     = []
 
-checkMatch :: Match l -> [Response l]
+checkMatch :: Match l -> [Error l]
 checkMatch (Match _ _ patterns body _)   = extractNameAndSearchBody patterns body
 checkMatch (InfixMatch _ p1 _ p2 body _) = extractNameAndSearchBody (p1 : p2) body
 
-extractNameAndSearchBody :: [Pat l] -> Rhs l -> [Response l]
+extractNameAndSearchBody :: [Pat l] -> Rhs l -> [Error l]
 extractNameAndSearchBody pats body =
     let names = extractName pats
     in searchBodyForNames names body
@@ -23,13 +24,13 @@ extractName []               = []
 extractName (PVar _ name:ps) = nameString name : extractName ps
 extractName (_:ps)           = extractName ps
 
-searchBodyForNames :: [String] -> Rhs l -> [Response l]
+searchBodyForNames :: [String] -> Rhs l -> [Error l]
 searchBodyForNames names = mapOverRhsNew cId (checkExpForNames names)
 
-checkExpForNames :: [String] -> ExpCheck l (Response l)
+checkExpForNames :: [String] -> ExpCheck l (Error l)
 checkExpForNames names e =
     case e of
-        (Var i qname) -> [Just ("Shadowing of " ++ getNameOfQName qname, i) | searchOnQName names qname]
+        (Var i qname) -> [Shadowing qname | searchOnQName names qname]
         _             -> []
 
 getNameOfQName :: QName l -> String

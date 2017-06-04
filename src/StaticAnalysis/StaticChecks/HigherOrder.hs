@@ -4,13 +4,14 @@ module StaticAnalysis.StaticChecks.HigherOrder (
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 
-checkForHigherOrderFunction :: TypeCheck l (Response l)
-checkForHigherOrderFunction (TyFun _ x _) = [spotTyParen x]
-checkForHigherOrderFunction _             = [Nothing]
+checkForHigherOrderFunction :: TypeCheck l (Error l)
+checkForHigherOrderFunction (TyFun _ x y) = spotTyParen x ++ spotTyParen y
+checkForHigherOrderFunction _             = []
 
 spotTyParen (TyParen info xs) =
     case xs of
-        TyFun{} -> Just ("Higher-Order-Function", info)
-        _       -> Nothing
-spotTyParen _ = Nothing
+        TyFun{} -> [HigherOrder info]
+        _       -> []
+spotTyParen _ = []

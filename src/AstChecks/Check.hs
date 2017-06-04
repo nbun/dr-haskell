@@ -3,8 +3,6 @@ module AstChecks.Check where
 import           Control.Monad
 import           Language.Haskell.Exts
 
-type Response l = Maybe (String, l)
-
 type ImportDeclCheck l a = ImportDecl l -> [a]
 type DeclCheck l a       = Decl l -> [a]
 type ExpCheck l a        = Exp l -> [a]
@@ -12,9 +10,6 @@ type TypeCheck l a       = Type l -> [a]
 type ModuleCheck l a     = Module l -> [a]
 
 cId _ = []
-
-checkId :: a -> Response l
-checkId _ = Nothing
 
 checkIdString :: a -> String
 checkIdString _ = ""
