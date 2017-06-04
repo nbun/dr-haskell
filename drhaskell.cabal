@@ -13,12 +13,15 @@ maintainer:          (none)
 category:            Teaching
 build-type:          Simple
 extra-source-files:  README.md
+data-dir:            res
+data-files:          Testing/templates.hs, TargetModules/Tests.hs
 cabal-version:       >=1.10
 
 executable drhaskell
   main-is:             Repl/Main.hs
+  ghc-options:         -main-is Repl.Main
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >=4.8 && <=4.9.1, edit-distance >= 0.2.2.1, exceptions >=0.8, ghc-paths >=0.1 && <0.2, haskeline >=0.7 && <0.8, haskell-src-exts >=1.19 && <1.20, hint >=0.6, mtl >=2.2 && <2.3
+  build-depends:       base >=4.8 && <=4.9.1, edit-distance >= 0.2.2.1, exceptions >=0.8, ghc-paths >=0.1 && <0.2, haskeline >=0.7 && <0.8, haskell-src-exts >=1.19 && <1.20, hint >=0.6, mtl >=2.2 && <2.3, directory, filepath, transformers, lens
   hs-source-dirs:      src
   default-language:    Haskell2010

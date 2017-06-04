@@ -10,6 +10,7 @@ import           Data.Char
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
+import           Paths_drhaskell
 import           Language.Haskell.Exts
 
 import Util.ModifyAst
@@ -66,11 +67,12 @@ replaceAllTests _ a = a
 
 buildTestMethod :: [Exp ()] -> IO (Decl ())
 buildTestMethod es = do
-  templateAST <- void <$> fst <$> parseFile' "../res/Testing/templates.hs"
+  templateLoc <- getDataFileName "Testing/templates.hs"
+  templateAST <- void <$> fst <$> parseFile' templateLoc
   let Just runAllTestDecl = getPatBind "runAllTests" templateAST
   return $ replaceAllTests (makeTestsNode es) runAllTestDecl
 
---transformFile :: FilePath -> IO ()
+transformFile :: FilePath -> IO String
 transformFile fn = do
   m <- parseModified fn
   let tests = extractTests ((),modifiedComments m)
@@ -78,5 +80,5 @@ transformFile fn = do
   let
     impAdded = addImport (ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}) m
     m' = appendDecl testDeclAST impAdded
-  putStr $ exactPrint (modifiedModule m') (modifiedComments m')
+  return $ exactPrint (modifiedModule m') (modifiedComments m')
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod
