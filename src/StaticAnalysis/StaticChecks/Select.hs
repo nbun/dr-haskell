@@ -40,7 +40,7 @@ nameOfModule :: Module l -> Maybe (ModuleName l)
 nameOfModule m@(Module _ mhead _ _ _) =
   case mhead of
     Just (ModuleHead _ mname _ _) -> Just mname
-    Nothing -> Nothing
+    Nothing                       -> Nothing
 
 --------------------------------------------------------------------------------
 -- Filter declarations

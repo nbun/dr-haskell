@@ -1,7 +1,7 @@
 module StaticAnalysis.Messages.StaticErrors where
 
-import           Language.Haskell.Exts
 import           Data.List
+import           Language.Haskell.Exts
 
 data Error l = NoFunDef (Name l) [Name l]
              --          name,   names in scope

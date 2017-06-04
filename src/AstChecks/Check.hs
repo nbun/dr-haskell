@@ -45,7 +45,7 @@ checkASTv2 idcF dcF ecF tcF mcF m@(Module srcInfo modulehead modulepragmas impor
     ++ mcF m
 
 mapOverDecls :: ExpCheck l a -> [Decl l] -> [a]
-mapOverDecls = mapOverDeclsNew (\_ -> [])
+mapOverDecls = mapOverDeclsNew (const [])
 
 mapOverDeclsNew :: DeclCheck l a -> ExpCheck l a -> [Decl l] -> [a]
 mapOverDeclsNew _ _ [] = []
@@ -62,7 +62,7 @@ mapOverDeclsNew dcF ecF (x:xs) = --TODO: use dcF on all cases
         _                     -> mapOverDeclsNew dcF ecF xs
 
 mapOverFunBind :: ExpCheck l a -> [Match l] -> [a]
-mapOverFunBind = mapOverFunBindNew (\_ -> [])
+mapOverFunBind = mapOverFunBindNew (const [])
 
 mapOverFunBindNew :: DeclCheck l a -> ExpCheck l a -> [Match l] -> [a]
 mapOverFunBindNew _ _ []         = []
@@ -75,7 +75,7 @@ mapOverFunBindNew dcF ecF (x:xs) =
     ++ mapOverFunBindNew dcF ecF xs
 
 mapOverRhs :: ExpCheck l a -> Rhs l -> [a]
-mapOverRhs = mapOverRhsNew (\_ -> [])
+mapOverRhs = mapOverRhsNew (const [])
 
 mapOverRhsNew :: DeclCheck l a -> ExpCheck l a -> Rhs l -> [a]
 mapOverRhsNew dcF ecF (UnGuardedRhs _ e)    = ecF e
@@ -84,7 +84,7 @@ mapOverRhsNew dcF ecF (UnGuardedRhs _ e)    = ecF e
 mapOverRhsNew dcF ecF (GuardedRhss _ gRhss) = concatMap (mapOverGuardedRhsNew dcF ecF) gRhss
 
 mapOverGuardedRhs :: ExpCheck l a -> GuardedRhs l -> [a]
-mapOverGuardedRhs = mapOverGuardedRhsNew (\_ -> [])
+mapOverGuardedRhs = mapOverGuardedRhsNew (const [])
 
 mapOverGuardedRhsNew :: DeclCheck l a -> ExpCheck l a -> GuardedRhs l -> [a]
 mapOverGuardedRhsNew dcF ecF (GuardedRhs _ stmts e) = mapOverStmtsNew dcF ecF stmts
@@ -92,7 +92,7 @@ mapOverGuardedRhsNew dcF ecF (GuardedRhs _ stmts e) = mapOverStmtsNew dcF ecF st
                                                       ++ mapOverExpNew dcF ecF e
 
 mapOverStmts :: ExpCheck l a -> [Stmt l] -> [a]
-mapOverStmts = mapOverStmtsNew (\_ -> [])
+mapOverStmts = mapOverStmtsNew (const [])
 
 mapOverStmtsNew :: DeclCheck l a -> ExpCheck l a -> [Stmt l] -> [a]
 mapOverStmtsNew _ _ []         = []
@@ -110,7 +110,7 @@ mapOverStmtsNew dcF ecF (x:xs) =
                              ++ mapOverStmtsNew dcF ecF xs
 
 mapOverBinds :: ExpCheck l a -> [Binds l] -> [a]
-mapOverBinds = mapOverBindsNew (\_ -> [])
+mapOverBinds = mapOverBindsNew (const [])
 
 mapOverBindsNew :: DeclCheck l a -> ExpCheck l a -> [Binds l] -> [a]
 mapOverBindsNew _ _ []         = []
@@ -124,7 +124,7 @@ mapOverBindsNew dcF ecF (x:xs) =
      ++ mapOverBindsNew dcF ecF xs
 
 mapOverMaybeBinds :: ExpCheck l a -> Maybe (Binds l) -> [a]
-mapOverMaybeBinds = mapOverMaybeBindsNew (\_ -> [])
+mapOverMaybeBinds = mapOverMaybeBindsNew (const [])
 
 mapOverMaybeBindsNew :: DeclCheck l a -> ExpCheck l a -> Maybe (Binds l) -> [a]
 mapOverMaybeBindsNew dcF ecF (Just bind) = mapOverBindsNew dcF ecF [bind]
@@ -168,10 +168,10 @@ mapOverExpNew :: DeclCheck l a -> ExpCheck l a -> Exp l -> [a]
 mapOverExpNew = mapOverExpRecNew True
 
 mapOverExp :: ExpCheck l a -> Exp l -> [a]
-mapOverExp = mapOverExpNew (\_ -> [])
+mapOverExp = mapOverExpNew (const [])
 
 mapOverExpRec :: Bool -> ExpCheck l a -> Exp l -> [a]
-mapOverExpRec rec = mapOverExpRecNew rec (\_ -> [])
+mapOverExpRec rec = mapOverExpRecNew rec (const [])
 
 mapOverExpRecNew :: Bool -> DeclCheck l a -> ExpCheck l a -> Exp l -> [a]
 mapOverExpRecNew rec dcF ecF e =
@@ -294,7 +294,7 @@ mapOverFieldsUpdates ecF = concatMap (\x -> case x of
                                                 _                   -> [])
 
 mapOverQualStmts :: ExpCheck l a -> [QualStmt l] -> [a]
-mapOverQualStmts = mapOverQualStmtsNew (\_ -> [])
+mapOverQualStmts = mapOverQualStmtsNew (const [])
 
 mapOverQualStmtsNew :: DeclCheck l a -> ExpCheck l a -> [QualStmt l] -> [a]
 mapOverQualStmtsNew _ _ []         = []

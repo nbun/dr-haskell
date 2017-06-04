@@ -1,9 +1,9 @@
 module StaticAnalysis.StaticChecks.Undefined where
 
-import Language.Haskell.Exts
-import Data.List
-import StaticAnalysis.Messages.StaticErrors
-import StaticAnalysis.StaticChecks.Select
+import           Data.List
+import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.StaticChecks.Select
 
 undef :: Eq l => Module l -> [Error l]
 undef (Module _ _ _ _ []) = []
@@ -15,4 +15,5 @@ undef m@(Module l mh mp imps (d:ds)) =
         defStrs qn = map nameString $ sims qn
         sims qn    = similar3 d varsOfDecl (qNameName qn)
                      ++ similar3 m defNames (qNameName qn)
+
 
