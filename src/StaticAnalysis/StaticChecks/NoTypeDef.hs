@@ -3,9 +3,10 @@ module StaticAnalysis.StaticChecks.NoTypeDef where
 import           AstChecks.Check
 import           Data.List
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 
-noTypeDef :: ModuleCheck l (Response l)
+noTypeDef :: ModuleCheck l (Error l)
 noTypeDef m = let
     defs = defNames m
     defsNames  = map nameString defs
@@ -14,14 +15,10 @@ noTypeDef m = let
     diffDecls = defsNames \\ decls
     in buildResponse diffDecls defsWithNames
 
-buildResponse :: [String] -> [(String,Name l)] -> [Response l]
+buildResponse :: [String] -> [(String,Name l)] -> [Error l]
 buildResponse [] _ = []
 buildResponse (x:xs) ys =
     case lookup x ys of
-        Just v  -> Just ("Missing TypeDef for " ++ x, extractL v)
-        Nothing -> Nothing
-    : buildResponse xs ys
-
-extractL :: Name l -> l
-extractL (Ident k _)  = k
-extractL (Symbol k _) = k
+        Just v  -> [NoTypeDef v]
+        Nothing -> []
+    ++ buildResponse xs ys

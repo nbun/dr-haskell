@@ -4,8 +4,9 @@ module StaticAnalysis.StaticChecks.Lambda (
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 
-lambdaCheck :: ExpCheck l (Response l)
-lambdaCheck (Lambda info _ _) = [Just ("Lambda-Function", info)]
-lambdaCheck _                 = [Nothing]
+lambdaCheck :: ExpCheck l (Error l)
+lambdaCheck (Lambda info _ _) = [LambdaFunction info]
+lambdaCheck _                 = []
 

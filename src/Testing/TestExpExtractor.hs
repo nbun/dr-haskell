@@ -13,7 +13,7 @@ import           Data.Maybe
 import           Paths_drhaskell
 import           Language.Haskell.Exts
 
-import Util.ModifyAst
+import           Util.ModifyAst
 
 --module for extracting tests specified in comments
 

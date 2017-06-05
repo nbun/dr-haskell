@@ -4,10 +4,11 @@ module StaticAnalysis.StaticChecks.TypeVars (
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors
 
-checkForTypVar :: TypeCheck l (Response l)
+checkForTypVar :: TypeCheck l (Error l)
 checkForTypVar (TyFun _ x xs) =
     case x of
-        (TyVar _ (Ident info name)) -> [Just ("Usage of Typevar " ++ name, info)]
-        _                           -> [Nothing]
+        (TyVar _ name) -> [TypeVar name]
+        _              -> []
 

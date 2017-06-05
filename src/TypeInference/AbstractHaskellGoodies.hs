@@ -5,9 +5,9 @@
 
 module AbstractHaskellGoodies where
 
-import AbstractHaskell
-import Data.Char            (toLower)
-import Data.List            (union)
+import           AbstractHaskell
+import           Data.Char       (toLower)
+import           Data.List       (union)
 
 infixr 9 ~>
 
@@ -221,11 +221,11 @@ renameSymbolInExpr ren exp = case exp of
 
 renameSymbolInPat :: (QName -> QName) -> Pattern -> Pattern
 renameSymbolInPat ren pat = case pat of
-  PComb qf pats    -> PComb (ren qf) (map (renameSymbolInPat ren) pats)
-  PAs var apat     -> PAs var (renameSymbolInPat ren apat)
-  PTuple ps        -> PTuple (map (renameSymbolInPat ren) ps)
-  PList ps         -> PList (map (renameSymbolInPat ren) ps)
-  _                -> pat -- PVar or PLit
+  PComb qf pats -> PComb (ren qf) (map (renameSymbolInPat ren) pats)
+  PAs var apat  -> PAs var (renameSymbolInPat ren apat)
+  PTuple ps     -> PTuple (map (renameSymbolInPat ren) ps)
+  PList ps      -> PList (map (renameSymbolInPat ren) ps)
+  _             -> pat -- PVar or PLit
 
 renameSymbolInBranch :: (QName -> QName) -> BranchExpr -> BranchExpr
 renameSymbolInBranch ren (Branch pat e) =
