@@ -4,7 +4,6 @@ import           AstChecks.Check
 import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
 import           Text.EditDistance
 
 --------------------------------------------------------------------------------

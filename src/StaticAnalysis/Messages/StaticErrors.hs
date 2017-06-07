@@ -22,6 +22,9 @@ data Error l = NoFunDef (Name l) [Name l]
              | TypeVar (Name l)
   deriving (Show, Ord, Eq) --TODO: mark whether its an error or a warning
 
+--------------------------------------------------------------------------------
+-- Pretty printing
+
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
     "Type signature for " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
@@ -60,6 +63,7 @@ getNameOfQName (UnQual _ name) = nameString name
 nameString :: Name l -> String
 nameString (Ident  _ s) = s
 nameString (Symbol _ s) = s
+
 
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l
