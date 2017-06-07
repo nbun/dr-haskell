@@ -5,6 +5,7 @@ import StaticAnalysis.Messages.StaticErrors
 import Control.Monad.State.Lazy
 import Language.Haskell.Exts
 import AstChecks.Check
+import Control.Monad.Catch
 
 import StaticAnalysis.StaticChecks.NoFunDef
 import StaticAnalysis.StaticChecks.Undefined
@@ -30,7 +31,7 @@ checkExt check ext = do
   CheckState m result errors <- get
   put $ CheckState m result (check m ext ++ errors)
 
-runChecksL1 :: String -> IO String
+runChecksL1 :: String -> IO [Error SrcSpanInfo]
 runChecksL1 path = do
   m <- getAST path
   -- p <- getAST "path/to/level/1/prelude.hs"
@@ -39,4 +40,5 @@ runChecksL1 path = do
         check undef
         checkExt duplicated [] -- [p]
         check typeVarApplication
-  return $ prettyCheckState (execState checks (CheckState m "" []))
+      (CheckState _ _ errors) = execState checks (CheckState m "" [])
+  return errors

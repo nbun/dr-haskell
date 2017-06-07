@@ -2,6 +2,8 @@ module StaticAnalysis.Messages.StaticErrors where
 
 import           Data.List
 import           Language.Haskell.Exts
+import           Control.Exception
+import           Data.Typeable
 
 data Error l = NoFunDef (Name l) [Name l]
              --          name,   names in scope
@@ -20,7 +22,9 @@ data Error l = NoFunDef (Name l) [Name l]
              | Shadowing (QName l)
              --        name
              | TypeVar (Name l)
-  deriving (Show, Ord, Eq) --TODO: mark whether its an error or a warning
+  deriving (Show, Typeable, Ord, Eq) --TODO: mark whether its an error or a warning
+
+instance (Show l, Typeable l) => Exception (Error l)
 
 --------------------------------------------------------------------------------
 -- Pretty printing

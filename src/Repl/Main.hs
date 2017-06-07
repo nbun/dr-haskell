@@ -11,6 +11,7 @@ import           Repl.Types
 import           Repl.Loader
 
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Messages.StaticErrors
 
 {-
 
@@ -80,12 +81,12 @@ replEvalCommand :: String -> Repl (Maybe String)
 replEvalCommand cmd = case cmd of
   "?" -> Just <$> replHelp
   ('l':' ': xs)-> do
-    MC.handleAll (\_ -> do
+    MC.handleAll (\x -> do
                         liftInput $ outputStrLn "Could not load file"
+                        liftInput $ outputStrLn $ show x
                         return Nothing) $ do
-      errorStr <- loadModule xs
-      let retStr = if null errorStr then "OK!" else errorStr
-      return (Just retStr)
+      errors <- loadModule xs
+      return (Just (unlines $ map prettyError errors))
   ('r':_) -> do
     md <- gets _filename
     MC.handleAll (\_ -> do
