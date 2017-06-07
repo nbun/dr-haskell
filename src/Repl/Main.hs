@@ -10,6 +10,8 @@ import           Language.Haskell.Interpreter
 import           Repl.Types
 import           Repl.Loader
 
+import           StaticAnalysis.CheckState
+
 {-
 
 Current Limitations:
@@ -81,8 +83,9 @@ replEvalCommand cmd = case cmd of
     MC.handleAll (\_ -> do
                         liftInput $ outputStrLn "Could not load file"
                         return Nothing) $ do
-      loadModule xs
-      return (Just "OK!")
+      errorStr <- loadModule xs
+      let retStr = if null errorStr then "OK!" else errorStr
+      return (Just retStr)
   ('r':_) -> do
     md <- gets _filename
     MC.handleAll (\_ -> do

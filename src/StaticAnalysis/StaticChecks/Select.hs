@@ -5,6 +5,7 @@ import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
 import           Text.EditDistance
+import           StaticAnalysis.Messages.StaticErrors
 
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names

@@ -9,9 +9,10 @@ import           Control.Lens
 
 import           Repl.Types
 import           Testing.TestExpExtractor
+import           StaticAnalysis.CheckState
 
 --todo: better path handling
-loadModule :: FilePath -> Repl ()
+loadModule :: FilePath -> Repl String
 loadModule fn = do
   transModule <- liftIO $ transformFile fn
   let (dir, base) = splitFileName fn
@@ -22,3 +23,4 @@ loadModule fn = do
   liftInterpreter $ loadModules [cfn]
   liftInterpreter $ setTopLevelModules ["Main"]
   liftRepl $ modify $ Control.Lens.set filename fn
+  liftIO $ runChecksL1 cfn

@@ -30,15 +30,13 @@ checkExt check ext = do
   CheckState m result errors <- get
   put $ CheckState m result (check m ext ++ errors)
 
-main :: IO ()
-main = do
-  m <- getAST "src/StaticAnalysis/StaticChecks/Test.hs"
-  p <- fmap void $ getAST "src/StaticAnalysis/StaticChecks/Test.hs"
-  n <- getAST "src/Repl/Main.hs"
-  let test = do
+runChecksL1 :: String -> IO String
+runChecksL1 path = do
+  m <- getAST path
+  -- p <- getAST "path/to/level/1/prelude.hs"
+  let checks = do
         check noFunDef
         check undef
-        checkExt duplicated [n]
+        checkExt duplicated [] -- [p]
         check typeVarApplication
-  putStrLn $ prettyCheckState (execState test (CheckState m "" []))
-  -- print p
+  return $ prettyCheckState (execState checks (CheckState m "" []))
