@@ -1,17 +1,17 @@
 module Repl.Main where
 
-import           System.FilePath
+import           Control.Monad.Catch                  as MC
 import           Control.Monad.State
-import           Control.Monad.Catch as MC
 import           Paths_drhaskell
+import           System.FilePath
 
-import           System.Console.Haskeline
 import           Language.Haskell.Interpreter
-import           Repl.Types
 import           Repl.Loader
+import           Repl.Types
+import           System.Console.Haskeline
 
-import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.Messages.Prettify
+import           StaticAnalysis.Messages.StaticErrors
 
 {-
 
@@ -51,13 +51,13 @@ main = do
     liftInterpreter initInterpreter
     replLoop
   case res of
-       Left err -> putStrLn $ "Error:" ++ (show err)
+       Left err -> putStrLn $ "Error:" ++ show err
        Right _  -> return ()
 
 replEval :: String -> Repl (Maybe String)
 replEval q = case q of
   ':':xs -> replEvalCommand xs
-  _    -> liftInterpreter $ replEvalExp q
+  _      -> liftInterpreter $ replEvalExp q
 
 replHelp :: Repl String
 replHelp = return $ unlines [
@@ -94,4 +94,4 @@ replEvalCommand cmd = case cmd of
                         return Nothing) $ do
       loadModule md
       return (Just "OK!")
-  ('t':' ': xs) -> Just <$> (liftInterpreter $ typeOf xs)
+  ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)
