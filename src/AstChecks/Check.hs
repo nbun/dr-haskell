@@ -159,6 +159,28 @@ mapOverTypes tcF (x:xs) =
                                               ++ mapOverTypes tcF xs
         _                                  -> mapOverTypes tcF xs
 
+mapOverTyTypes :: TypeCheck l a -> [Type l] -> [a]
+mapOverTyTypes = mapOverTyTypesRec True
+
+mapOverTyTypesRec :: Bool -> TypeCheck l a -> [Type l] -> [a]
+mapOverTyTypesRec _ _ [] = []
+mapOverTyTypesRec rec tcF (x:xs) = res ++ mapOverTyTypesRec rec tcF xs
+  where
+    res = case x of
+            TyForall _ _ _ t  -> tcF t
+            TyFun _ t1 t2     -> tcF t1 ++ tcF t2
+            TyTuple _ _ ts    -> concatMap tcF ts
+            TyList _ t        -> tcF t
+            TyParArray _ t    -> tcF t
+            TyApp _ t1 t2     -> tcF t1 ++ tcF t2
+            TyParen _ t       -> tcF t
+            TyInfix _ t1 _ t2 -> tcF t1 ++ tcF t2
+            TyKind _ t _      -> tcF t
+            TyEquals _ t1 t2  -> tcF t1 ++ tcF t2
+            TyBang _ _ _ t    -> tcF t
+            t                 -> if rec then tcF t else []
+
+
 mapOverExpNew :: DeclCheck l a -> ExpCheck l a -> Exp l -> [a]
 mapOverExpNew = mapOverExpRecNew True
 
