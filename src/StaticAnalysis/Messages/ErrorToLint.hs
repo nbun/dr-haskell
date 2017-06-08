@@ -113,7 +113,7 @@ lintPlain (Lint filename position messageClass message) =
     ++ show (snd position)
     ++ ":"
     ++ " "
-    ++ (show messageClass)
+    ++ show messageClass
     ++ ":"
     ++ " "
     ++ message
