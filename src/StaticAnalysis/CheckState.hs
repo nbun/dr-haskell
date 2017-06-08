@@ -8,6 +8,7 @@ import           Control.Monad.State.Lazy
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.ErrorToLint
 
+import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.StaticChecks.Derivings
 import           StaticAnalysis.StaticChecks.Duplicated
 import           StaticAnalysis.StaticChecks.HigherOrder
@@ -48,5 +49,10 @@ runChecksL1 path = do
         check undef
         checkExt duplicated [] -- [p]
         check typeVarApplication
+        check $ checkAST cId cId cId checkForHigherOrderFunction
+        check $ checkAST cId cId lambdaCheck cId
+        check $ checkASTv2 cId cId cId cId noTypeDef
+        check $ checkAST cId shadowing cId cId
+        check $ checkAST cId cId cId checkForTypVar
       (CheckState _ _ errors) = execState checks (CheckState m "" [])
   return errors

@@ -5,7 +5,6 @@ import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
 import           Text.EditDistance
-import           StaticAnalysis.Messages.StaticErrors
 
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names
@@ -37,6 +36,10 @@ nameOfModule m@(Module _ mhead _ _ _) =
   case mhead of
     Just (ModuleHead _ mname _ _) -> Just mname
     Nothing                       -> Nothing
+
+nameString :: Name l -> String
+nameString (Ident  _ s) = s
+nameString (Symbol _ s) = s
 
 --------------------------------------------------------------------------------
 -- Filter declarations
