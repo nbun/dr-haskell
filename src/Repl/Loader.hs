@@ -25,7 +25,7 @@ loadModule fn = do
   liftIO $ writeFile cfn transModule
   -- errors <- liftIO $ runChecksL1 cfn
   -- throwM errors
-  errors <- liftIO $ runChecksL1 cfn
+  errors <- liftIO $ runChecksL1 fn
   if null errors
   then do
     liftInterpreter $ loadModules [cfn]
