@@ -1,18 +1,18 @@
 module StaticAnalysis.Messages.Prettify where
 
 import Data.List
-import Language.Haskell.Interpreter
+import qualified Language.Haskell.Interpreter as Hint
 import Language.Haskell.Exts
 import StaticAnalysis.Messages.StaticErrors
 import StaticAnalysis.StaticChecks.Select
 
-prettyIntError :: InterpreterError -> String
+prettyIntError :: Hint.InterpreterError -> String
 prettyIntError error =
   case error of
-    UnknownError s -> s
-    WontCompile es -> unlines $ map (\(GhcError s) -> s) es
-    NotAllowed   s -> s
-    GhcException s -> s
+    Hint.UnknownError s -> s
+    Hint.WontCompile es -> unlines $ map (\(Hint.GhcError s) -> s) es
+    Hint.NotAllowed   s -> s
+    Hint.GhcException s -> s
 
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
@@ -40,6 +40,13 @@ prettyError (Shadowing qname) =
     "Found shadowing of variable " ++ getNameOfQName qname ++ " at " ++ prettyLoc (extractPositionFromQname qname)
 prettyError (TypeVar name) =
     "Found typevariable " ++ prettyPrintQ name ++ " at "++ prettyNameLoc name
+prettyError (Imported name) =
+  "Found import " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name
+prettyError (ModuleHeadUsed name) =
+  "Found module head " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name
+prettyError (OwnDataDecl l) =
+  "Found data declaration or type synonym at " ++ prettyLoc l
+
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l
@@ -52,6 +59,9 @@ getNameOfQName (UnQual _ name) = nameString name
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l
 prettyNameLoc (Symbol l _) = prettyLoc l
+
+prettyModNameLoc :: ModuleName SrcSpanInfo -> String
+prettyModNameLoc (ModuleName l _) = prettyLoc l
 
 prettyLoc :: SrcSpanInfo -> String
 prettyLoc (SrcSpanInfo ispan ipoints) = prettySrcSpan ispan
