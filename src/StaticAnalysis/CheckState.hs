@@ -1,16 +1,24 @@
 module StaticAnalysis.CheckState where
 
-import StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.Messages.StaticErrors
 
-import Control.Monad.State.Lazy
-import Language.Haskell.Exts
-import AstChecks.Check
-import Control.Monad.Catch
+import           AstChecks.Check
+import           Control.Monad.Catch
+import           Control.Monad.State.Lazy
+import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.ErrorToLint
 
-import StaticAnalysis.StaticChecks.NoFunDef
-import StaticAnalysis.StaticChecks.Undefined
-import StaticAnalysis.StaticChecks.Duplicated
-import StaticAnalysis.StaticChecks.TypeVarApplication
+import           StaticAnalysis.StaticChecks.Derivings
+import           StaticAnalysis.StaticChecks.Duplicated
+import           StaticAnalysis.StaticChecks.HigherOrder
+import           StaticAnalysis.StaticChecks.Lambda
+import           StaticAnalysis.StaticChecks.NoFunDef
+import           StaticAnalysis.StaticChecks.NoTypeDef
+import           StaticAnalysis.StaticChecks.Select
+import           StaticAnalysis.StaticChecks.Shadowing
+import           StaticAnalysis.StaticChecks.TypeVarApplication
+import           StaticAnalysis.StaticChecks.TypeVars
+import           StaticAnalysis.StaticChecks.Undefined
 
 data CheckState l r = CheckState (Module l) r [Error l]
 
