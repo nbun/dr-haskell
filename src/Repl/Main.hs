@@ -10,8 +10,8 @@ import           Language.Haskell.Interpreter
 import           Repl.Types
 import           Repl.Loader
 
-import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.Messages.Prettify
 
 {-
 
@@ -81,9 +81,9 @@ replEvalCommand :: String -> Repl (Maybe String)
 replEvalCommand cmd = case cmd of
   "?" -> Just <$> replHelp
   ('l':' ': xs)-> do
-    MC.handleAll (\x -> do
+    MC.handleAll (\e -> do
                         liftInput $ outputStrLn "Could not load file"
-                        liftInput $ outputStrLn $ show x
+                        liftInput $ outputStrLn $ show e
                         return Nothing) $ do
       errors <- loadModule xs
       return (Just (unlines $ map prettyError errors))

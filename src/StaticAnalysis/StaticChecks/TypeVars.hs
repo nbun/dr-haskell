@@ -11,4 +11,5 @@ checkForTypVar (TyFun _ x xs) =
     case x of
         (TyVar _ name) -> [TypeVar name]
         _              -> []
+checkForTypVar _ = []
 

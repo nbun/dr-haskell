@@ -5,6 +5,7 @@ import           Data.Set
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
+import           StaticAnalysis.Messages.Prettify
 import           Text.JSON
 
 

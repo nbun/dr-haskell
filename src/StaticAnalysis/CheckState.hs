@@ -11,6 +11,12 @@ import StaticAnalysis.StaticChecks.NoFunDef
 import StaticAnalysis.StaticChecks.Undefined
 import StaticAnalysis.StaticChecks.Duplicated
 import StaticAnalysis.StaticChecks.TypeVarApplication
+import StaticAnalysis.StaticChecks.HigherOrder
+import StaticAnalysis.StaticChecks.Lambda
+import StaticAnalysis.StaticChecks.NoTypeDef
+import StaticAnalysis.StaticChecks.Shadowing
+import StaticAnalysis.StaticChecks.TypeVars
+import StaticAnalysis.Messages.Prettify
 
 data CheckState l r = CheckState (Module l) r [Error l]
 
@@ -40,5 +46,10 @@ runChecksL1 path = do
         check undef
         checkExt duplicated [] -- [p]
         check typeVarApplication
+        check $ checkAST cId cId cId checkForHigherOrderFunction
+        check $ checkAST cId cId lambdaCheck cId
+        check $ checkASTv2 cId cId cId cId noTypeDef
+        check $ checkAST cId shadowing cId cId
+        check $ checkAST cId cId cId checkForTypVar
       (CheckState _ _ errors) = execState checks (CheckState m "" [])
   return errors
