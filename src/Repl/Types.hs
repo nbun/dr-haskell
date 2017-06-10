@@ -1,11 +1,12 @@
-{-# LANGUAGE FlexibleInstances, TemplateHaskell #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell   #-}
 module Repl.Types where
 
+import           Control.Lens
 import           Control.Monad.Catch
 import           Control.Monad.State
-import           Control.Lens
-import           System.Console.Haskeline
 import           Language.Haskell.Interpreter
+import           System.Console.Haskeline
 
 data ReplState = ReplState {
   _filename :: String

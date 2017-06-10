@@ -1,10 +1,10 @@
 module StaticAnalysis.Messages.Prettify where
 
-import Data.List
-import qualified Language.Haskell.Interpreter as Hint
-import Language.Haskell.Exts
-import StaticAnalysis.Messages.StaticErrors
-import StaticAnalysis.StaticChecks.Select
+import           Data.List
+import           Language.Haskell.Exts
+import qualified Language.Haskell.Interpreter         as Hint
+import           StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.StaticChecks.Select
 
 prettyIntError :: Hint.InterpreterError -> String
 prettyIntError error =

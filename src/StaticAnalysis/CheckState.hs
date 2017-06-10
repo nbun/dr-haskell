@@ -1,26 +1,26 @@
 module StaticAnalysis.CheckState where
 
-import StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.Messages.StaticErrors
 
-import Control.Monad.State.Lazy
-import Language.Haskell.Exts
-import AstChecks.Check
-import Control.Monad.Catch
-import Data.Functor.Identity
+import           AstChecks.Check
+import           Control.Monad.Catch
+import           Control.Monad.State.Lazy
+import           Data.Functor.Identity
+import           Language.Haskell.Exts
 
-import StaticAnalysis.StaticChecks.NoFunDef
-import StaticAnalysis.StaticChecks.Undefined
-import StaticAnalysis.StaticChecks.Duplicated
-import StaticAnalysis.StaticChecks.TypeVarApplication
-import StaticAnalysis.StaticChecks.HigherOrder
-import StaticAnalysis.StaticChecks.Lambda
-import StaticAnalysis.StaticChecks.NoTypeDef
-import StaticAnalysis.StaticChecks.Shadowing
-import StaticAnalysis.StaticChecks.TypeVars
-import StaticAnalysis.StaticChecks.OwnDataDecl
-import StaticAnalysis.StaticChecks.ModuleHeadUsed
-import StaticAnalysis.StaticChecks.ImportUsed
-import StaticAnalysis.Messages.Prettify
+import           StaticAnalysis.Messages.Prettify
+import           StaticAnalysis.StaticChecks.Duplicated
+import           StaticAnalysis.StaticChecks.HigherOrder
+import           StaticAnalysis.StaticChecks.ImportUsed
+import           StaticAnalysis.StaticChecks.Lambda
+import           StaticAnalysis.StaticChecks.ModuleHeadUsed
+import           StaticAnalysis.StaticChecks.NoFunDef
+import           StaticAnalysis.StaticChecks.NoTypeDef
+import           StaticAnalysis.StaticChecks.OwnDataDecl
+import           StaticAnalysis.StaticChecks.Shadowing
+import           StaticAnalysis.StaticChecks.TypeVarApplication
+import           StaticAnalysis.StaticChecks.TypeVars
+import           StaticAnalysis.StaticChecks.Undefined
 
 data CheckState l = CheckState (Module l) [Error l]
 

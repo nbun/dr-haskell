@@ -10,6 +10,7 @@ module StaticAnalysis.Messages.ErrorToLint (
 -}
 
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Text.JSON                            as Json
 
@@ -35,54 +36,39 @@ json = JSON
 
 lintErrors :: LinterOutput -> [Error SrcSpanInfo] -> String
 lintErrors JSON es  = (Json.showJSArray $ map (buildJson . transformError) es) ""
-lintErrors PLAIN es = foldr (\x xs -> x ++ "\r\n" ++ xs) "" $ map (lintPlain . transformError) es
+lintErrors PLAIN es = foldr ((\x xs -> x ++ "\r\n" ++ xs) . lintPlain . transformError) "" es
 
-transformError :: Error SrcSpanInfo -> Lint
-transformError e@(NoFunDef name _) =
+buildForName :: Name SrcSpanInfo -> Error SrcSpanInfo -> Lint
+buildForName name e =
     let (filename, position) = extractFilenameAndPositionFromName name
         messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
-transformError e@(Undefined name _ _) =
-    let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
-transformError e@(Duplicated name _) =
-    let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
-transformError e@(TypeVarApplication name) =
-    let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
-transformError e@(HigherOrder info) =
+
+buildForInfo :: SrcSpanInfo -> Error SrcSpanInfo -> Lint
+buildForInfo info e =
     let (filename, position) = extractFilenameAndPosition info
         messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
-transformError e@(LambdaFunction info) =
-    let (filename, position) = extractFilenameAndPosition info
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
-transformError e@(NoTypeDef name) =
-    let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
-transformError e@(Shadowing qname) =
+
+buildForQName :: QName SrcSpanInfo -> Error SrcSpanInfo -> Lint
+buildForQName qname e =
     let (filename, position) = extractFilenameAndPositionFromQName qname
         messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
-transformError e@(TypeVar name) =
-    let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
-        message = prettyError e
-    in Lint filename position messageClass message
+
+transformError :: Error SrcSpanInfo -> Lint
+transformError e@(NoFunDef name _)         = buildForName name e
+transformError e@(Undefined name _ _)      = buildForName name e
+transformError e@(Duplicated name _)       = buildForName name e
+transformError e@(TypeVarApplication name) = buildForName name e
+transformError e@(HigherOrder info)        = buildForInfo info e
+transformError e@(LambdaFunction info)     = buildForInfo info e
+transformError e@(NoTypeDef name)          = buildForName name e
+transformError e@(Shadowing qname)         = buildForQName qname e
+transformError e@(TypeVar name)            = buildForName name e
 
 extractFilenameAndPositionFromQName :: QName SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
@@ -113,7 +99,7 @@ lintPlain (Lint filename position messageClass message) =
     ++ show (snd position)
     ++ ":"
     ++ " "
-    ++ (show messageClass)
+    ++ show messageClass
     ++ ":"
     ++ " "
     ++ message
@@ -124,7 +110,7 @@ buildJson (Lint filename position messageClass message) =
                ("line", toJSString $ show $ fst position),
                ("column", toJSString $ show $ snd position),
                ("messsageclass", toJSString $ show messageClass),
-               ("message", toJSString $ message)]
+               ("message", toJSString message)]
     in Json.JSObject $ Json.toJSObject obj
 
 toJSString :: String -> Json.JSValue
