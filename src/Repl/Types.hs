@@ -2,19 +2,29 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Repl.Types where
 
-import           Control.Lens
+import           Control.Lens hiding (Level)
 import           Control.Monad.Catch
 import           Control.Monad.State
 import           Language.Haskell.Interpreter
 import           System.Console.Haskeline
 
+data Level = Level1 | Level2 | LevelFull
+  deriving (Show)
+
 data ReplState = ReplState {
-  _filename :: String
+  _filename :: String,
+  _forceLevel :: Maybe Level,
+  _runTests :: Bool,
+  _nonStrict :: Bool
 }
+  deriving (Show)
 
 initialReplState :: ReplState
 initialReplState = ReplState {
-  _filename = ""
+  _filename = "",
+  _forceLevel = Nothing,
+  _runTests = True,
+  _nonStrict = False
 }
 
 makeLenses ''ReplState
@@ -23,8 +33,8 @@ type ReplInput = InputT IO
 type ReplInterpreter = InterpreterT ReplInput
 type Repl = StateT ReplState ReplInterpreter
 
-runRepl :: Repl a -> IO (Either InterpreterError a)
-runRepl = runInputT defaultSettings . runInterpreter . (`evalStateT` initialReplState)
+runRepl :: ReplState -> Repl a -> IO (Either InterpreterError a)
+runRepl state = runInputT defaultSettings . runInterpreter . (`evalStateT` state)
 
 -- no idea if these instances are valid
 -- they work in my small tests
