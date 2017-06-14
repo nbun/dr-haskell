@@ -14,7 +14,7 @@ main = do
 
 run level file format =
     case (level, file) of
-        (1, file) -> (runChecksL1 file) >>= (putStrLn . lintErrors format)
+        (1, file) -> (runCheckLevel levelOne file) >>= (putStrLn . lintErrors format)
         (_, _)    -> exitFailure
 
 parse argv = do
