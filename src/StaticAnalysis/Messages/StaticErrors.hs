@@ -6,9 +6,9 @@ import           Control.Exception
 import           Data.Typeable
 
 data Error l = NoFunDef (Name l) [Name l]
-             --          name,   names in scope
-             | Undefined (Name l) [Name l] [String]
-             --          name,    names in scope, hints
+             --          name,   similar names in scope
+             | Undefined (Name l) [Name l]
+             --          name,    similar names in scope
              | Duplicated (Name l) (Maybe (ModuleName l))
              --           name,    module that contains the duplicate
              | TypeVarApplication (Name l)

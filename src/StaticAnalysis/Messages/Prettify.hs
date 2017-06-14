@@ -14,13 +14,14 @@ prettyIntError error =
     Hint.NotAllowed   s -> s
     Hint.GhcException s -> s
 
+
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
     "Type signature for " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
-    ++ " without a definition. " ++ "Did you mean " ++ prettySims sims ++ "?"
-prettyError (Undefined name sims hints) =
+    ++ " without a definition. " ++ prettySims sims
+prettyError (Undefined name sims) =
     "Undefined identifier " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
-    ++ ". Did you mean " ++ prettySims sims ++ "?"
+    ++ ". " ++ prettySims sims
 prettyError (Duplicated name maymod) =
     "Definition " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
     ++ " is already defined" ++ mod ++ "."
@@ -72,9 +73,11 @@ prettySrcSpan (SrcSpan _ sl sc el ec) = pretty sl sc ++ " - " ++ pretty el ec
 
 prettySims :: [Name SrcSpanInfo] -> String
 prettySims [] = ""
-prettySims [n] = prettyPrintQ n
-prettySims names@(_:_) = (concat $ intersperse ", " (map prettyPrintQ (init names)))
-                         ++ " or " ++ prettyPrintQ (last names)
+prettySims ns = "Did you mean " ++ prettySims' ns ++ "?"
+  where
+    prettySims' [n] = prettyPrintQ n
+    prettySims' names@(_:_) = intercalate ", " (map prettyPrintQ (init names))
+                              ++ " or " ++ prettyPrintQ (last names)
 
 prettyPrintQ :: Pretty a => a -> String
 prettyPrintQ x = "'" ++ prettyPrint x ++ "'"

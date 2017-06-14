@@ -49,7 +49,7 @@ levelOne p = do
   check moduleHeadUsed
   check ownDataDecl
   check noFunDef
-  check undef
+  checkExt undef [] -- [p]
   checkExt duplicated [] -- [p]
   check typeVarApplication
   check $ checkAST cId cId cId checkForHigherOrderFunction

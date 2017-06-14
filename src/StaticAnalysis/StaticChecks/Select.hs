@@ -41,6 +41,10 @@ nameString :: Name l -> String
 nameString (Ident  _ s) = s
 nameString (Symbol _ s) = s
 
+importedModules :: Module l -> [ModuleName l]
+importedModules (Module _ _ _ imps _) = map impName imps
+  where impName (ImportDecl _ mname _ _ _ _ _ _) = mname
+
 --------------------------------------------------------------------------------
 -- Filter declarations
 
