@@ -59,16 +59,26 @@ buildForQName qname e =
         message = prettyError e
     in Lint filename position messageClass message
 
+buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo -> Lint
+buildForModuleName mname e =
+    let (filename, position) = extractFilenameAndPositionFromModuleName mname
+        messageClass = Error
+        message = prettyError e
+    in Lint filename position messageClass message
+
 transformError :: Error SrcSpanInfo -> Lint
-transformError e@(NoFunDef name _)         = buildForName name e
-transformError e@(Undefined name _ _)      = buildForName name e
-transformError e@(Duplicated name _)       = buildForName name e
-transformError e@(TypeVarApplication name) = buildForName name e
-transformError e@(HigherOrder info)        = buildForInfo info e
-transformError e@(LambdaFunction info)     = buildForInfo info e
-transformError e@(NoTypeDef name)          = buildForName name e
-transformError e@(Shadowing qname)         = buildForQName qname e
-transformError e@(TypeVar name)            = buildForName name e
+transformError e@(NoFunDef name _)           = buildForName name e
+transformError e@(Undefined name _ _)        = buildForName name e
+transformError e@(Duplicated name _)         = buildForName name e
+transformError e@(TypeVarApplication name)   = buildForName name e
+transformError e@(HigherOrder info)          = buildForInfo info e
+transformError e@(LambdaFunction info)       = buildForInfo info e
+transformError e@(NoTypeDef name)            = buildForName name e
+transformError e@(Shadowing qname)           = buildForQName qname e
+transformError e@(TypeVar name)              = buildForName name e
+transformError e@(Imported moduleName)       = buildForModuleName moduleName e
+transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e
+transformError e@(OwnDataDecl info)          = buildForInfo info e
 
 extractFilenameAndPositionFromQName :: QName SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
@@ -77,6 +87,9 @@ extractFilenameAndPositionFromQName (UnQual l _) = extractFilenameAndPosition l
 extractFilenameAndPositionFromName :: Name SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPositionFromName (Ident info _) = extractFilenameAndPosition info
 extractFilenameAndPositionFromName (Symbol info _) = extractFilenameAndPosition info
+
+extractFilenameAndPositionFromModuleName :: ModuleName SrcSpanInfo -> (Filename, Position)
+extractFilenameAndPositionFromModuleName (ModuleName info _) = extractFilenameAndPosition info
 
 extractFilenameAndPosition :: SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPosition (SrcSpanInfo infoSpan _) =

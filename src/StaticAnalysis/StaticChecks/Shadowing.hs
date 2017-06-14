@@ -73,6 +73,8 @@ mapOverDeclsWithAddNames [] _ = []
 mapOverDeclsWithAddNames (FunBind _ matches:decls) names =
     concatMap (\x -> checkMatchWithAddNames x names) matches
     ++ mapOverDeclsWithAddNames decls names
+mapOverDeclsWithAddNames (_:decls) names =
+    mapOverDeclsWithAddNames decls names
 
 matchAgainstIpBinds :: [IPBind SrcSpanInfo] -> [String] -> [Error SrcSpanInfo]
 matchAgainstIpBinds [] _ = []
