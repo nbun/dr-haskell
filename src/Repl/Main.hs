@@ -2,13 +2,16 @@ module Repl.Main where
 
 import           Control.Monad.Catch                  as MC
 import           Control.Monad.State
+import           Data.Maybe
 import           Paths_drhaskell
 import           System.FilePath
+import           Control.Lens hiding (Level, set)
 
 import           Language.Haskell.Interpreter
+import           System.Console.Haskeline
 import           Repl.Loader
 import           Repl.Types
-import           System.Console.Haskeline
+import           Repl.CmdOptions
 
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
@@ -47,8 +50,13 @@ initInterpreter = do
 
 main :: IO ()
 main = do
-  res <- runRepl $ do
+  initialState <- handleCmdArgs
+  res <- runRepl initialState $ do
     liftInterpreter initInterpreter
+    fname <- use filename
+    when (not $ null fname) $ do
+      errors <- liftRepl $ loadModule fname
+      liftInput $ replPrint (Just (unlines $ map prettyError errors))
     replLoop
   case res of
        Left err -> putStrLn $ "Error:" ++ show err
@@ -81,10 +89,13 @@ replEvalCommand :: String -> Repl (Maybe String)
 replEvalCommand cmd = case cmd of
   "?" -> Just <$> replHelp
   ('l':' ': xs)-> do
+    previousForceLevel <- use forceLevel
     MC.handleAll (\e -> do
                         liftInput $ outputStrLn "Could not load file"
                         liftInput $ outputStrLn $ show e
+                        liftRepl $ forceLevel .= previousForceLevel
                         return Nothing) $ do
+      liftRepl $ forceLevel .= Nothing
       errors <- loadModule xs
       return (Just (unlines $ map prettyError errors))
   ('r':_) -> do

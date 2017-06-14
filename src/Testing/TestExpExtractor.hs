@@ -28,17 +28,33 @@ parseFile' = fromParseResult <.> parseFileWithComments defaultParseMode
 extractComments :: (a, [Comment]) -> [Comment]
 extractComments = snd
 
-commentLines :: Comment -> [String]
-commentLines (Comment _ _ t) = lines t
+commentLines :: Comment -> [(Int,String)]
+commentLines (Comment _ l t) = let ln = srcSpanStartLine l : map (+1) ln in
+                                   zip ln $ lines t
 
-commentsLines :: [Comment] -> [String]
+commentsLines :: [Comment] -> [(Int,String)]
 commentsLines = concatMap commentLines
 
-filterCommentLines :: [String] -> [String]
-filterCommentLines = map (dropWhile (\x -> or $ ($ x) <$> [isSpace, (== '>')])) . filter (isPrefixOf "> ") . map (dropWhile isSpace)
+filterCommentLines :: [(Int,String)] -> [(Int,String)]
+filterCommentLines = map (\(l,s) -> (l, dropWhile (\x -> or $ ($ x) <$> [isSpace, (== '>')]) s)) . filter (isPrefixOf "> " . snd) . map (\(l,s) -> (l, dropWhile isSpace s))
+
+annotateTest :: Int -> String -> Exp () -> Exp ()
+annotateTest l t e = case e of
+  App () e1 e2 -> App () (annotateTest l t e1) e2
+  InfixApp () e1 q e2 -> InfixApp () (annotateTest l t e1) q e2
+  e1@(Var () (UnQual () (Ident () _))) ->
+    App ()
+        (App ()
+             e1
+             (Lit () (Int () (toInteger l) (show l))))
+        (Lit () (String () t t))
+
+parseTest :: (Int,String) -> Exp ()
+parseTest (l, s) = annotateTest l s $ void $ fromParseResult $ parseExp s
+
 
 extractTests :: (a, [Comment]) -> [Exp ()]
-extractTests = map void . map fromParseResult . map parseExp . filterCommentLines . commentsLines . extractComments
+extractTests = map parseTest . filterCommentLines . commentsLines . extractComments
 
 makeTestsNode :: [Exp ()] -> Exp ()
 makeTestsNode es = (List () es)

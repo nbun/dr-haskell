@@ -9,6 +9,6 @@ runAllTests = do
              show n ++
                ": " ++
                  case res of
-                     Success -> "passed"
-                     Failure o -> "failed: " ++ o)
+                     Success l -> "(Line "++show l++") passed"
+                     Failure l pexp o -> "(Line "++show l++") failed ("++pexp++"): " ++ o)
         ztests

@@ -22,6 +22,13 @@ data Error l = NoFunDef (Name l) [Name l]
              | Shadowing (QName l)
              --        name
              | TypeVar (Name l)
+             --        name
+             | Imported (ModuleName l)
+             --         name of the imported module
+             | ModuleHeadUsed (ModuleName l)
+             --               name used in the module header
+             | OwnDataDecl l
+             --            position
   deriving (Show, Typeable, Ord, Eq) --TODO: mark whether its an error or a warning
 
 instance (Show l, Typeable l) => Exception (Error l)
