@@ -15,5 +15,5 @@ funSig n =
 
 funSig :: Int -> Int
 funSig n =
-    let n = 0
+    let n = 0 
     in n

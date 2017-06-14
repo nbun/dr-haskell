@@ -104,13 +104,32 @@ lintPlain (Lint filename position messageClass message) =
     ++ " "
     ++ message
 
+{-
+{
+    "module": "Main",
+    "decl": "run",
+    "severity": "Suggestion",
+    "hint": "Redundant bracket",
+    "file": "/Volumes/ExpandDrive/Dropbox/UniKiel/MASemester2/MPPS/Repo/src/DrHaskellLint.hs",
+    "startLine":21,
+    "startColumn ":22,
+    "endLine ":21,
+    "endColumn ":74,
+    "from ":" (runChecksL1 file) >>= (putStrLn.lintErrors plain) ",
+    "to ":
+    "runChecksL1 file >>= (putStrLn . lintErrors plain)",
+    "note": [],
+    "refactorings": "[Replace {rtype = Expr, pos = SrcSpan {startLine = 21, startCol = 22, endLine = 21, endCol = 40 }, subts = [(\"x\",SrcSpan {startLine = 21, startCol = 23, endLine = 21, endCol = 39})], orig = \"x\"}]"
+    },
+-}
+
 buildJson :: Lint -> Json.JSValue
 buildJson (Lint filename position messageClass message) =
-    let obj = [("filename", toJSString $ show filename),
-               ("line", toJSString $ show $ fst position),
-               ("column", toJSString $ show $ snd position),
-               ("messsageclass", toJSString $ show messageClass),
-               ("message", toJSString message)]
+    let obj = [("file", toJSString $ show filename),
+               ("startLine", toJSString $ show $ fst position),
+               ("startColumn", toJSString $ show $ snd position),
+               ("severity", toJSString $ show messageClass),
+               ("hint", toJSString message)]
     in Json.JSObject $ Json.toJSObject obj
 
 toJSString :: String -> Json.JSValue
