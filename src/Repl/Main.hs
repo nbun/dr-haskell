@@ -1,20 +1,18 @@
 module Repl.Main where
 
-import           Control.Monad.Catch                  as MC
+import           Control.Lens                     hiding (Level, set)
+import           Control.Monad.Catch              as MC
 import           Control.Monad.State
-import           Data.Maybe
 import           Paths_drhaskell
 import           System.FilePath
-import           Control.Lens hiding (Level, set)
 
 import           Language.Haskell.Interpreter
-import           System.Console.Haskeline
+import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
-import           Repl.CmdOptions
+import           System.Console.Haskeline
 
 import           StaticAnalysis.Messages.Prettify
-import           StaticAnalysis.Messages.StaticErrors
 
 {-
 
@@ -29,9 +27,11 @@ Current Limitations:
 
 replRead :: ReplInput (Maybe String)
 replRead = getInputLine "Dr. Haskell> "
+
 replPrint :: Maybe String -> ReplInput ()
 replPrint Nothing  = return ()
 replPrint (Just x) = outputStrLn x
+
 replLoop :: Repl ()
 replLoop = do
   minput <- liftInput replRead
@@ -54,7 +54,7 @@ main = do
   res <- runRepl initialState $ do
     liftInterpreter initInterpreter
     fname <- use filename
-    when (not $ null fname) $ do
+    unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
       liftInput $ replPrint (Just (unlines $ map prettyError errors))
     replLoop
@@ -91,8 +91,7 @@ replEvalCommand cmd = case cmd of
   ('l':' ': xs)-> do
     previousForceLevel <- use forceLevel
     MC.handleAll (\e -> do
-                        liftInput $ outputStrLn "Could not load file"
-                        liftInput $ outputStrLn $ show e
+                        liftInput $ outputStrLn $ displayException e
                         liftRepl $ forceLevel .= previousForceLevel
                         return Nothing) $ do
       liftRepl $ forceLevel .= Nothing
@@ -100,9 +99,9 @@ replEvalCommand cmd = case cmd of
       return (Just (unlines $ map prettyError errors))
   ('r':_) -> do
     md <- gets _filename
-    MC.handleAll (\_ -> do
-                        liftInput $ outputStrLn "Could not load file"
+    MC.handleAll (\e -> do
+                        liftInput $ outputStrLn $ displayException e
                         return Nothing) $ do
-      loadModule md
-      return (Just "OK!")
+      errors <- loadModule md
+      return (Just (unlines $ map prettyError errors))
   ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)

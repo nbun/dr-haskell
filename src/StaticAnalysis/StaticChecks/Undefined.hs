@@ -10,7 +10,6 @@ import           StaticAnalysis.StaticChecks.Select
 flip2 :: (a -> b -> c -> d) -> b -> c -> a -> d
 flip2 f b c a = f a b c
 
-
 undef :: Eq l => Module l -> [Module l] -> [Error l]
 undef m@(Module _ _ _ _ ds) ms = if impModsAsArg then concatMap undef' ds
                                                  else []

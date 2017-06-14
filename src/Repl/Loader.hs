@@ -28,8 +28,6 @@ loadModule fn = do
       cfn         = cdir </> base
   liftIO $ createDirectoryIfMissing False cdir
   liftIO $ writeFile cfn transModule
-  -- errors <- liftIO $ runChecksL1 cfn
-  -- throwM errors
   errors <- liftIO $ runCheckLevel levelOne fn
   when (null errors || nonstrict) $ do
     liftInterpreter $ loadModules [cfn]
