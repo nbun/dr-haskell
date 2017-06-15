@@ -21,6 +21,7 @@ import           StaticAnalysis.StaticChecks.Shadowing
 import           StaticAnalysis.StaticChecks.TypeVarApplication
 import           StaticAnalysis.StaticChecks.TypeVars
 import           StaticAnalysis.StaticChecks.Undefined
+import           StaticAnalysis.StaticChecks.DoUsed
 
 data CheckState l = CheckState (Module l) [Error l]
 
@@ -43,15 +44,27 @@ checkExt check ext = do
 
 type Level a = a -> StateT (CheckState SrcSpanInfo) Identity ()
 
+{- Level 1
+⊕ Hiding von Prelude Standardfunktionen (z.B.: map, reverse, list, >=, >> etc.)
+⊕ Imports verbieten
+⊕ Module verbieten
+⊕ Higher-Order und Lambda Funktionen verbieten
+⊕ Eigene Datentypen verbieten
+⊕ Typsignaturen erzwingen
+⊕ check-expect erzwingen
+⊕ do Notation verbieten
+-}
+
 levelOne :: Level a
 levelOne p = do
   check importUsed
   check moduleHeadUsed
   check ownDataDecl
   check noFunDef
+  check typeVarApplication
+  check doUsed
   checkExt undef [] -- [p]
   checkExt duplicated [] -- [p]
-  check typeVarApplication
   check $ checkAST cId cId cId checkForHigherOrderFunction
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef

@@ -47,7 +47,8 @@ prettyError (ModuleHeadUsed name) =
   "Found module head " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name
 prettyError (OwnDataDecl l) =
   "Found data declaration or type synonym at " ++ prettyLoc l
-
+prettyError (DoUsed l) =
+  "Found 'do' notation at " ++ prettyLoc l
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l

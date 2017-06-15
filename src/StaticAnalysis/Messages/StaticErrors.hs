@@ -29,6 +29,8 @@ data Error l = NoFunDef (Name l) [Name l]
              --               name used in the module header
              | OwnDataDecl l
              --            position
+             | DoUsed l
+             --       position
   deriving (Show, Typeable, Ord, Eq) --TODO: mark whether its an error or a warning
 
 instance (Show l, Typeable l) => Exception (Error l)
