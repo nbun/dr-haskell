@@ -1,3 +1,5 @@
+module DrHaskellLint where
+
 import           Data.List
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.ErrorToLint
