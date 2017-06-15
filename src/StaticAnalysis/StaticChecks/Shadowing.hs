@@ -52,8 +52,6 @@ shadowingOnAlts (Alt li pat rhs _:alts) names =
         [n] -> [Shadowing (UnQual li (Ident li n)) | n `elem` names]
         _   -> []
     ++ shadowingOnAlts alts names
-shadowingOnAlts (_:alts) names =
-    shadowingOnAlts alts names
 shadowingOnAlts _ _ = []
 
 shadowingOnBinds :: Binds SrcSpanInfo -> Exp SrcSpanInfo -> [String] -> [Error SrcSpanInfo]

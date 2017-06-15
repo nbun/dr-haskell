@@ -23,8 +23,6 @@ Current Limitations:
   - anything, really
 -}
 
-
-
 replRead :: ReplInput (Maybe String)
 replRead = getInputLine "Dr. Haskell> "
 
@@ -90,18 +88,12 @@ replEvalCommand cmd = case cmd of
   "?" -> Just <$> replHelp
   ('l':' ': xs)-> do
     previousForceLevel <- use forceLevel
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        liftRepl $ forceLevel .= previousForceLevel
-                        return Nothing) $ do
-      liftRepl $ forceLevel .= Nothing
-      errors <- loadModule xs
-      return (Just (unlines $ map prettyError errors))
+    liftRepl $ forceLevel .= previousForceLevel
+    -- liftRepl $ forceLevel .= Nothing
+    errors <- loadModule xs
+    return (Just (unlines $ map prettyError errors))
   ('r':_) -> do
     md <- gets _filename
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        return Nothing) $ do
-      errors <- loadModule md
-      return (Just (unlines $ map prettyError errors))
+    errors <- loadModule md
+    return (Just (unlines $ map prettyError errors))
   ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)

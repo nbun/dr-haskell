@@ -26,13 +26,20 @@ loadModule fn = do
   liftIO $ createDirectoryIfMissing False cdir
   liftIO $ writeFile cfn transModule
   errors <- liftIO $ runCheckLevel level fn
-  when (null errors || nonstrict) $ do
-    liftInterpreter $ loadModules [cfn]
-    liftInterpreter $ setTopLevelModules ["Main"]
-    liftRepl $ modify $ Control.Lens.set filename fn
+  allErrors <- MC.handleAll
+    (\e -> return $ handleGhcError level e errors)
+    (do liftInterpreter $ loadModules [cfn]
+        liftInterpreter $ setTopLevelModules ["Main"]
+        return errors)
+  liftRepl $ modify $ Control.Lens.set filename fn
+  when (null allErrors || nonstrict) $ do
     rt <- use runTests
     when rt runAllTests
-  return errors
+  return allErrors
+
+handleGhcError :: Level -> SomeException -> [Error l] -> [Error l]
+handleGhcError _ e es | null es   = [GHCError e]
+                      | otherwise = es
 
 determineLevel :: FilePath -> Repl (Maybe Level)
 determineLevel fn = do

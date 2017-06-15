@@ -1,19 +1,11 @@
 module StaticAnalysis.Messages.Prettify where
 
+import           Control.Monad.Catch
 import           Data.List
 import           Language.Haskell.Exts
 import qualified Language.Haskell.Interpreter         as Hint
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
-
-prettyIntError :: Hint.InterpreterError -> String
-prettyIntError error =
-  case error of
-    Hint.UnknownError s -> s
-    Hint.WontCompile es -> unlines $ map (\(Hint.GhcError s) -> s) es
-    Hint.NotAllowed   s -> s
-    Hint.GhcException s -> s
-
 
 prettyError :: Error SrcSpanInfo -> String
 prettyError (NoFunDef name sims) =
@@ -49,6 +41,7 @@ prettyError (OwnDataDecl l) =
   "Found data declaration or type synonym at " ++ prettyLoc l
 prettyError (DoUsed l) =
   "Found 'do' notation at " ++ prettyLoc l
+prettyError (GHCError e) = displayException e
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l

@@ -31,6 +31,15 @@ data Error l = NoFunDef (Name l) [Name l]
              --            position
              | DoUsed l
              --       position
+             | GHCError SomeException
+             -- Wrapper for GhcErrors
   deriving (Show, Typeable, Ord, Eq) --TODO: mark whether its an error or a warning
 
 instance (Show l, Typeable l) => Exception (Error l)
+
+-- Necessary but useless instances
+instance Ord SomeException where
+  compare _ _ = LT
+
+instance Eq SomeException where
+  _ == _ = False
