@@ -140,8 +140,7 @@ lintPlain (Lint filename position messageClass message) =
     "endLine ":21,
     "endColumn ":74,
     "from ":" (runChecksL1 file) >>= (putStrLn.lintErrors plain) ",
-    "to ":
-    "runChecksL1 file >>= (putStrLn . lintErrors plain)",
+    "to ": "runChecksL1 file >>= (putStrLn . lintErrors plain)",
     "note": [],
     "refactorings": "[Replace {rtype = Expr, pos = SrcSpan {startLine = 21, startCol = 22, endLine = 21, endCol = 40 }, subts = [(\"x\",SrcSpan {startLine = 21, startCol = 23, endLine = 21, endCol = 39})], orig = \"x\"}]"
     },
