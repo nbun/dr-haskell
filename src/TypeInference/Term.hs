@@ -1,10 +1,10 @@
 module TypeInference.Term
   ( VarIdx, Term (..), TermEq, TermEqs
-  , showVarIdx, showTermEq, showTermEqs, showTermSS
+  , showVarIdx, showTermEq, showTermEqs
   ) where
 
 import Data.List (intercalate)
-import Language.Haskell.Exts.SrcLoc (SrcSpan (..))
+import Language.Haskell.Exts.SrcLoc (SrcSpanInfo (..))
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations
@@ -15,8 +15,8 @@ type VarIdx = Int
 
 -- Representation of a first-order term, parameterized over the kind of function
 -- symbols, e.g., strings.
-data Term f = TermVar SrcSpan VarIdx
-            | TermCons SrcSpan f [Term f]
+data Term f = TermVar SrcSpanInfo VarIdx
+            | TermCons SrcSpanInfo f [Term f]
 
 -- A term equation represented as a pair of terms and parameterized over the
 -- kind of function symbols, e.g., strings.
@@ -33,10 +33,11 @@ type TermEqs f = [TermEq f]
 -- Transforms a variable into a string representation.
 showVarIdx :: VarIdx -> String
 showVarIdx v | v >= 0    = if q == 0 then [c] else c:(show q)
-             | otherwise = ""
+             | otherwise = error err
   where
     (q, r) = divMod v 26
     c = "abcdefghijklmnopqrstuvwxyz" !! r
+    err = "Variables can not be represented by negative integers!"
 
 -- Transforms a term into a string representation.
 showTerm :: Show f => Term f -> String
@@ -61,14 +62,6 @@ showTermEq (l, r) = (show l) ++ " = " ++ (show r)
 -- Transforms a list of term equations into a string representation.
 showTermEqs :: Show f => TermEqs f -> String
 showTermEqs = unlines . (map showTermEq)
-
--- Transforms the source span information of a term into a string
--- representation.
-showTermSS :: SrcSpan -> String
-showTermSS (SrcSpan fn sl sc el ec) = fn ++ ":" ++ (show sl)
-                                         ++ ":" ++ (show sc)
-                                         ++ ":-:" ++ (show el)
-                                         ++ ":" ++ (show ec)
 
 instance Show f => Show (Term f) where
   show = showTerm
