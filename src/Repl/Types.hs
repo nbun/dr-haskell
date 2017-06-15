@@ -2,20 +2,18 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Repl.Types where
 
-import           Control.Lens hiding (Level)
+import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch
 import           Control.Monad.State
 import           Language.Haskell.Interpreter
+import           StaticAnalysis.CheckState
 import           System.Console.Haskeline
 
-data Level = Level1 | Level2 | LevelFull
-  deriving (Show)
-
 data ReplState = ReplState {
-  _filename :: String,
+  _filename   :: String,
   _forceLevel :: Maybe Level,
-  _runTests :: Bool,
-  _nonStrict :: Bool
+  _runTests   :: Bool,
+  _nonStrict  :: Bool
 }
   deriving (Show)
 

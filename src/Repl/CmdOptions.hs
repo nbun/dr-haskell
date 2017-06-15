@@ -1,10 +1,10 @@
 module Repl.CmdOptions where
 
-import System.Environment
-import System.Console.GetOpt
-import Control.Lens as L
-
-import Repl.Types
+import           Control.Lens              as L
+import           Repl.Types
+import           StaticAnalysis.CheckState
+import           System.Console.GetOpt
+import           System.Environment
 
 handleCmdArgs :: IO ReplState
 handleCmdArgs = do
@@ -30,9 +30,9 @@ readFilename :: String -> ReplState -> ReplState
 readFilename = L.set filename
 
 readLevel :: String -> ReplState -> ReplState
-readLevel "1" = forceLevel .~ Just Level1
-readLevel "2" = forceLevel .~ Just Level2
-readLevel "3" = forceLevel .~ Just LevelFull
+readLevel "1"    = forceLevel .~ Just Level1
+readLevel "2"    = forceLevel .~ Just Level2
+readLevel "3"    = forceLevel .~ Just Level3
 readLevel "full" = forceLevel .~ Just LevelFull
-readLevel _ = error "invalid level" --TODO: improve this...
+readLevel _      = error "invalid level" --TODO: improve this...
 
