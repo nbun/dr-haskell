@@ -9,4 +9,3 @@ import           StaticAnalysis.Messages.StaticErrors
 lambdaCheck :: ExpCheck l (Error l)
 lambdaCheck (Lambda info _ _) = [LambdaFunction info]
 lambdaCheck _                 = []
-

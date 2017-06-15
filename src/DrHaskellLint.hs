@@ -14,13 +14,16 @@ main = do
 
 run level file format =
     case (level, file) of
-        (1, file) -> (runCheckLevel levelOne file) >>= (putStrLn . lintErrors format)
+        (0, file) -> (runCheckLevel LevelFull file) >>= (putStrLn . lintErrors format)
+        (1, file) -> (runCheckLevel Level1 file) >>= (putStrLn . lintErrors format)
+        (2, file) -> (runCheckLevel Level2 file) >>= (putStrLn . lintErrors format)
+        (3, file) -> (runCheckLevel Level3 file) >>= (putStrLn . lintErrors format)
         (_, _)    -> exitFailure
 
 parse argv = do
     let x = case hasLevelHint argv of
                 Just v  -> v
-                Nothing -> 1
+                Nothing -> 0
     let format = case "--json" ` elem ` argv of
                 True  -> json
                 False -> plain

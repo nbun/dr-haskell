@@ -66,9 +66,17 @@ buildForModuleName mname e =
         message = prettyError e
     in Lint filename position messageClass message
 
+
+buildUnknownError :: Error SrcSpanInfo -> Lint
+buildUnknownError e =
+    let (filename, position) = ("", (-1, -1))
+        messageClass = Warning
+        message = prettyError e
+    in Lint filename position messageClass message
+
 transformError :: Error SrcSpanInfo -> Lint
 transformError e@(NoFunDef name _)           = buildForName name e
-transformError e@(Undefined name _ _)        = buildForName name e
+transformError e@(Undefined name _)          = buildForName name e
 transformError e@(Duplicated name _)         = buildForName name e
 transformError e@(TypeVarApplication name)   = buildForName name e
 transformError e@(HigherOrder info)          = buildForInfo info e
@@ -79,6 +87,9 @@ transformError e@(TypeVar name)              = buildForName name e
 transformError e@(Imported moduleName)       = buildForModuleName moduleName e
 transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e
 transformError e@(OwnDataDecl info)          = buildForInfo info e
+transformError e@(DoUsed info)               = buildForInfo info e
+transformError e                             = buildUnknownError e
+
 
 extractFilenameAndPositionFromQName :: QName SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
