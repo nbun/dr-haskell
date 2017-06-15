@@ -9,8 +9,11 @@ import           System.IO
 main :: IO ()
 main = do
     args          <- getArgs
-    (level, file, format) <- parse args
-    run level file format
+    if length args /= 3
+        then exitFailure
+        else do
+            (level, file, format) <- parse args
+            run level file format
 
 run level file format =
     case (level, file) of
