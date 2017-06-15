@@ -6,13 +6,13 @@ module Testing.TestExpExtractor(
     transformFile
 ) where
 
+import           Control.Arrow
 import           Data.Char
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
-import           Paths_drhaskell
 import           Language.Haskell.Exts
-
+import           Paths_drhaskell
 import           Util.ModifyAst
 
 --module for extracting tests specified in comments
@@ -36,7 +36,7 @@ commentsLines :: [Comment] -> [(Int,String)]
 commentsLines = concatMap commentLines
 
 filterCommentLines :: [(Int,String)] -> [(Int,String)]
-filterCommentLines = map (\(l,s) -> (l, dropWhile (\x -> or $ ($ x) <$> [isSpace, (== '>')]) s)) . filter (isPrefixOf "> " . snd) . map (\(l,s) -> (l, dropWhile isSpace s))
+filterCommentLines = map (second (dropWhile (\x -> or $ ($ x) <$> [isSpace, (== '>')]))) . filter (isPrefixOf "> " . snd) . map (second (dropWhile isSpace))
 
 annotateTest :: Int -> String -> Exp () -> Exp ()
 annotateTest l t e = case e of
@@ -57,7 +57,7 @@ extractTests :: (a, [Comment]) -> [Exp ()]
 extractTests = map parseTest . filterCommentLines . commentsLines . extractComments
 
 makeTestsNode :: [Exp ()] -> Exp ()
-makeTestsNode es = (List () es)
+makeTestsNode = List ()
 
 getPatBind :: String -> Module a -> Maybe (Decl a)
 getPatBind n (Module _ _ _ _ ds) = find correctPat ds
@@ -66,7 +66,7 @@ getPatBind n (Module _ _ _ _ ds) = find correctPat ds
     correctPat _                                    = False
 
 replaceAllTests :: Exp a -> Decl a -> Decl a
-replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) = (PatBind l p (UnGuardedRhs l1 r') b)
+replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) = PatBind l p (UnGuardedRhs l1 r') b
   where
     r' = repExp r
     repStms = map repStm
@@ -84,7 +84,7 @@ replaceAllTests _ a = a
 buildTestMethod :: [Exp ()] -> IO (Decl ())
 buildTestMethod es = do
   templateLoc <- getDataFileName "Testing/templates.hs"
-  templateAST <- void <$> fst <$> parseFile' templateLoc
+  templateAST <- void . fst <$> parseFile' templateLoc
   let Just runAllTestDecl = getPatBind "runAllTests" templateAST
   return $ replaceAllTests (makeTestsNode es) runAllTestDecl
 
@@ -94,7 +94,7 @@ transformFile fn = do
   let tests = extractTests ((),modifiedComments m)
   testDeclAST <- buildTestMethod tests
   let
-    impAdded = addImport (ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}) m
+    impAdded = addImport ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} m
     m' = appendDecl testDeclAST impAdded
   return $ exactPrint (modifiedModule m') (modifiedComments m')
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod

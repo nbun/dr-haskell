@@ -1,4 +1,4 @@
-module Repl.Loader where
+module Repl.Loader (module Repl.Loader) where
 
 import           Control.Lens                         hiding (Level)
 import           Control.Monad.Catch                  as MC
@@ -50,5 +50,5 @@ determineLevel fn = do
     extractLevel _                                       = Nothing
 
 runAllTests :: Repl ()
-runAllTests = MC.handleAll (\_ -> return ()) $ do
+runAllTests = MC.handleAll (\_ -> return ()) $
   liftInterpreter (interpret "runAllTests" (as :: IO ())) >>= liftIO

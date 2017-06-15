@@ -30,7 +30,7 @@ type Modification = (Int, Int)
 --TODO: monad instance possible?
 data ModifiedModule = ModifiedModule {
   modifications    :: [Modification],
-  modifiedModule   :: (Module SrcSpanInfo),
+  modifiedModule   :: Module SrcSpanInfo,
   modifiedComments :: [Comment]}
   deriving (Show)
 
@@ -41,14 +41,14 @@ parseModified fn = do
   return $ ModifiedModule [] m c
 
 insertModification :: Modification -> [Modification] -> [Modification]
-insertModification a@(start, len) = (a:) . map (\(s,l) -> (s+if(s>=start) then len else 0,l))
+insertModification a@(start, len) = (a:) . map (\(s,l) -> (s + if s>=start then len else 0, l))
 
 recordModification :: Modification -> ModifiedModule -> ModifiedModule
 recordModification a@(start,len) (ModifiedModule ms m cs) =
-  (ModifiedModule
+  ModifiedModule
     (insertModification a ms)
     m
-    (map (pushCommentAfter start len) cs))
+    (map (pushCommentAfter start len) cs)
 
 class SrcSpanGenerator a where
   generateSrcSpanInfo :: a b -> a SrcSpanInfo
@@ -60,7 +60,7 @@ instance SrcSpanGenerator Decl where
   generateSrcSpanInfo = fromParseResult . parseDecl . prettyPrint
 
 modifySpanInfo :: Functor f => (SrcSpan -> SrcSpan) -> f SrcSpanInfo -> f SrcSpanInfo
-modifySpanInfo modifySpan = fmap $ modifyInfo
+modifySpanInfo modifySpan = fmap modifyInfo
   where
     modifyInfo (SrcSpanInfo s pts) = SrcSpanInfo (modifySpan s) (map modifySpan pts)
 
@@ -73,12 +73,13 @@ pushAfter start len = modifySpanInfo $ \(SrcSpan f sl sc el ec) ->
           ec
 
 pushCommentAfter :: Int -> Int -> Comment -> Comment
-pushCommentAfter start len (Comment ml (SrcSpan f sl sc el ec) t) = (Comment ml
-  (SrcSpan f
+pushCommentAfter start len (Comment ml (SrcSpan f sl sc el ec) t) =
+  Comment ml
+    (SrcSpan f
            (sl + if sl >= start then len else 0)
            sc
            (el + if el >= start then len else 0)
-           ec) t)
+           ec) t
 
 numLines :: Annotated f => f SrcSpanInfo -> Int
 numLines x = let (SrcSpanInfo (SrcSpan _ sl _ el _) _) = ann x
@@ -88,9 +89,9 @@ lastPos :: Maybe (ModuleHead SrcSpanInfo) -> [ModulePragma SrcSpanInfo] -> [Impo
 lastPos h ps is ds = case (h, ps, is, ds) of
     (Nothing, [], [], []) -> 0
     (Just x,  [], [], []) -> lastOfElement x
-    (_,    (_:_), [], []) -> lastOfElement $ last ps
-    (_,     _, (_:_), []) -> lastOfElement $ last is
-    (_,      _, _, (_:_)) -> lastOfElement $ last ds
+    (_,      _:_, [], []) -> lastOfElement $ last ps
+    (_,       _, _:_, []) -> lastOfElement $ last is
+    (_,        _, _, _:_) -> lastOfElement $ last ds
   where
     lastOfElement :: Annotated f => f SrcSpanInfo -> Int
     lastOfElement x = let (SrcSpanInfo (SrcSpan _ _ _ el _) _) = ann x
@@ -102,8 +103,8 @@ fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart 
     (SrcSpanInfo (SrcSpan _ zs _ _ _) _) = ann z
     minStart :: SrcSpan -> SrcSpan
     minStart (SrcSpan f sr sc er ec)
-      | sr < zs   = (SrcSpan f sr sc er ec)
-      | otherwise = (SrcSpan f zs sc zs ec)
+      | sr < zs   = SrcSpan f sr sc er ec
+      | otherwise = SrcSpan f zs sc zs ec
 
 addImport :: ImportDecl l -> ModifiedModule -> ModifiedModule
 addImport d m =

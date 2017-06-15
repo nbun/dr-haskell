@@ -1,6 +1,4 @@
-module StaticAnalysis.StaticChecks.TypeVars (
-    checkForTypVar
-) where
+module StaticAnalysis.StaticChecks.TypeVars (module StaticAnalysis.StaticChecks.TypeVars) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

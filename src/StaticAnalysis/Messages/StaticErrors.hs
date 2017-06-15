@@ -1,4 +1,4 @@
-module StaticAnalysis.Messages.StaticErrors where
+module StaticAnalysis.Messages.StaticErrors (module StaticAnalysis.Messages.StaticErrors) where
 
 import           Control.Exception
 import           Data.List

@@ -1,4 +1,4 @@
-module StaticAnalysis.Messages.Prettify where
+module StaticAnalysis.Messages.Prettify (module StaticAnalysis.Messages.Prettify) where
 
 import           Data.List
 import           Language.Haskell.Exts

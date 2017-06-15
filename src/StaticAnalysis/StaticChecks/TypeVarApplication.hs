@@ -1,5 +1,4 @@
-module StaticAnalysis.StaticChecks.TypeVarApplication where
-
+module StaticAnalysis.StaticChecks.TypeVarApplication (module StaticAnalysis.StaticChecks.TypeVarApplication) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

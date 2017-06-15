@@ -1,6 +1,4 @@
-module StaticAnalysis.StaticChecks.Lambda (
-    lambdaCheck
-) where
+module StaticAnalysis.StaticChecks.Lambda (module StaticAnalysis.StaticChecks.Lambda) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

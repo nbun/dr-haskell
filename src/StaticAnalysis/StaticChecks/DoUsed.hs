@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.DoUsed where
+module StaticAnalysis.StaticChecks.DoUsed (module StaticAnalysis.StaticChecks.DoUsed) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

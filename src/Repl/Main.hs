@@ -1,4 +1,4 @@
-module Repl.Main where
+module Repl.Main (module Repl.Main) where
 
 import           Control.Lens                     hiding (Level, set)
 import           Control.Monad.Catch              as MC
@@ -76,7 +76,7 @@ replHelp = return $ unlines [
   "expression - evaluate expression" ]
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
-replEvalExp q = do
+replEvalExp q =
   MC.handleAll (\_ -> do
                       liftInput $ outputStrLn "Error!"
                       return Nothing) $ do
