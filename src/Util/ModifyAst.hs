@@ -35,10 +35,12 @@ data ModifiedModule = ModifiedModule {
   deriving (Show)
 
 
-parseModified :: FilePath -> IO ModifiedModule
+parseModified :: FilePath -> IO (ParseResult ModifiedModule)
 parseModified fn = do
-  ParseOk (m,c) <- parseFileWithComments (defaultParseMode { parseFilename = fn }) fn
-  return $ ModifiedModule [] m c
+  pr <- parseFileWithComments (defaultParseMode { parseFilename = fn }) fn
+  case pr of
+    ParseOk (m,c)   -> return $ ParseOk $ ModifiedModule [] m c
+    ParseFailed l e -> return $ ParseFailed l e
 
 insertModification :: Modification -> [Modification] -> [Modification]
 insertModification a@(start, len) = (a:) . map (\(s,l) -> (s + if s>=start then len else 0, l))

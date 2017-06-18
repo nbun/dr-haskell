@@ -49,6 +49,10 @@ prettyError (OwnDataDecl l) =
   "Found data declaration or type synonym at " ++ prettyLoc l
 prettyError (DoUsed l) =
   "Found 'do' notation at " ++ prettyLoc l
+prettyError (SyntaxError l e) =
+  "Syntax Error (" ++ e ++ ") at " ++ prettyLoc l
+prettyError (InvalidTest l t) =
+  "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l
@@ -82,3 +86,6 @@ prettySims ns = "Did you mean " ++ prettySims' ns ++ "?"
 
 prettyPrintQ :: Pretty a => a -> String
 prettyPrintQ x = "'" ++ prettyPrint x ++ "'"
+
+prettyLineNum :: SrcSpanInfo -> String
+prettyLineNum (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = show sl
