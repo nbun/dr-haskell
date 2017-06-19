@@ -3,7 +3,7 @@ module Testing.TestExpExtractor(
     extractTests,
     replaceAllTests,
     buildTestMethod,
-    transformFile
+    transformModule
 ) where
 
 import           Control.Arrow
@@ -11,9 +11,12 @@ import           Data.Char
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
+import           Data.Either
 import           Language.Haskell.Exts
 import           Paths_drhaskell
 import           Util.ModifyAst
+import           StaticAnalysis.Messages.StaticErrors
+
 
 --module for extracting tests specified in comments
 
@@ -49,11 +52,33 @@ annotateTest l t e = case e of
              (Lit () (Int () (toInteger l) (show l))))
         (Lit () (String () t t))
 
-parseTest :: (Int,String) -> Exp ()
-parseTest (l, s) = annotateTest l s $ void $ fromParseResult $ parseExp s
+--very simple, does not find many errors, but should find some.
+checkTest :: Exp a -> Bool
+checkTest a = case a of
+                   InfixApp _ e q _ -> isDollar q && checkTest' e
+                   App      _ e   _ -> checkTest' e
+                   _                -> False
+  where
+    checkTest' (App _ e _)        = findTestFunc e
+    checkTest' (InfixApp _ e q _) = isDollar q && findTestFunc e
+    checkTest' _ = False
+    isDollar (QVarOp _ (UnQual _ (Symbol _ "$"))) = True
+    isDollar _                                    = False
+    findTestFunc (Var _ (UnQual _ (Ident _ "checkExpect"))) = True
+    findTestFunc (Var _ (UnQual _ (Ident _ "quickCheck")))  = True
+    findTestFunc (App _ e _)                                = findTestFunc e
+    findTestFunc (InfixApp _ e q _)                         = isDollar q && findTestFunc e
+    findTestFunc _                                          = False
 
 
-extractTests :: (a, [Comment]) -> [Exp ()]
+parseTest :: (Int,String) -> Either (Error Int) (Exp ())
+parseTest (l, s) = case parseExp s of
+                        ParseFailed _ _ -> Left $ InvalidTest l s
+                        ParseOk       e -> if checkTest e
+                                         then Right $ annotateTest l s $ void e
+                                         else Left $ InvalidTest l s
+
+extractTests :: (a, [Comment]) -> [Either (Error Int) (Exp ())]
 extractTests = map parseTest . filterCommentLines . commentsLines . extractComments
 
 makeTestsNode :: [Exp ()] -> Exp ()
@@ -88,13 +113,17 @@ buildTestMethod es = do
   let Just runAllTestDecl = getPatBind "runAllTests" templateAST
   return $ replaceAllTests (makeTestsNode es) runAllTestDecl
 
-transformFile :: FilePath -> IO String
-transformFile fn = do
-  m <- parseModified fn
-  let tests = extractTests ((),modifiedComments m)
+transformErrors :: Error Int -> Error SrcSpanInfo
+transformErrors (InvalidTest l t) = let s = SrcLoc "" l 0 in InvalidTest (infoSpan (mkSrcSpan s s) []) t
+
+transformModule :: ModifiedModule -> IO (ModifiedModule, [Error SrcSpanInfo])
+transformModule m = do
+  let testsAndErrors = extractTests ((),modifiedComments m)
+      tests          = rights testsAndErrors
+      errors         = lefts testsAndErrors
   testDeclAST <- buildTestMethod tests
   let
     impAdded = addImport ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} m
     m' = appendDecl testDeclAST impAdded
-  return $ exactPrint (modifiedModule m') (modifiedComments m')
+  return (m', transformErrors <$> errors)
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod

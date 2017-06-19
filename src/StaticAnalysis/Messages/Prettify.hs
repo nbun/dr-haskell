@@ -16,23 +16,6 @@ prettyIntError error =
     Hint.WontCompile es -> unlines $ map (\(Hint.GhcError s) -> s) es
     Hint.NotAllowed   s -> s
     Hint.GhcException s -> s
-
-{-
-ShadowingTest.hs:16:1:
-    Duplicate type signatures for ‘funSig’
-    at ShadowingTest.hs:1:1-6
-       ShadowingTest.hs:6:1-6
-       ShadowingTest.hs:11:1-6
-       ShadowingTest.hs:16:1-6
-
-ShadowingTest.hs:17:1:
-    Multiple declarations of ‘funSig’
-    Declared at: ShadowingTest.hs:2:1
-                 ShadowingTest.hs:7:1
-                 ShadowingTest.hs:12:1
-                 ShadowingTest.hs:17:1
--}
-
 printFilenameAndPos :: Filename -> Position -> String
 printFilenameAndPos filename pos =
     let (line, column, _, _) = pos
@@ -100,6 +83,14 @@ prettyError (DoUsed l) =
     let (filename, pos) = extractFilenameAndPosition l
     in printFilenameAndPos filename pos
        ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
+prettyError (SyntaxError l e) =
+    let (filename, pos) = extractFilenameAndPosition l
+    in printFilenameAndPos filename pos
+       ++ "Syntax Error (" ++ e ++ ") at " ++ prettyLoc l ++ "."
+prettyError (InvalidTest l t) =
+    let (filename, pos) = extractFilenameAndPosition l
+    in printFilenameAndPos filename pos
+       ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l
@@ -157,3 +148,6 @@ extractFileName (SrcSpan filename _ _ _ _) = filename
 
 extractStartPosition :: SrcSpan -> Position
 extractStartPosition (SrcSpan _ line column lineE columnE) = (line, column, lineE, columnE)
+
+prettyLineNum :: SrcSpanInfo -> String
+prettyLineNum (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = show sl

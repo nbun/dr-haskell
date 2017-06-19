@@ -9,37 +9,53 @@ import           System.Directory
 import           System.FilePath
 
 import           Language.Haskell.Exts
+import           Util.ModifyAst
 import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.StaticErrors
-import           Testing.TestExpExtractor
+import           StaticAnalysis.Messages.Prettify
+import qualified Testing.TestExpExtractor as Tee
+
+data LoadMessage = CheckError (Error SrcSpanInfo)
+                 | DirectMessage String
+
+printLoadMessage :: LoadMessage -> String
+printLoadMessage (CheckError e)    = prettyError e
+printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
-loadModule :: FilePath -> Repl [Error SrcSpanInfo]
+loadModule :: FilePath -> Repl [LoadMessage]
 loadModule fn = do
-  Just level <- foldr (liftM2 mplus) (return $ Just Level1) [use forceLevel, determineLevel fn]
   nonstrict <- use nonStrict
-  transModule <- liftIO $ transformFile fn
-  let (dir, base) = splitFileName fn
-      cdir        = dir </> ".drhaskell"
-      cfn         = cdir </> base
-  liftIO $ createDirectoryIfMissing False cdir
-  liftIO $ writeFile cfn transModule
-  errors <- liftIO $ runCheckLevel level fn
-  when (null errors || nonstrict) $ do
-    liftInterpreter $ loadModules [cfn]
-    liftInterpreter $ setTopLevelModules ["Main"]
-    liftRepl $ modify $ Control.Lens.set filename fn
-    rt <- use runTests
-    when rt runAllTests
-  return errors
+  pr <- liftIO $ parseModified fn
+  case pr of
+    ParseFailed l e -> return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
+    ParseOk modLoad -> do
+      let (dir, base) = splitFileName fn
+          cdir        = dir </> ".drhaskell"
+          cfn         = cdir </> base
+      liftIO $ createDirectoryIfMissing False cdir
 
-determineLevel :: FilePath -> Repl (Maybe Level)
-determineLevel fn = do
-  ast <- liftIO $ parseFileWithComments defaultParseMode fn
-  return $ case ast of
-    ParseFailed _ _      -> Nothing
-    ParseOk (_,comments) -> foldr (mplus . extractLevel) Nothing comments
+      Just level <- foldr (liftM2 mplus) (return $ Just Level1) [use forceLevel, return $ determineLevel modLoad]
+      (transModule, transErrors) <- transformModule modLoad
+      liftIO $ writeFile cfn $ printModified transModule
+
+      checkErrors <- liftIO $ runCheckLevel level fn
+      let errors = checkErrors ++ transErrors
+      if (null errors || nonstrict)
+      then
+        MC.handleAll (\e -> return $ map CheckError errors ++ [DirectMessage $ displayException e]) $ do
+          liftInterpreter $ loadModules [cfn]
+          liftInterpreter $ setTopLevelModules ["Main"]
+          liftRepl $ modify $ Control.Lens.set filename fn
+          rt <- use runTests
+          testErrors <- if rt then runAllTests else return []
+          return $ map CheckError errors ++ map DirectMessage testErrors
+      else
+        return $ map CheckError errors
+
+determineLevel :: ModifiedModule -> Maybe Level
+determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
   where
     extractLevel :: Comment -> Maybe Level
     extractLevel (Comment _ _ "# DRHASKELL LEVEL1 #")    = Just Level1
@@ -49,6 +65,17 @@ determineLevel fn = do
     extractLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
     extractLevel _                                       = Nothing
 
-runAllTests :: Repl ()
-runAllTests = MC.handleAll (\_ -> return ()) $
-  liftInterpreter (interpret "runAllTests" (as :: IO ())) >>= liftIO
+runAllTests :: Repl [String]
+runAllTests = MC.handleAll (\_ -> return []) $
+  liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
+
+addMyPrelude :: ModifiedModule -> ModifiedModule
+addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Just $ ImportSpecList () False []}
+
+transformModule :: ModifiedModule -> Repl (ModifiedModule, [Error SrcSpanInfo])
+transformModule m = do
+  (m', es) <- liftIO $ Tee.transformModule m
+  wantCustomPrelude <- use customPrelude
+  if wantCustomPrelude
+  then return (addMyPrelude m', es)
+  else return (m', es)

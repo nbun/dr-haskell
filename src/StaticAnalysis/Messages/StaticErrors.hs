@@ -31,6 +31,10 @@ data Error l = NoFunDef (Name l) [Name l]
              --            position
              | DoUsed l
              --       position
+             | SyntaxError l String
+             --     position, error as from haskell-src-exts
+             | InvalidTest l String
+             --     position, string representation of the test
   deriving (Show, Typeable, Ord, Eq) --TODO: mark whether its an error or a warning
 
 instance (Show l, Typeable l) => Exception (Error l)
