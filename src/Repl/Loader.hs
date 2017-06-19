@@ -69,5 +69,13 @@ runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\_ -> return []) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
+addMyPrelude :: ModifiedModule -> ModifiedModule
+addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Just $ ImportSpecList () False []}
+
 transformModule :: ModifiedModule -> Repl (ModifiedModule, [Error SrcSpanInfo])
-transformModule = liftIO . Tee.transformModule
+transformModule m = do
+  (m', es) <- liftIO $ Tee.transformModule m
+  wantCustomPrelude <- use customPrelude
+  if wantCustomPrelude
+  then return (addMyPrelude m', es)
+  else return (m', es)

@@ -24,7 +24,10 @@ options = [
          "Do not automatically run tests",
   Option ['s'] ["no-strict"]
          (NoArg $ nonStrict .~ True)
-         "Try to load module even if problems were found"]
+         "Try to load module even if problems were found",
+  Option ['p'] ["no-custom-prelude"]
+         (NoArg $ customPrelude .~ False)
+         "Use a standard Haskell Prelude instead of DrHaskell's"]
 
 readFilename :: String -> ReplState -> ReplState
 readFilename = L.set filename

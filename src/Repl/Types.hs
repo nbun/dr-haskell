@@ -10,19 +10,21 @@ import           StaticAnalysis.CheckState
 import           System.Console.Haskeline
 
 data ReplState = ReplState {
-  _filename   :: String,
-  _forceLevel :: Maybe Level,
-  _runTests   :: Bool,
-  _nonStrict  :: Bool
+  _filename      :: String,
+  _forceLevel    :: Maybe Level,
+  _runTests      :: Bool,
+  _nonStrict     :: Bool,
+  _customPrelude :: Bool
 }
   deriving (Show)
 
 initialReplState :: ReplState
 initialReplState = ReplState {
-  _filename = "",
-  _forceLevel = Nothing,
-  _runTests = True,
-  _nonStrict = False
+  _filename      = "",
+  _forceLevel    = Nothing,
+  _runTests      = True,
+  _nonStrict     = False,
+  _customPrelude = True
 }
 
 makeLenses ''ReplState
