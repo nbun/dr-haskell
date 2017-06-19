@@ -1,10 +1,11 @@
-module DrHaskellLint where
+module DrHaskellLint (module DrHaskellLint) where
 
 import           Data.List
 import           Data.Maybe
 import qualified Language.Haskell.HLint3             as Hlint
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.ErrorToLint
+import           StaticAnalysis.Messages.Prettify
 import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
@@ -44,8 +45,6 @@ severityToMessageClass Hlint.Suggestion = Suggestion
 severityToMessageClass Hlint.Warning    = Warning
 severityToMessageClass Hlint.Error      = Error
 severityToMessageClass Hlint.Ignore     = Suggestion
-
--- Lint = Lint Filename Position MessageClass Message
 
 parse :: [String] -> IO (Integer, String, LinterOutput)
 parse argv = do

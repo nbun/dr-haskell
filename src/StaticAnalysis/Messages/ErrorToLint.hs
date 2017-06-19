@@ -15,8 +15,6 @@ data MessageClass = Error
                   | Suggestion
                   | Warning
     deriving Show
-type Filename = String
-type Position = (Int, Int, Int, Int)
 type Message = String
 data Lint = Lint Filename Position MessageClass Message
 
@@ -32,8 +30,6 @@ json = JSON
 
 lintErrors :: LinterOutput -> [Error SrcSpanInfo] -> String
 lintErrors = lintErrorHlint []
---lintErrors JSON es  = (Json.showJSArray $ map (buildJson . transformError) es) ""
---lintErrors PLAIN es = foldr ((\x xs -> x ++ "\r\n" ++ xs) . lintPlain . transformError) "" es
 
 lintErrorHlint :: [Lint] -> LinterOutput -> [Error SrcSpanInfo] -> String
 lintErrorHlint lints JSON es =
@@ -95,30 +91,6 @@ transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e
 transformError e@(OwnDataDecl info)          = buildForInfo info e
 transformError e@(DoUsed info)               = buildForInfo info e
 transformError e                             = buildUnknownError e
-
-
-extractFilenameAndPositionFromQName :: QName SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
-extractFilenameAndPositionFromQName (UnQual l _) = extractFilenameAndPosition l
-
-extractFilenameAndPositionFromName :: Name SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromName (Ident info _) = extractFilenameAndPosition info
-extractFilenameAndPositionFromName (Symbol info _) = extractFilenameAndPosition info
-
-extractFilenameAndPositionFromModuleName :: ModuleName SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromModuleName (ModuleName info _) = extractFilenameAndPosition info
-
-extractFilenameAndPosition :: SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPosition (SrcSpanInfo infoSpan _) =
-    let filename = extractFileName infoSpan
-        startPos = extractStartPosition infoSpan
-    in (filename, startPos)
-
-extractFileName :: SrcSpan -> Filename
-extractFileName (SrcSpan filename _ _ _ _) = filename
-
-extractStartPosition :: SrcSpan -> Position
-extractStartPosition (SrcSpan _ line column lineE columnE) = (line, column, lineE, columnE)
 
 lintPlain :: Lint -> String
 lintPlain (Lint filename position messageClass message) =
