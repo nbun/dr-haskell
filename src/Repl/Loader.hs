@@ -13,15 +13,23 @@ import           Util.ModifyAst
 import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.StaticErrors
+import           StaticAnalysis.Messages.Prettify
 import qualified Testing.TestExpExtractor as Tee
 
+data LoadMessage = CheckError (Error SrcSpanInfo)
+                 | DirectMessage String
+
+printLoadMessage :: LoadMessage -> String
+printLoadMessage (CheckError e)    = prettyError e
+printLoadMessage (DirectMessage m) = m
+
 --todo: better path handling
-loadModule :: FilePath -> Repl [Error SrcSpanInfo]
+loadModule :: FilePath -> Repl [LoadMessage]
 loadModule fn = do
   nonstrict <- use nonStrict
   pr <- liftIO $ parseModified fn
   case pr of
-    ParseFailed l e -> return [SyntaxError (infoSpan (mkSrcSpan l l) []) e]
+    ParseFailed l e -> return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
     ParseOk modLoad -> do
       let (dir, base) = splitFileName fn
           cdir        = dir </> ".drhaskell"
@@ -34,13 +42,17 @@ loadModule fn = do
 
       checkErrors <- liftIO $ runCheckLevel level fn
       let errors = checkErrors ++ transErrors
-      when (null errors || nonstrict) $ do
-        liftInterpreter $ loadModules [cfn]
-        liftInterpreter $ setTopLevelModules ["Main"]
-        liftRepl $ modify $ Control.Lens.set filename fn
-        rt <- use runTests
-        when rt runAllTests
-      return errors
+      if (null errors || nonstrict)
+      then
+        MC.handleAll (\e -> return $ map CheckError errors ++ [DirectMessage $ displayException e]) $ do
+          liftInterpreter $ loadModules [cfn]
+          liftInterpreter $ setTopLevelModules ["Main"]
+          liftRepl $ modify $ Control.Lens.set filename fn
+          rt <- use runTests
+          testErrors <- if rt then runAllTests else return []
+          return $ map CheckError errors ++ map DirectMessage testErrors
+      else
+        return $ map CheckError errors
 
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
@@ -53,9 +65,9 @@ determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
     extractLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
     extractLevel _                                       = Nothing
 
-runAllTests :: Repl ()
-runAllTests = MC.handleAll (\_ -> return ()) $
-  liftInterpreter (interpret "runAllTests" (as :: IO ())) >>= liftIO
+runAllTests :: Repl [String]
+runAllTests = MC.handleAll (\_ -> return []) $
+  liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
 transformModule :: ModifiedModule -> Repl (ModifiedModule, [Error SrcSpanInfo])
 transformModule = liftIO . Tee.transformModule
