@@ -147,8 +147,8 @@ showTypeExpr opts = showTypeExpr' 0
     showTypeExpr' :: Int -> TypeExpr a -> String
     showTypeExpr' _ (TVar (v, _))         = showVarName v
     showTypeExpr' p (FuncType _ t1 t2)
-      = parensIf (p > 0) ((showTypeExpr' 1 t1) ++ " -> "
-                                               ++ (showTypeExpr opts t2))
+      = parensIf (p > 0)
+                 ((showTypeExpr' 1 t1) ++ " -> " ++ (showTypeExpr opts t2))
     showTypeExpr' p (TCons _ (qn, _) tes)
       | (isList qn) && ((length tes) == 1)
         = "[" ++ (showTypeExpr opts (head tes)) ++ "]"
@@ -177,6 +177,7 @@ isTuple :: QName -> Bool
 isTuple (_, "")     = False
 isTuple (_, (c:cs)) = (c == '(') && (isTuple' cs)
   where
+    isTuple' :: String -> Bool
     isTuple' ""           = False
     isTuple' [x]          = x == ')'
     isTuple' (x:xs@(_:_)) = (x == ',') && (isTuple' xs)
