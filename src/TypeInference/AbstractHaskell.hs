@@ -1,4 +1,16 @@
-module TypeInference.AbstractHaskell where
+module TypeInference.AbstractHaskell
+  ( MName, QName, VarName, Arity, Visibility (..), Prog (..), TypeDecl (..)
+  , ConsDecl (..), TypeExpr (..), TypeSig (..), TypeAnn (..), FuncDecl (..)
+  , Rules (..), Rule (..), Rhs (..), LocalDecl (..), Expr (..), Statement (..)
+  , Pattern (..), BranchExpr (..), Literal (..), AHOptions (..)
+  , defaultAHOptions, showQName, showVarName, showTypeExpr
+  ) where
+
+import Data.List (intercalate)
+
+-- -----------------------------------------------------------------------------
+-- Representation of Haskell source code
+-- -----------------------------------------------------------------------------
 
 -- A module name represented as a string.
 type MName = String
@@ -107,3 +119,69 @@ data Literal = Intc Int
              | Floatc Float
              | Charc Char
              | Stringc String
+
+-- -----------------------------------------------------------------------------
+-- Pretty-printing of abstract Haskell data types
+-- -----------------------------------------------------------------------------
+
+-- Representation of pretty-printing options for abstract Haskell data types.
+data AHOptions = AHOptions { currentModule :: String }
+
+-- The default pretty-printing options.
+defaultAHOptions :: AHOptions
+defaultAHOptions = AHOptions { currentModule = "" }
+
+-- Transforms a qualified name into a string representation.
+showQName :: AHOptions -> QName -> String
+showQName opts (mn, n) | mn == (currentModule opts) = n
+                       | otherwise                  = mn ++ "." ++ n
+
+-- Transforms a variable name into a string representation.
+showVarName :: VarName -> String
+showVarName = snd
+
+-- Transforms a type expression into a string representation.
+showTypeExpr :: AHOptions -> TypeExpr a -> String
+showTypeExpr opts = showTypeExpr' 0
+  where
+    showTypeExpr' :: Int -> TypeExpr a -> String
+    showTypeExpr' _ (TVar (v, _))         = showVarName v
+    showTypeExpr' p (FuncType _ t1 t2)
+      = parensIf (p > 0) ((showTypeExpr' 1 t1) ++ " -> "
+                                               ++ (showTypeExpr opts t2))
+    showTypeExpr' p (TCons _ (qn, _) tes)
+      | (isList qn) && ((length tes) == 1)
+        = "[" ++ (showTypeExpr opts (head tes)) ++ "]"
+      | isTuple qn
+        = tupled (map (showTypeExpr opts) tes)
+      | otherwise
+        = parensIf ((p > 1) && (not (null tes)))
+                   (wsep ((showQName opts qn):(map (showTypeExpr' 2) tes)))
+    wsep :: [String] -> String
+    wsep = intercalate " "
+
+-- -----------------------------------------------------------------------------
+-- Definition of helper functions
+-- -----------------------------------------------------------------------------
+
+-- Encloses a string in parenthesis if the given condition is true.
+parensIf :: Bool -> String -> String
+parensIf b s = if b then "(" ++ s ++ ")" else s
+
+-- Checks whether the given qualified name is the list type constructor.
+isList :: QName -> Bool
+isList (_, n) = n == "[]"
+
+-- Checks whether the given qualified name is the tuple type constructor.
+isTuple :: QName -> Bool
+isTuple (_, "")     = False
+isTuple (_, (c:cs)) = (c == '(') && (isTuple' cs)
+  where
+    isTuple' ""           = False
+    isTuple' [x]          = x == ')'
+    isTuple' (x:xs@(_:_)) = (x == ',') && (isTuple' xs)
+
+-- Returns a string representation of a tuple with the given list of components.
+tupled :: [String] -> String
+tupled []     = "()"
+tupled (x:xs) = "(" ++ x ++ (concatMap (", " ++) xs) ++ ")"
