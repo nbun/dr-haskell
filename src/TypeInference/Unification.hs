@@ -4,8 +4,8 @@ module TypeInference.Unification
   ) where
 
 import Data.Either (isRight)
-import qualified Data.Map as DM
 import Data.List (mapAccumL)
+import qualified Data.Map as DM
 import Language.Haskell.Exts.SrcLoc (SrcSpanInfo)
 import TypeInference.Substitution (Subst, emptySubst, extendSubst)
 import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
@@ -111,9 +111,9 @@ termToRTerm rt (TermCons ssi c ts)
 -- -----------------------------------------------------------------------------
 
 -- Converts a list of 'RTerm' equations to a substitution by turning every
--- equation of the form '(RTermVar v, t)' or '(t, RTermVar v)' into a mapping
--- '(v, t)'. Equations that do not have a variable term on either side are
--- ignored. Works on 'RTerm's, dereferences all 'Ref's.
+-- equation of the form '(RTermVar _ v, t)' or '(t, RTermVar _ v)' into a
+-- mapping '(v, t)'. Equations that do not have a variable term on either side
+-- are ignored. Works on 'RTerm's, dereferences all 'Ref's.
 eqsToSubst :: RefTable f -> REqs f -> Subst f
 eqsToSubst _  []           = emptySubst
 eqsToSubst rt ((l, r):eqs)
@@ -163,7 +163,7 @@ unify' rt sub (eq@(l, r):eqs)
       (RTermCons _ c1 ts1, RTermCons _ c2 ts2)
         | c1 == c2  -> unify' rt sub ((zip ts1 ts2) ++ eqs)
         | otherwise -> Left (Clash (rTermToTerm rt l) (rTermToTerm rt r))
-      _ -> unify' rt sub ((deref rt l, deref rt r):eqs)
+      _             -> unify' rt sub ((deref rt l, deref rt r):eqs)
 
 -- Substitutes a variable by a term inside a list of equations that have yet to
 -- be unified and the right-hand sides of all equations of the result list. Also
@@ -185,6 +185,6 @@ elim rt sub v t eqs
 dependsOn :: Eq f => RefTable f -> RTerm f -> RTerm f -> Bool
 dependsOn rt l r = (l /= r) && (dependsOn' r)
   where
-    dependsOn' x@(Ref _)          = (deref rt x) == l
+    dependsOn' t@(Ref _)          = (deref rt t) == l
     dependsOn' t@(RTermVar _ _)   = t == l
     dependsOn' (RTermCons _ _ ts) = or (map dependsOn' ts)

@@ -4,8 +4,8 @@ module TypeInference.Substitution
   , applySubst, applySubstEq, applySubstEqs, restrictSubst, composeSubst
   ) where
 
-import qualified Data.Map as DM
 import Data.List (intercalate)
+import qualified Data.Map as DM
 import Data.Maybe (fromMaybe)
 import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
 
@@ -63,7 +63,7 @@ lookupSubst = flip DM.lookup
 -- Applies a substitution to the given term. The source span information will
 -- not be updated with respect to the replaced variables.
 applySubst :: Subst f -> Term f -> Term f
-applySubst sub t@(TermVar _ v)    = fromMaybe t (lookupSubst sub v)
+applySubst sub t@(TermVar _ v)     = fromMaybe t (lookupSubst sub v)
 applySubst sub (TermCons ssi c ts) = TermCons ssi c (map (applySubst sub) ts)
 
 -- Applies a substitution to both sides of the given term equation. The source
