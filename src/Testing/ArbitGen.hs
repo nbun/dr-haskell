@@ -22,13 +22,12 @@ extractDataDecls (Module _ _ _ _ ds) = filter isDataDecl ds
     isDataDecl _                                 = False
 
 multiApplication :: Exp () -> [Exp ()] -> Exp ()
-multiApplication e []     = e
-multiApplication e (x:xs) = multiApplication (App () e x) xs
+multiApplication = foldl (App ())
 
 tyConToGenExp :: QualConDecl () -> Exp ()
 tyConToGenExp (QualConDecl _ _ _ (ConDecl _ n ts)) =
-  (Do () ([(Generator () (PVar () (Ident () ('x':show i))) (Var () (UnQual () (Ident () "arbitrary")))) | i <- [1..(length ts)]]++
-  [Qualifier () (InfixApp () (Var () (UnQual () (Ident () "return"))) (QVarOp () (UnQual () (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [(Var () (UnQual () (Ident () ('x':show i))))| i <- [1..(length ts)]]))]))
+  Do () ([Generator () (PVar () (Ident () ('x':show i))) (Var () (UnQual () (Ident () "arbitrary"))) | i <- [1..(length ts)]]++
+  [Qualifier () (InfixApp () (Var () (UnQual () (Ident () "return"))) (QVarOp () (UnQual () (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [Var () (UnQual () (Ident () ('x':show i))) | i <- [1..(length ts)]]))])
 
 typeToInstance :: Decl () -> Decl ()
 typeToInstance (DataDecl _ _ _ (DHead _ (Ident _ name)) qds _) =
@@ -39,7 +38,7 @@ parseFile' f = fromParseResult <$> parseFileWithComments defaultParseMode f
 
 modToInstance :: FilePath -> IO ()
 modToInstance fn = do
-  m <- void <$> fst <$> parseFile' fn
+  m <- void . fst <$> parseFile' fn
   let dataDecls = extractDataDecls m
       insDecls  = typeToInstance <$> dataDecls
   mapM_ (putStrLn . prettyPrint) insDecls

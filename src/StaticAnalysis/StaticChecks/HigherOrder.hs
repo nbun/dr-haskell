@@ -1,6 +1,4 @@
-module StaticAnalysis.StaticChecks.HigherOrder (
-    checkForHigherOrderFunction
-) where
+module StaticAnalysis.StaticChecks.HigherOrder (module StaticAnalysis.StaticChecks.HigherOrder) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

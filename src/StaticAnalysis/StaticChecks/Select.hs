@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.Select where
+module StaticAnalysis.StaticChecks.Select (module StaticAnalysis.StaticChecks.Select) where
 
 import           AstChecks.Check
 import           Data.List

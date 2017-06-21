@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.NoTypeDef where
+module StaticAnalysis.StaticChecks.NoTypeDef (module StaticAnalysis.StaticChecks.NoTypeDef) where
 
 import           AstChecks.Check
 import           Data.List

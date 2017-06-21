@@ -1,14 +1,14 @@
 -- function to run all defined tests
-runAllTests :: IO ()
+runAllTests :: IO [String]
 runAllTests = do
   let tests = __allTests__
       ztests = zip [1..] tests
-  mapM_ (\ (n, r) -> do
+  mapM (\ (n, r) -> do
            res <- r
-           putStrLn $ "Test " ++
+           return $ "Test " ++
              show n ++
                ": " ++
                  case res of
                      Success l -> "(Line "++show l++") passed"
-                     Failure l pexp o -> "(Line "++show l++") failed ("++pexp++"): " ++ o)
+                     Failure l pexp o -> "(Line "++show l++") failed: "++pexp++"\n" ++ o)
         ztests

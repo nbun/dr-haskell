@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.ModuleHeadUsed where
+module StaticAnalysis.StaticChecks.ModuleHeadUsed (module StaticAnalysis.StaticChecks.ModuleHeadUsed) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors

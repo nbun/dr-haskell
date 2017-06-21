@@ -1,6 +1,11 @@
+module DrHaskellLint (module DrHaskellLint) where
+
 import           Data.List
+import           Data.Maybe
+import qualified Language.Haskell.HLint3             as Hlint
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.ErrorToLint
+import           StaticAnalysis.Messages.Prettify
 import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
@@ -8,27 +13,50 @@ import           System.IO
 
 main :: IO ()
 main = do
-    args          <- getArgs
-    (level, file, format) <- parse args
-    run level file format
+    args <- getArgs
+    if length args /= 3
+        then exitFailure
+        else do
+            (level, file, format) <- parse args
+            run level file format
 
-run level file format =
+run :: Integer -> String -> LinterOutput -> IO ()
+run level file format = do
+    hlintIdeas <- pushToHlint file
+    hlintHints <- return (hLintToLint file hlintIdeas)
     case (level, file) of
-        (1, file) -> (runCheckLevel levelOne file) >>= (putStrLn . lintErrors format)
+        (0, file) -> runCheckLevel LevelFull file >>= (putStrLn . lintErrorHlint hlintHints format)
+        (1, file) -> runCheckLevel Level1 file >>= (putStrLn . lintErrorHlint hlintHints format)
+        (2, file) -> runCheckLevel Level2 file >>= (putStrLn . lintErrorHlint hlintHints format)
+        (3, file) -> runCheckLevel Level3 file >>= (putStrLn . lintErrorHlint hlintHints format)
         (_, _)    -> exitFailure
 
-parse argv = do
-    let x = case hasLevelHint argv of
-                Just v  -> v
-                Nothing -> 1
-    let format = case "--json" ` elem ` argv of
-                True  -> json
-                False -> plain
-    let y = argv !! 1
-    return (x,y,format)
+pushToHlint :: String -> IO [Hlint.Idea]
+pushToHlint file = Hlint.hlint [file, "--quiet"]
 
+hLintToLint :: String -> [Hlint.Idea] -> [Lint]
+hLintToLint _ [] = []
+hLintToLint file (x:xs) =
+    Lint file (extractStartPosition (Hlint.ideaSpan x)) (severityToMessageClass (Hlint.ideaSeverity x)) (Hlint.ideaHint x)
+    : hLintToLint file xs
+
+severityToMessageClass :: Hlint.Severity -> MessageClass
+severityToMessageClass Hlint.Suggestion = Suggestion
+severityToMessageClass Hlint.Warning    = Warning
+severityToMessageClass Hlint.Error      = Error
+severityToMessageClass Hlint.Ignore     = Suggestion
+
+parse :: [String] -> IO (Integer, String, LinterOutput)
+parse argv = do
+    let x = fromMaybe 0 (hasLevelHint argv)
+    let format = if "--json" ` elem ` argv
+                 then json
+                 else plain
+    let y = argv !! 1
+    return (x, y, format)
+
+hasLevelHint :: [String] -> Maybe Integer
 hasLevelHint [] = Nothing
 hasLevelHint (('-':'-':'h':'i':'n':'t':'=':'l':level):_) =
     Just (read level :: Integer)
 hasLevelHint (_:xs) = hasLevelHint xs
-

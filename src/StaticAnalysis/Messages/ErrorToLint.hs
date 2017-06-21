@@ -1,8 +1,4 @@
-module StaticAnalysis.Messages.ErrorToLint (
-    lintErrors,
-    plain,
-    json
-) where
+module StaticAnalysis.Messages.ErrorToLint (module StaticAnalysis.Messages.ErrorToLint) where
 {-
 1) Transform StaticError Datatype into Lint Datatype
 2) Choose Linteroutput via LinterOutput Enum
@@ -19,8 +15,6 @@ data MessageClass = Error
                   | Suggestion
                   | Warning
     deriving Show
-type Filename = String
-type Position = (Int, Int)
 type Message = String
 data Lint = Lint Filename Position MessageClass Message
 
@@ -35,8 +29,16 @@ json :: LinterOutput
 json = JSON
 
 lintErrors :: LinterOutput -> [Error SrcSpanInfo] -> String
-lintErrors JSON es  = (Json.showJSArray $ map (buildJson . transformError) es) ""
-lintErrors PLAIN es = foldr ((\x xs -> x ++ "\r\n" ++ xs) . lintPlain . transformError) "" es
+lintErrors = lintErrorHlint []
+
+lintErrorHlint :: [Lint] -> LinterOutput -> [Error SrcSpanInfo] -> String
+lintErrorHlint lints JSON es =
+    let lintedErrors = map transformError es
+    in Json.showJSArray (map buildJson (lintedErrors ++ lints)) ""
+lintErrorHlint lints PLAIN es =
+    let lintedErrors = map transformError es
+        out = map lintPlain (lintedErrors ++ lints)
+    in foldr (\x xs -> x ++ "\r\n" ++ xs) "" out
 
 buildForName :: Name SrcSpanInfo -> Error SrcSpanInfo -> Lint
 buildForName name e =
@@ -66,9 +68,17 @@ buildForModuleName mname e =
         message = prettyError e
     in Lint filename position messageClass message
 
+
+buildUnknownError :: Error SrcSpanInfo -> Lint
+buildUnknownError e =
+    let (filename, position) = ("", (-1, -1, -1, -1))
+        messageClass = Warning
+        message = prettyError e
+    in Lint filename position messageClass message
+
 transformError :: Error SrcSpanInfo -> Lint
 transformError e@(NoFunDef name _)           = buildForName name e
-transformError e@(Undefined name _ _)        = buildForName name e
+transformError e@(Undefined name _)          = buildForName name e
 transformError e@(Duplicated name _)         = buildForName name e
 transformError e@(TypeVarApplication name)   = buildForName name e
 transformError e@(HigherOrder info)          = buildForInfo info e
@@ -79,68 +89,32 @@ transformError e@(TypeVar name)              = buildForName name e
 transformError e@(Imported moduleName)       = buildForModuleName moduleName e
 transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e
 transformError e@(OwnDataDecl info)          = buildForInfo info e
-
-extractFilenameAndPositionFromQName :: QName SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
-extractFilenameAndPositionFromQName (UnQual l _) = extractFilenameAndPosition l
-
-extractFilenameAndPositionFromName :: Name SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromName (Ident info _) = extractFilenameAndPosition info
-extractFilenameAndPositionFromName (Symbol info _) = extractFilenameAndPosition info
-
-extractFilenameAndPositionFromModuleName :: ModuleName SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromModuleName (ModuleName info _) = extractFilenameAndPosition info
-
-extractFilenameAndPosition :: SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPosition (SrcSpanInfo infoSpan _) =
-    let filename = extractFileName infoSpan
-        startPos = extractStartPosition infoSpan
-    in (filename, startPos)
-
-extractFileName :: SrcSpan -> Filename
-extractFileName (SrcSpan filename _ _ _ _) = filename
-
-extractStartPosition :: SrcSpan -> Position
-extractStartPosition (SrcSpan _ line column _ _) = (line, column)
+transformError e@(DoUsed info)               = buildForInfo info e
+transformError e                             = buildUnknownError e
 
 lintPlain :: Lint -> String
 lintPlain (Lint filename position messageClass message) =
-    filename
-    ++ ":"
-    ++ show (fst position)
-    ++ ":"
-    ++ show (snd position)
-    ++ ":"
-    ++ " "
-    ++ show messageClass
-    ++ ":"
-    ++ " "
-    ++ message
-
-{-
-{
-    "module": "Main",
-    "decl": "run",
-    "severity": "Suggestion",
-    "hint": "Redundant bracket",
-    "file": "/Volumes/ExpandDrive/Dropbox/UniKiel/MASemester2/MPPS/Repo/src/DrHaskellLint.hs",
-    "startLine":21,
-    "startColumn ":22,
-    "endLine ":21,
-    "endColumn ":74,
-    "from ":" (runChecksL1 file) >>= (putStrLn.lintErrors plain) ",
-    "to ":
-    "runChecksL1 file >>= (putStrLn . lintErrors plain)",
-    "note": [],
-    "refactorings": "[Replace {rtype = Expr, pos = SrcSpan {startLine = 21, startCol = 22, endLine = 21, endCol = 40 }, subts = [(\"x\",SrcSpan {startLine = 21, startCol = 23, endLine = 21, endCol = 39})], orig = \"x\"}]"
-    },
--}
+    let (sl, sc, _, _) = position
+    in  filename
+        ++ ":"
+        ++ show sl
+        ++ ":"
+        ++ show sc
+        ++ ":"
+        ++ " "
+        ++ show messageClass
+        ++ ":"
+        ++ " "
+        ++ message
 
 buildJson :: Lint -> Json.JSValue
 buildJson (Lint filename position messageClass message) =
-    let obj = [("file", toJSString $ show filename),
-               ("startLine", toJSString $ show $ fst position),
-               ("startColumn", toJSString $ show $ snd position),
+    let (sl, sc, el, ec) = position
+        obj = [("file", toJSString $ show filename),
+               ("startLine", toJSString $ show sl),
+               ("startColumn", toJSString $ show sc),
+               ("endLine", toJSString $ show el),
+               ("endColumn", toJSString $ show ec),
                ("severity", toJSString $ show messageClass),
                ("hint", toJSString message)]
     in Json.JSObject $ Json.toJSObject obj

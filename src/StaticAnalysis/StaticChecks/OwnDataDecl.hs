@@ -1,9 +1,9 @@
-module StaticAnalysis.StaticChecks.OwnDataDecl where
+module StaticAnalysis.StaticChecks.OwnDataDecl (module StaticAnalysis.StaticChecks.OwnDataDecl) where
 
+import           Data.Maybe
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
-import           Data.Maybe
 
 ownDataDecl :: Module l -> [Error l]
 ownDataDecl (Module _ _ _ _ decls) = map OwnDataDecl $ mapMaybe dataDeclLoc decls
