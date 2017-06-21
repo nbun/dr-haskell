@@ -34,6 +34,9 @@ showUnificationError (OccurCheck v t) = "OccurCheck: " ++ (showVarIdx v)
                                                        ++ (show t)
                                                        ++ "!"
 
+instance Show f => Show (UnificationError f) where
+  show = showUnificationError
+
 -- -----------------------------------------------------------------------------
 -- Representation of internal data structures
 -- -----------------------------------------------------------------------------
