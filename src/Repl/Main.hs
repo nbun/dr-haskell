@@ -38,9 +38,9 @@ replLoop = do
   case minput of
        Nothing -> return ()
        Just x -> do
-         res <- replEval x
+         (res, cont) <- replEval x
          liftInput $ replPrint res
-         replLoop
+         when cont replLoop
 
 initInterpreter :: ReplInterpreter ()
 initInterpreter = do
@@ -62,46 +62,43 @@ main = do
        Left err -> putStrLn $ "Error:" ++ show err
        Right _  -> return ()
 
-replEval :: String -> Repl (Maybe String)
+replEval :: String -> Repl (Maybe String, Bool)
 replEval q = case q of
   ':':xs -> replEvalCommand xs
-  _      -> liftInterpreter $ replEvalExp q
+  _      -> liftInterpreter $ replEvalExp q >>= \res -> return (res, True)
 
-replHelp :: Repl String
-replHelp = return $ unlines [
+replHelp :: Maybe String -> Repl String
+replHelp input = return $ unlines $ hint : [
   ":? - This help",
   ":l - load module",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
+  where hint = case input of
+                 Just  s -> "Unrecognized option '" ++ s ++ "'"
+                 Nothing -> ""
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
 replEvalExp q =
-  MC.handleAll (\_ -> do
-                      liftInput $ outputStrLn "Error!"
+  MC.handleAll (\e -> do
+                      liftIO $ putStrLn (displayException e)
                       return Nothing) $ do
     t <- typeOf q
     if t == "IO ()"
       then interpret q (as :: IO ()) >>= liftIO >> return Nothing
       else Just <$> eval q
 
-replEvalCommand :: String -> Repl (Maybe String)
+replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = case cmd of
-  "?" -> Just <$> replHelp
+  "q" -> return (Nothing, False)
   ('l':' ': xs)-> do
     previousForceLevel <- use forceLevel
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        liftRepl $ forceLevel .= previousForceLevel
-                        return Nothing) $ do
-      liftRepl $ forceLevel .= Nothing
-      errors <- loadModule xs
-      return (Just (unlines $ map printLoadMessage errors))
+    liftRepl $ forceLevel .= previousForceLevel
+    errors <- loadModule xs
+    return $ (,) (Just (unlines $ map printLoadMessage errors)) True
   ('r':_) -> do
     md <- gets _filename
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        return Nothing) $ do
-      errors <- loadModule md
-      return (Just (unlines $ map printLoadMessage errors))
-  ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)
+    errors <- loadModule md
+    return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+  ('t':' ': xs) -> liftInterpreter (typeOf xs) >>= \res -> return (Just res, True)
+  s -> (replHelp $ Just s) >>= \res -> return (Just res, True)
