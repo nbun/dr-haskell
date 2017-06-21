@@ -12,8 +12,6 @@ import           Repl.Loader
 import           Repl.Types
 import           System.Console.Haskeline
 
-import           StaticAnalysis.Messages.Prettify
-
 {-
 
 Current Limitations:

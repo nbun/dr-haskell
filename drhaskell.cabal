@@ -14,7 +14,7 @@ category:            Teaching
 build-type:          Simple
 extra-source-files:  README.md
 data-dir:            res
-data-files:          Testing/templates.hs, TargetModules/Tests.hs
+data-files:          Testing/templates.hs, TargetModules/Tests.hs, TargetModules/MyPrelude.hs
 cabal-version:       >=1.10
 
 executable drhaskell
