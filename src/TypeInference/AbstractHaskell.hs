@@ -125,15 +125,16 @@ data Literal = Intc Int
 -- -----------------------------------------------------------------------------
 
 -- Representation of pretty-printing options for abstract Haskell data types.
-data AHOptions = AHOptions { currentModule :: String }
+data AHOptions = AHOptions { currentModule :: String, unqModules :: [String] }
 
 -- The default pretty-printing options.
 defaultAHOptions :: AHOptions
-defaultAHOptions = AHOptions { currentModule = "" }
+defaultAHOptions = AHOptions { currentModule = "", unqModules = [] }
 
 -- Transforms a qualified name into a string representation.
 showQName :: AHOptions -> QName -> String
 showQName opts (mn, n) | mn == (currentModule opts) = n
+                       | elem mn (unqModules opts)  = n
                        | otherwise                  = mn ++ "." ++ n
 
 -- Transforms a variable name into a string representation.
