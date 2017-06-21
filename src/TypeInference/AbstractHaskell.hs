@@ -28,68 +28,70 @@ type VarName = (Int, String)
 -- than or equal to zero.
 type Arity = Int
 
-
 -- The visibility of a function, type constructor or type is either private (not
 -- exported) or public (exported).
-data Visibility = Private
-                | Public
-                deriving Show
+data Visibility = Private | Public
+  deriving Show
 
 -- Representation of a Haskell module consisting of a module name, a list of
 -- imported modules, a list of type declarations and a list of function
 -- declarations.
-data Prog a = Prog (MName, a) [(MName, a)] [TypeDecl a] [FuncDecl a] deriving Show
+data Prog a = Prog (MName, a) [(MName, a)] [TypeDecl a] [FuncDecl a]
+  deriving Show
 
 -- Representation of an algebraic data type or type synonym declaration.
 data TypeDecl a = Type a (QName, a) Visibility [(VarName, a)] [ConsDecl a]
                 | TypeSyn a (QName, a) Visibility [(VarName, a)] (TypeExpr a)
-                deriving Show
+  deriving Show
 
 -- Representation of a type constructor declaration consisting of a type
 -- constructor name, the arity and visibility of the type constructor and a list
 -- of argument types.
-data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a] deriving Show
-
-data TypeInfo a = TExpr (TypeExpr a)
-                | TNone
-                deriving Show
+data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
+  deriving Show
 
 -- Representation of a type expression. A type expression is either a type
 -- variable, a function type or a type constructor application.
 data TypeExpr a = TVar (VarName, a)
                 | FuncType a (TypeExpr a) (TypeExpr a)
                 | TCons a (QName, a) [TypeExpr a]
-                deriving Show
-
+  deriving Show
 
 -- Representation of a type signature for a function.
 data TypeSig a = Untyped
                | TypeSig (TypeExpr a)
+  deriving Show
 
 -- Representation of a type annotation used to annotate the type of expressions.
 data TypeAnn a = NoTypeAnn
                | TypeAnn (TypeExpr a)
+  deriving Show
 
 -- Representation of a function declaration consisting of a function name, the
 -- arity and visibility of the function, a type signature and a list of rules.
 data FuncDecl a = Func a (QName, a) Arity Visibility (TypeSig a) (Rules a)
+  deriving Show
 
 -- Rules are either a list of single rules or no rule at all if the function is
 -- defined externally.
 data Rules a = Rules [Rule a]
              | External a (TypeAnn a)
+  deriving Show
 
 -- Representation of a function rule consisting of a type annotation, a list of
 -- patterns, a right-hand side and a list of local declarations.
 data Rule a = Rule a (TypeAnn a) [Pattern a] (Rhs a) [LocalDecl a]
+  deriving Show
 
 -- Representation of a rules right-hand side as either guarded or unguarded.
 data Rhs a = SimpleRhs (Expr a)
            | GuardedRhs a [(Expr a, Expr a)]
+  deriving Show
 
 -- Representation of local 'let' or 'where' declarations.
 data LocalDecl a = LocalFunc (FuncDecl a)
                  | LocalPat a (Pattern a) (Expr a) [LocalDecl a]
+  deriving Show
 
 -- Representation of expressions.
 data Expr a = Var (TypeAnn a) (VarName, a)
@@ -106,11 +108,13 @@ data Expr a = Var (TypeAnn a) (VarName, a)
             | IfThenElse a (TypeAnn a) (Expr a) (Expr a) (Expr a)
             | Tuple a (TypeAnn a) [Expr a]
             | List a (TypeAnn a) [Expr a]
+  deriving Show
 
 -- Representation of statements in 'do' expressions or list comprehensions.
 data Statement a = SExpr (Expr a)
                  | SPat a (Pattern a) (Expr a)
                  | SLet a [LocalDecl a]
+  deriving Show
 
 -- Representation of pattern expressions.
 data Pattern a = PVar (TypeAnn a) (VarName, a)
@@ -119,9 +123,11 @@ data Pattern a = PVar (TypeAnn a) (VarName, a)
                | PAs a (TypeAnn a) (VarName, a) (Pattern a)
                | PTuple a (TypeAnn a) [Pattern a]
                | PList a (TypeAnn a) [Pattern a]
+  deriving Show
 
 -- Representation of branches in 'case' expressions.
 data BranchExpr a = Branch a (Pattern a) (Expr a)
+  deriving Show
 
 -- Representation of literals occurring in expressions. It is either an integer,
 -- a float, a character, or a string constant.
@@ -129,6 +135,7 @@ data Literal = Intc Int
              | Floatc Float
              | Charc Char
              | Stringc String
+  deriving Show
 
 -- -----------------------------------------------------------------------------
 -- Pretty-printing of abstract Haskell data types
