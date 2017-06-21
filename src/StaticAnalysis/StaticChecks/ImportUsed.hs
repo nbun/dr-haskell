@@ -1,9 +1,8 @@
-module StaticAnalysis.StaticChecks.ImportUsed where
+module StaticAnalysis.StaticChecks.ImportUsed (module StaticAnalysis.StaticChecks.ImportUsed) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
-
 
 --------------------------------------------------------------------------------
 -- Usage of imports

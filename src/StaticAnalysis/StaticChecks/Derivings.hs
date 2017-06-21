@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.Derivings where
+module StaticAnalysis.StaticChecks.Derivings (module StaticAnalysis.StaticChecks.Derivings) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

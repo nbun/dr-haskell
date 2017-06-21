@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.NoFunDef where
+module StaticAnalysis.StaticChecks.NoFunDef (module StaticAnalysis.StaticChecks.NoFunDef) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors

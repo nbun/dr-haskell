@@ -1,4 +1,4 @@
-module PreludeHandling.Hider where
+module PreludeHandling.Hider (module PreludeHandling.Hider) where
 
 import           Data.List
 import           Language.Haskell.Exts

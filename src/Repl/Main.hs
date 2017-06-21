@@ -1,4 +1,4 @@
-module Repl.Main where
+module Repl.Main (module Repl.Main) where
 
 import           Control.Lens                     hiding (Level, set)
 import           Control.Monad.Catch              as MC
@@ -56,7 +56,7 @@ main = do
     fname <- use filename
     unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
-      liftInput $ replPrint (Just (unlines $ map prettyError errors))
+      liftInput $ replPrint (Just (unlines $ map printLoadMessage errors))
     replLoop
   case res of
        Left err -> putStrLn $ "Error:" ++ show err
@@ -76,7 +76,7 @@ replHelp = return $ unlines [
   "expression - evaluate expression" ]
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
-replEvalExp q = do
+replEvalExp q =
   MC.handleAll (\_ -> do
                       liftInput $ outputStrLn "Error!"
                       return Nothing) $ do
@@ -96,12 +96,12 @@ replEvalCommand cmd = case cmd of
                         return Nothing) $ do
       liftRepl $ forceLevel .= Nothing
       errors <- loadModule xs
-      return (Just (unlines $ map prettyError errors))
+      return (Just (unlines $ map printLoadMessage errors))
   ('r':_) -> do
     md <- gets _filename
     MC.handleAll (\e -> do
                         liftInput $ outputStrLn $ displayException e
                         return Nothing) $ do
       errors <- loadModule md
-      return (Just (unlines $ map prettyError errors))
+      return (Just (unlines $ map printLoadMessage errors))
   ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)

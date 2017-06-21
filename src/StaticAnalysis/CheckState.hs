@@ -1,4 +1,4 @@
-module StaticAnalysis.CheckState where
+module StaticAnalysis.CheckState (module StaticAnalysis.CheckState) where
 
 import           AstChecks.Check
 import           Control.Monad.Catch

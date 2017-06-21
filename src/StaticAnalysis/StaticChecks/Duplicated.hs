@@ -1,9 +1,8 @@
-module StaticAnalysis.StaticChecks.Duplicated where
+module StaticAnalysis.StaticChecks.Duplicated (module StaticAnalysis.StaticChecks.Duplicated) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
-
 
 --------------------------------------------------------------------------------
 -- Duplicated name in imported module

@@ -1,4 +1,4 @@
-module StaticAnalysis.StaticChecks.Shadowing where
+module StaticAnalysis.StaticChecks.Shadowing (module StaticAnalysis.StaticChecks.Shadowing) where
 
 import           AstChecks.Check
 import           Data.List
@@ -52,8 +52,6 @@ shadowingOnAlts (Alt li pat rhs _:alts) names =
         [n] -> [Shadowing (UnQual li (Ident li n)) | n `elem` names]
         _   -> []
     ++ shadowingOnAlts alts names
-shadowingOnAlts (_:alts) names =
-    shadowingOnAlts alts names
 shadowingOnAlts _ _ = []
 
 shadowingOnBinds :: Binds SrcSpanInfo -> Exp SrcSpanInfo -> [String] -> [Error SrcSpanInfo]
@@ -71,7 +69,7 @@ shadowingOnBinds _ _ _ = []
 mapOverDeclsWithAddNames :: [Decl SrcSpanInfo] -> [String] -> [Error SrcSpanInfo]
 mapOverDeclsWithAddNames [] _ = []
 mapOverDeclsWithAddNames (FunBind _ matches:decls) names =
-    concatMap (\x -> checkMatchWithAddNames x names) matches
+    concatMap (`checkMatchWithAddNames` names) matches
     ++ mapOverDeclsWithAddNames decls names
 mapOverDeclsWithAddNames (_:decls) names =
     mapOverDeclsWithAddNames decls names
