@@ -28,29 +28,39 @@ type VarName = (Int, String)
 -- than or equal to zero.
 type Arity = Int
 
+
 -- The visibility of a function, type constructor or type is either private (not
 -- exported) or public (exported).
-data Visibility = Private | Public
+data Visibility = Private
+                | Public
+                deriving Show
 
 -- Representation of a Haskell module consisting of a module name, a list of
 -- imported modules, a list of type declarations and a list of function
 -- declarations.
-data Prog a = Prog (MName, a) [(MName, a)] [TypeDecl a] [FuncDecl a]
+data Prog a = Prog (MName, a) [(MName, a)] [TypeDecl a] [FuncDecl a] deriving Show
 
 -- Representation of an algebraic data type or type synonym declaration.
 data TypeDecl a = Type a (QName, a) Visibility [(VarName, a)] [ConsDecl a]
                 | TypeSyn a (QName, a) Visibility [(VarName, a)] (TypeExpr a)
+                deriving Show
 
 -- Representation of a type constructor declaration consisting of a type
 -- constructor name, the arity and visibility of the type constructor and a list
 -- of argument types.
-data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
+data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a] deriving Show
+
+data TypeInfo a = TExpr (TypeExpr a)
+                | TNone
+                deriving Show
 
 -- Representation of a type expression. A type expression is either a type
 -- variable, a function type or a type constructor application.
 data TypeExpr a = TVar (VarName, a)
                 | FuncType a (TypeExpr a) (TypeExpr a)
                 | TCons a (QName, a) [TypeExpr a]
+                deriving Show
+
 
 -- Representation of a type signature for a function.
 data TypeSig a = Untyped
