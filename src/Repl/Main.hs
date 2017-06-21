@@ -94,7 +94,7 @@ replEvalCommand cmd = case cmd of
   ('l':' ': xs)-> do
     previousForceLevel <- use forceLevel
     liftRepl $ forceLevel .= previousForceLevel
-    errors <- loadModule xs
+    errors <- loadModule $ head (words xs)
     return $ (,) (Just (unlines $ map printLoadMessage errors)) True
   ('r':_) -> do
     md <- gets _filename
