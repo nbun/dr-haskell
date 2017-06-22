@@ -1,14 +1,16 @@
 -- function to run all defined tests
-runAllTests :: IO [String]
+runAllTests :: Prelude.IO [Prelude.String]
 runAllTests = do
   let tests = __allTests__
-      ztests = zip [1..] tests
-  mapM (\ (n, r) -> do
+      ztests = Prelude.zip [1..] tests
+      (++) = (Prelude.++)
+      show = Prelude.show
+  (Prelude.mapM (\ (n, r) -> do
            res <- r
-           return $ "Test " ++
-             show n ++
+           Prelude.return Prelude.$ "Test " ++
+             Prelude.show n ++
                ": " ++
                  case res of
                      Success l -> "(Line "++show l++") passed"
                      Failure l pexp o -> "(Line "++show l++") failed: "++pexp++"\n" ++ o)
-        ztests
+        ztests) :: Prelude.IO [Prelude.String]

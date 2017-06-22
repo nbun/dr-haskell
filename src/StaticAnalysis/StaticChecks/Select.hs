@@ -37,6 +37,9 @@ nameOfModule m@(Module _ mhead _ _ _) =
     Just (ModuleHead _ mname _ _) -> Just mname
     Nothing                       -> Nothing
 
+modName :: ModuleName l -> String
+modName (ModuleName _ name) = name
+
 nameString :: Name l -> String
 nameString (Ident  _ s) = s
 nameString (Symbol _ s) = s

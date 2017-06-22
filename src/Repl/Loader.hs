@@ -77,7 +77,7 @@ runAllTests = MC.handleAll (\_ -> return []) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
 addMyPrelude :: ModifiedModule -> ModifiedModule
-addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Just $ ImportSpecList () False []}
+addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = True, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}
 
 transformModule :: MonadIO m => ReplState -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule s m = do

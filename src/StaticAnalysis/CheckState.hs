@@ -70,8 +70,8 @@ levelOne p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkAST cId cId cId checkForHigherOrderFunction
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
@@ -95,8 +95,8 @@ levelTwo p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkAST cId cId cId checkForHigherOrderFunction
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
@@ -119,13 +119,13 @@ levelThree p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
 
 levelFull :: LevelT
-levelFull p = return ()
+levelFull _ = return ()
 
 levelMapping :: Level -> LevelT
 levelMapping l = case l of
