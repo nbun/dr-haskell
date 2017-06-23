@@ -1,6 +1,17 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Repl.Types (module Repl.Types) where
+module Repl.Types (
+  ReplState(..),
+  filename, forceLevel, runTests, nonStrict, customPrelude,
+  initialReplState,
+  ReplInput,
+  ReplInterpreter,
+  Repl,
+  runRepl,
+  liftInput,
+  liftInterpreter,
+  liftRepl,
+) where
 
 import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch

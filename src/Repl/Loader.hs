@@ -1,9 +1,16 @@
-module Repl.Loader (module Repl.Loader) where
+{-# LANGUAGE FlexibleContexts #-}
+module Repl.Loader (
+  LoadMessage(..),
+  printLoadMessage,
+  determineLevel,
+  transformModule,
+  loadModule,
+) where
 
 import           Control.Lens                         hiding (Level)
 import           Control.Monad.Catch                  as MC
 import           Control.Monad.IO.Class
-import           Control.Monad.State.Lazy
+import           Control.Monad.State.Lazy             as MS
 import           Language.Haskell.Interpreter
 import           System.Directory
 import           System.FilePath
@@ -37,7 +44,7 @@ loadModule fn = do
       liftIO $ createDirectoryIfMissing False cdir
 
       Just level <- foldr (liftM2 mplus) (return $ Just Level1) [use forceLevel, return $ determineLevel modLoad]
-      (transModule, transErrors) <- transformModule modLoad
+      (transModule, transErrors) <- transformModuleS modLoad
       liftIO $ writeFile cfn $ printModified transModule
 
       checkErrors <- liftIO $ runCheckLevel level fn
@@ -72,10 +79,12 @@ runAllTests = MC.handleAll (\_ -> return []) $
 addMyPrelude :: ModifiedModule -> ModifiedModule
 addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Just $ ImportSpecList () False []}
 
-transformModule :: ModifiedModule -> Repl (ModifiedModule, [Error SrcSpanInfo])
-transformModule m = do
+transformModule :: MonadIO m => ReplState -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
+transformModule s m = do
   (m', es) <- liftIO $ Tee.transformModule m
-  wantCustomPrelude <- use customPrelude
-  if wantCustomPrelude
+  if s ^. customPrelude
   then return (addMyPrelude m', es)
   else return (m', es)
+
+transformModuleS :: (MonadIO m, MonadState ReplState m) => ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
+transformModuleS m = MS.get >>= flip transformModule m

@@ -17,8 +17,6 @@ import           System.Console.Haskeline
 Current Limitations:
   - history is not used
   - no let-constructs
-  - our custom checks and modifications
-  - anything, really
 -}
 
 
