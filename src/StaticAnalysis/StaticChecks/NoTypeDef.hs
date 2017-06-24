@@ -8,10 +8,10 @@ import           StaticAnalysis.StaticChecks.Select
 
 noTypeDef :: ModuleCheck l (Error l)
 noTypeDef m = let
-    defs = defNames m
+    defs = map fst $ defFuncs m
     defsNames  = map nameString defs
     defsWithNames = zip defsNames defs
-    decls = map nameString (concatMap declName $ typeSigs m)
+    decls = map nameString (concatMap (map fst . declName) $ typeSigs m)
     diffDecls = defsNames \\ decls
     in buildResponse diffDecls defsWithNames
 

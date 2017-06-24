@@ -9,13 +9,6 @@ import           StaticAnalysis.StaticChecks.Select
 type Filename = String
 type Position = (Int, Int, Int, Int)
 
-prettyIntError :: Hint.InterpreterError -> String
-prettyIntError error =
-  case error of
-    Hint.UnknownError s -> s
-    Hint.WontCompile es -> unlines $ map (\(Hint.GhcError s) -> s) es
-    Hint.NotAllowed   s -> s
-    Hint.GhcException s -> s
 printFilenameAndPos :: Filename -> Position -> String
 printFilenameAndPos filename pos =
     let (line, column, _, _) = pos
@@ -32,10 +25,10 @@ prettyError (Undefined name sims) =
     in printFilenameAndPos filename pos
        ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
        ++ prettyNameLoc name ++ ".\r\n" ++ prettySims sims
-prettyError (Duplicated name maymod) =
+prettyError (Duplicated name entity maymod) =
     let (filename, pos) = extractFilenameAndPositionFromName name
     in printFilenameAndPos filename pos
-       ++ "Definition " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+       ++ show entity ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
        ++ " is already defined" ++ mod ++ "."
     where mod = case maymod of
                   Just mname -> " in module " ++ prettyPrintQ mname

@@ -1,15 +1,17 @@
 module StaticAnalysis.Messages.StaticErrors (module StaticAnalysis.Messages.StaticErrors) where
 
 import           Control.Exception
-import           Data.List
 import           Data.Typeable
 import           Language.Haskell.Exts
+
+data Entity = Signature | Definition | Function | Datatype
+  deriving (Eq, Ord, Show)
 
 data Error l = NoFunDef (Name l) [Name l]
              --          name,   similar names in scope
              | Undefined (Name l) [Name l]
              --          name,    similar names in scope
-             | Duplicated (Name l) (Maybe (ModuleName l))
+             | Duplicated (Name l) Entity (Maybe (ModuleName l))
              --           name,    module that contains the duplicate
              | TypeVarApplication (Name l)
              --            position

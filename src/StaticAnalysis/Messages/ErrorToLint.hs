@@ -79,7 +79,7 @@ buildUnknownError e =
 transformError :: Error SrcSpanInfo -> Lint
 transformError e@(NoFunDef name _)           = buildForName name e
 transformError e@(Undefined name _)          = buildForName name e
-transformError e@(Duplicated name _)         = buildForName name e
+transformError e@(Duplicated name _ _)       = buildForName name e
 transformError e@(TypeVarApplication name)   = buildForName name e
 transformError e@(HigherOrder info)          = buildForInfo info e
 transformError e@(LambdaFunction info)       = buildForInfo info e

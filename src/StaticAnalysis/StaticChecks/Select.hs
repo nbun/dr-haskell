@@ -4,21 +4,27 @@ import           AstChecks.Check
 import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
+import           StaticAnalysis.Messages.StaticErrors (Entity (..))
 import           Text.EditDistance
-
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names
 
-defNames :: Module l -> [Name l]
-defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m
-defNames _          = []
+defFuncs :: Module l -> [(Name l, Entity)]
+defFuncs m@Module{} = concatMap declName $ funBinds m ++ patBinds m
 
-declName :: Decl l -> [Name l]
+defNames :: Module l -> [(Name l, Entity)]
+defNames m@Module{} =concatMap declName $ funBinds m ++ patBinds m ++ dataDecls m
+
+declName :: Decl l -> [(Name l, Entity)]
 declName d = case d of
-               (TypeSig _ ns _)                 -> ns
-               (FunBind _ (Match _ n _ _ _ :_)) -> [n]
-               (PatBind _ (PVar _ n) _ _)       -> [n] -- functions without arguments
-               _                                -> []
+               TypeSig _ ns _                 -> map (\n -> (n, Signature)) ns
+               FunBind _ (Match _ n _ _ _ :_) -> [(n, Function)]
+               -- functions without arguments
+               PatBind _ (PVar _ n) _ _       -> [(n, Definition)]
+               DataDecl _ _ _ (DHead _ n) _ _ -> [(n, Datatype)]
+               DataDecl _ _ _ (DHApp _ (DHead _ n) _) _ _ -> [(n, Datatype)]
+               _                              -> []
+
 qNameName :: QName l -> Name l
 qNameName (Qual _ (ModuleName _ m) name) = name
 qNameName (UnQual _ name) = name
@@ -43,6 +49,10 @@ modName (ModuleName _ name) = name
 nameString :: Name l -> String
 nameString (Ident  _ s) = s
 nameString (Symbol _ s) = s
+
+namePos :: Name l -> l
+namePos (Ident l _)   = l
+namePos (Symbol l _ ) = l
 
 importedModules :: Module l -> [ModuleName l]
 importedModules (Module _ _ _ imps _) = map impName imps
@@ -75,6 +85,12 @@ funBinds = declFilter isFunBind
     isFunBind FunBind{} = True
     isFunBind _         = False
 
+dataDecls :: Module l -> [Decl l]
+dataDecls = declFilter isFunBind
+  where
+    isFunBind :: Decl l -> Bool
+    isFunBind DataDecl{} = True
+    isFunBind _          = False
 --------------------------------------------------------------------------------
 -- Find similar names
 

@@ -16,7 +16,7 @@ import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
 import           System.FilePath
 
-import           Language.Haskell.Exts
+import           Language.Haskell.Exts as Exts
 import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.Prettify
@@ -52,11 +52,13 @@ loadModule fn = MC.handleAll handler $ loadModule' fn
 
           Just level <- foldr (liftM2 mplus) (return $ Just Level1)
                         [use forceLevel, return $ determineLevel modLoad]
-          (transModule, transErrors) <- transformModuleS modLoad
-          liftIO $ writeFile cfn $ printModified transModule
 
           checkErrors <- liftIO $ runCheckLevel level fn
-          let errors = checkErrors ++ transErrors
+          let (checkErrors', duplDecls) = duplPrelImps checkErrors
+          (transModule, transErrors) <- transformModuleS duplDecls modLoad
+          liftIO $ writeFile cfn $ printModified transModule
+
+          let errors = checkErrors' ++ transErrors
           if null errors || nonstrict
             then let es   = map CheckError errors
                      dm e = DirectMessage $ displayException e
@@ -86,21 +88,57 @@ runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\_ -> return []) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
-duplPrelImps :: [Error l] -> [String]
-duplPrelImps [] = []
-duplPrelImps (e:es) = case e of
-                       Duplicated name _ -> nameString name : duplPrelImps es
-                       _                 -> duplPrelImps es
 
-addMyPrelude :: ModifiedModule -> ModifiedModule
-addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = True, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}
+duplPrelImps :: [Error l] -> ([Error l], [ImportSpec l])
+duplPrelImps []     = ([],[])
+duplPrelImps (e:es) =
+  case e of
+    Duplicated name entity mod -> 
+      case (isMyPrelude mod, entity) of
+        -- TODO add warning that a function/datatype was hidden
+        (True, Function)   -> (es', ivar name : is)
+        (True, Definition) -> (es', ivar name : is)
+        (True, Datatype)   -> (es', IThingAll (namePos name) name : is)
+        _                  -> (e:es', is)
+    _ -> duplPrelImps es
+  where (es', is) = duplPrelImps es
+        ivar name = IVar (namePos name) name
 
-transformModule :: MonadIO m => ReplState -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
-transformModule s m = do
+
+isMyPrelude :: Maybe (Exts.ModuleName l) -> Bool
+isMyPrelude (Just (ModuleName _ "MyPrelude")) = True
+isMyPrelude _                                 = False
+
+addMyPrelude :: [ImportSpec SrcSpanInfo] -> ModifiedModule -> ModifiedModule
+addMyPrelude hideDefs = addImport ImportDecl
+  {importAnn = noSrcSpan
+  , importModule = ModuleName noSrcSpan "MyPrelude"
+  , importQualified = False
+  , importSrc = False
+  , importSafe = False
+  , importPkg = Nothing
+  , importAs = Nothing
+  , importSpecs = if not $ null hideDefs
+                   then Just $ ImportSpecList noSrcSpan True hideDefs
+                   else Nothing}
+  . addImport ImportDecl
+  {importAnn = noSrcSpan
+  , importModule = ModuleName noSrcSpan "Prelude"
+  , importQualified = True
+  , importSrc = False
+  , importSafe = False
+  , importPkg = Nothing
+  , importAs = Nothing
+  , importSpecs = Nothing}
+
+transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
+                -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
+transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule m
   if s ^. customPrelude
-  then return (addMyPrelude m', es)
+  then return (addMyPrelude hide m', es)
   else return (m', es)
 
-transformModuleS :: (MonadIO m, MonadState ReplState m) => ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
-transformModuleS m = MS.get >>= flip transformModule m
+transformModuleS :: (MonadIO m, MonadState ReplState m) => [ImportSpec SrcSpanInfo]
+                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
+transformModuleS hide m = MS.get >>= flip (transformModule hide) m
