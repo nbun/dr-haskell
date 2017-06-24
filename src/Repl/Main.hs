@@ -1,7 +1,7 @@
 module Repl.Main (module Repl.Main) where
 
-import           Control.Lens                     hiding (Level, set)
-import           Control.Monad.Catch              as MC
+import           Control.Lens                 hiding (Level, set)
+import           Control.Monad.Catch          as MC
 import           Control.Monad.State
 import           Paths_drhaskell
 import           System.FilePath
@@ -85,16 +85,28 @@ replEvalExp q =
       else Just <$> eval q
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
-replEvalCommand cmd = case cmd of
-  "q" -> return (Nothing, False)
-  ('l':' ': xs)-> do
-    previousForceLevel <- use forceLevel
-    liftRepl $ forceLevel .= previousForceLevel
-    errors <- loadModule $ head (words xs)
-    return $ (,) (Just (unlines $ map printLoadMessage errors)) True
-  ('r':_) -> do
-    md <- gets _filename
-    errors <- loadModule md
-    return $ (,) (Just (unlines $ map printLoadMessage errors)) True
-  ('t':' ': xs) -> liftInterpreter (typeOf xs) >>= \res -> return (Just res, True)
-  s -> (replHelp $ Just s) >>= \res -> return (Just res, True)
+replEvalCommand cmd = if null cmd then invalid cmd else
+  case head args of
+    "q"      -> quit
+    "quit"   -> quit
+    "l"      -> load
+    "load"   -> load
+    "r"      -> reload
+    "reload" -> reload
+    "t"      -> typeof
+    "type"   -> typeof
+    s        -> invalid s
+  where args = words cmd
+        quit = return (Nothing, False)
+        load = do
+          previousForceLevel <- use forceLevel
+          liftRepl $ forceLevel .= previousForceLevel
+          errors <- loadModule $ args !! 1
+          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+        reload = do
+          md <- gets _filename
+          errors <- loadModule md
+          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+        typeof =  liftInterpreter (typeOf $ args !! 1) >>=
+                                  \res -> return (Just res, True)
+        invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)

@@ -32,35 +32,44 @@ printLoadMessage (CheckError e)    = prettyError e
 printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
+
 loadModule :: FilePath -> Repl [LoadMessage]
-loadModule fn = do
-  nonstrict <- use nonStrict
-  pr <- liftIO $ parseModified fn
-  case pr of
-    ParseFailed l e -> return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
-    ParseOk modLoad -> do
-      let (dir, base) = splitFileName fn
-          cdir        = dir </> ".drhaskell"
-          cfn         = cdir </> base
-      liftIO $ createDirectoryIfMissing False cdir
+loadModule fn = MC.handleAll handler $ loadModule' fn
+  where
+    -- handles IO errors thrown by parseModified
+    handler e = return [DirectMessage (displayException e)]
+    loadModule' fn' = do
+      nonstrict <- use nonStrict
+      pr <- liftIO $ parseModified fn'
+      case pr of
+        ParseFailed l e ->
+          return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
+        ParseOk modLoad -> do
+          let (dir, base) = splitFileName fn
+              cdir        = dir </> ".drhaskell"
+              cfn         = cdir </> base
+          liftIO $ createDirectoryIfMissing False cdir
 
-      Just level <- foldr (liftM2 mplus) (return $ Just Level1) [use forceLevel, return $ determineLevel modLoad]
-      (transModule, transErrors) <- transformModuleS modLoad
-      liftIO $ writeFile cfn $ printModified transModule
+          Just level <- foldr (liftM2 mplus) (return $ Just Level1)
+                        [use forceLevel, return $ determineLevel modLoad]
+          (transModule, transErrors) <- transformModuleS modLoad
+          liftIO $ writeFile cfn $ printModified transModule
 
-      checkErrors <- liftIO $ runCheckLevel level fn
-      let errors = checkErrors ++ transErrors
-      if (null errors || nonstrict)
-      then
-        MC.handleAll (\e -> return $ map CheckError errors ++ [DirectMessage $ displayException e]) $ do
-          liftInterpreter $ loadModules [cfn]
-          liftInterpreter $ setTopLevelModules ["Main"]
-          liftRepl $ modify $ Control.Lens.set filename fn
-          rt <- use runTests
-          testErrors <- if rt then runAllTests else return []
-          return $ map CheckError errors ++ map DirectMessage testErrors
-      else
-        return $ map CheckError errors
+          checkErrors <- liftIO $ runCheckLevel level fn
+          let errors = checkErrors ++ transErrors
+          if null errors || nonstrict
+            then let es   = map CheckError errors
+                     dm e = DirectMessage $ displayException e
+                     handler' e = return $ es ++ [dm e]
+                 in MC.handleAll handler' $ do
+                      liftInterpreter $ loadModules [cfn]
+                      liftInterpreter $ setTopLevelModules ["Main"]
+                      liftRepl $ modify $ Control.Lens.set filename fn
+                      rt <- use runTests
+                      testErrors <- if rt then runAllTests else return []
+                      return $ es ++ map DirectMessage testErrors
+            else
+              return $ map CheckError errors
 
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
