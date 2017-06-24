@@ -12,16 +12,17 @@ import           Control.Monad.Catch                  as MC
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
 import           Language.Haskell.Interpreter
+import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
 import           System.FilePath
 
 import           Language.Haskell.Exts
-import           Util.ModifyAst
 import           Repl.Types
 import           StaticAnalysis.CheckState
-import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.Messages.Prettify
-import qualified Testing.TestExpExtractor as Tee
+import           StaticAnalysis.Messages.StaticErrors
+import qualified Testing.TestExpExtractor             as Tee
+import           Util.ModifyAst
 
 data LoadMessage = CheckError (Error SrcSpanInfo)
                  | DirectMessage String
@@ -75,6 +76,12 @@ determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
 runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\_ -> return []) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
+
+duplPrelImps :: [Error l] -> [String]
+duplPrelImps [] = []
+duplPrelImps (e:es) = case e of
+                       Duplicated name _ -> nameString name : duplPrelImps es
+                       _                 -> duplPrelImps es
 
 addMyPrelude :: ModifiedModule -> ModifiedModule
 addMyPrelude = addImport ImportDecl {importAnn = (), importModule = ModuleName () "MyPrelude", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} . addImport ImportDecl {importAnn = (), importModule = ModuleName () "Prelude", importQualified = True, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing}
