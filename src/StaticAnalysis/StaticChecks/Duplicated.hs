@@ -27,7 +27,20 @@ duplicated m ms = do
 definedIn :: Name l -> [Module l] -> Maybe (Module l)
 definedIn _ []     = Nothing
 definedIn n (m:ms) = defined n m `mplus` definedIn n ms
- where defined n m = if nameString n `elem` defNameStrs m
+ where defined n m = if nameString n `elem` exported m
                        then Just m
                        else Nothing
-       defNameStrs m = map (nameString . fst) (defNames m)
+       exported m  = map (nameString .qNameName) $
+                         mapMaybe exportSpecQName (exports m)
+
+exports :: Module l -> [ExportSpec l]
+exports (Module _ (Just (ModuleHead _ _ _ (Just (ExportSpecList _ especs)))) _ _ _)
+  = especs
+exports _ = []
+
+exportSpecQName :: ExportSpec l -> Maybe (QName l)
+exportSpecQName e = case e of
+                      EVar _ qn           -> Just qn
+                      EAbs _ _ qn         -> Just qn
+                      EThingWith _ _ qn _ -> Just qn -- TODO constructor names?
+                      _                   -> Nothing
