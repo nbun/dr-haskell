@@ -33,6 +33,22 @@ printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
 
+{-
+loadModule does the following:
+  1. it tries to parse the module. If this fails, it just returns the error
+  2. it calculates the output path (in .drhaskell directory)
+  3. it determines the level by (in this order) force options, the DrHaskell
+     level pragma in the file or a default of currently 'Level 1'
+  4. it runs the static checks that are associated with the selected level
+  5. it transforms 'duplicate declaration' problems into a 'hiding' clause
+     if the duplicates are from the prelude
+  6. it writes the modified module to the determined path
+  7. if there are no problems (or the nonstrict mode is used), it tries to
+     actually load the module into the interpreter
+  8. it runs the tests specified in the module (unless --no-test is used)
+  9. it returns errors and problems that it encountered
+-}
+
 loadModule :: FilePath -> Repl [LoadMessage]
 loadModule fn = MC.handleAll handler $ loadModule' fn
   where
@@ -131,6 +147,8 @@ addMyPrelude hideDefs = addImport ImportDecl
   , importAs = Nothing
   , importSpecs = Nothing}
 
+-- do the actual modifications to a module
+-- currently this adds the 'runAllTests' declaration and a custom prelude
 transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule hide s m = do

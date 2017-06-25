@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Repl.Main (module Repl.Main) where
 
 import           Control.Lens                 hiding (Level, set)
@@ -13,12 +15,10 @@ import           Repl.Types
 import           System.Console.Haskeline
 
 {-
-
 Current Limitations:
   - history is not used
   - no let-constructs
 -}
-
 
 
 replRead :: ReplInput (Maybe String)
@@ -61,7 +61,7 @@ main = do
 replEval :: String -> Repl (Maybe String, Bool)
 replEval q = case q of
   ':':xs -> replEvalCommand xs
-  _      -> liftInterpreter $ replEvalExp q >>= \res -> return (res, True)
+  _      -> liftInterpreter $ (,True) <$> replEvalExp q
 
 replHelp :: Maybe String -> Repl String
 replHelp input = return $ unlines $ hint : [
