@@ -1,36 +1,43 @@
+-- | Holds everything needed for the Error-Datatype to Lint-Datatype Conversion
+-- The Error-Datatype comes from the Haskell-Src-Extensions module
 module StaticAnalysis.Messages.ErrorToLint (module StaticAnalysis.Messages.ErrorToLint) where
-{-
-1) Transform StaticError Datatype into Lint Datatype
-2) Choose Linteroutput via LinterOutput Enum
-3) Outputs linted errors defined by linterfunctions
--}
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Text.JSON                            as Json
 
--- LinterDataType
+-- | MessageClass
+-- MessageClass from the Lint-Protocol
 data MessageClass = Error
                   | Suggestion
                   | Warning
     deriving Show
+
+-- | Message
+-- Holds the actual error message
 type Message = String
+
+-- | Lint-Datatype
+-- Holds every information needed by the LintOutputGenerators
 data Lint = Lint Filename Position MessageClass Message
 
--- LinterOutput Enum
+-- | LinterOutput
+-- Identifier for the OutputGenerators
 data LinterOutput = JSON
                   | PLAIN
-
 plain :: LinterOutput
 plain = PLAIN
 
 json :: LinterOutput
 json = JSON
 
+-- | lintErrors generates from an list of Errors the specified LintOutput
 lintErrors :: LinterOutput -> [Error SrcSpanInfo] -> String
 lintErrors = lintErrorHlint []
 
+-- | Basically the same as lintErrors but with preconverted HLint Output.
+-- This is mostly used by the LinterImplementation.
 lintErrorHlint :: [Lint] -> LinterOutput -> [Error SrcSpanInfo] -> String
 lintErrorHlint lints JSON es =
     let lintedErrors = map transformError es
@@ -40,6 +47,7 @@ lintErrorHlint lints PLAIN es =
         out = map lintPlain (lintedErrors ++ lints)
     in foldr (\x xs -> x ++ "\r\n" ++ xs) "" out
 
+-- | Builds the Lint-Datatype for an Error specified by its ErrorName
 buildForName :: Name SrcSpanInfo -> Error SrcSpanInfo -> Lint
 buildForName name e =
     let (filename, position) = extractFilenameAndPositionFromName name
@@ -47,6 +55,7 @@ buildForName name e =
         message = prettyError e
     in Lint filename position messageClass message
 
+-- | Builds the Lint-Datatype for an Error specified by its ErrorPositionInformation
 buildForInfo :: SrcSpanInfo -> Error SrcSpanInfo -> Lint
 buildForInfo info e =
     let (filename, position) = extractFilenameAndPosition info
@@ -54,6 +63,7 @@ buildForInfo info e =
         message = prettyError e
     in Lint filename position messageClass message
 
+-- | Builds the Lint-Datatype for an Error specified by its ErrorQName
 buildForQName :: QName SrcSpanInfo -> Error SrcSpanInfo -> Lint
 buildForQName qname e =
     let (filename, position) = extractFilenameAndPositionFromQName qname
@@ -61,6 +71,7 @@ buildForQName qname e =
         message = prettyError e
     in Lint filename position messageClass message
 
+-- | Builds the Lint-Datatype for an Error specified by its ModuleName
 buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo -> Lint
 buildForModuleName mname e =
     let (filename, position) = extractFilenameAndPositionFromModuleName mname
@@ -68,7 +79,7 @@ buildForModuleName mname e =
         message = prettyError e
     in Lint filename position messageClass message
 
-
+-- | Builds the Lint-Datatype for an UnknownError
 buildUnknownError :: Error SrcSpanInfo -> Lint
 buildUnknownError e =
     let (filename, position) = ("", (-1, -1, -1, -1))
@@ -76,6 +87,8 @@ buildUnknownError e =
         message = prettyError e
     in Lint filename position messageClass message
 
+-- | Transforms every known Error via the previpusly specified functions into
+-- the Lint-Datatype
 transformError :: Error SrcSpanInfo -> Lint
 transformError e@(NoFunDef name _)           = buildForName name e
 transformError e@(Undefined name _)          = buildForName name e
@@ -92,6 +105,7 @@ transformError e@(OwnDataDecl info)          = buildForInfo info e
 transformError e@(DoUsed info)               = buildForInfo info e
 transformError e                             = buildUnknownError e
 
+-- | Plain Lintoutput Generator
 lintPlain :: Lint -> String
 lintPlain (Lint filename position messageClass message) =
     let (sl, sc, _, _) = position
@@ -107,6 +121,7 @@ lintPlain (Lint filename position messageClass message) =
         ++ " "
         ++ message
 
+-- | Json Lintoutput Generator
 buildJson :: Lint -> Json.JSValue
 buildJson (Lint filename position messageClass message) =
     let (sl, sc, el, ec) = position
@@ -119,5 +134,6 @@ buildJson (Lint filename position messageClass message) =
                ("hint", toJSString message)]
     in Json.JSObject $ Json.toJSObject obj
 
+-- | Helperfunction to Convert a String into its Json Representation inside Haskell
 toJSString :: String -> Json.JSValue
 toJSString = Json.JSString . Json.toJSString
