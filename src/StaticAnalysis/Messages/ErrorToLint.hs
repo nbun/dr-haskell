@@ -47,63 +47,63 @@ lintErrorHlint lints PLAIN es =
         out = map lintPlain (lintedErrors ++ lints)
     in foldr (\x xs -> x ++ "\r\n" ++ xs) "" out
 
--- | Builds the Lint-Datatype for an Error specified by its ErrorName
-buildForName :: Name SrcSpanInfo -> Error SrcSpanInfo -> Lint
-buildForName name e =
+-- | Builds the Lint-Datatype for an Error specified by its ErrorName.
+-- Also allows the pass-through of a messageclass
+buildForName :: Name SrcSpanInfo -> Error SrcSpanInfo -> MessageClass -> Lint
+buildForName name e messageClass =
     let (filename, position) = extractFilenameAndPositionFromName name
-        messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
 
 -- | Builds the Lint-Datatype for an Error specified by its ErrorPositionInformation
-buildForInfo :: SrcSpanInfo -> Error SrcSpanInfo -> Lint
-buildForInfo info e =
+-- Also allows the pass-through of a messageclass
+buildForInfo :: SrcSpanInfo -> Error SrcSpanInfo -> MessageClass -> Lint
+buildForInfo info e messageClass =
     let (filename, position) = extractFilenameAndPosition info
-        messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
 
 -- | Builds the Lint-Datatype for an Error specified by its ErrorQName
-buildForQName :: QName SrcSpanInfo -> Error SrcSpanInfo -> Lint
-buildForQName qname e =
+-- Also allows the pass-through of a messageclass
+buildForQName :: QName SrcSpanInfo -> Error SrcSpanInfo -> MessageClass -> Lint
+buildForQName qname e messageClass =
     let (filename, position) = extractFilenameAndPositionFromQName qname
-        messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
 
 -- | Builds the Lint-Datatype for an Error specified by its ModuleName
-buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo -> Lint
-buildForModuleName mname e =
+-- Also allows the pass-through of a messageclass
+buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo-> MessageClass  -> Lint
+buildForModuleName mname e messageClass =
     let (filename, position) = extractFilenameAndPositionFromModuleName mname
-        messageClass = Error
         message = prettyError e
     in Lint filename position messageClass message
 
 -- | Builds the Lint-Datatype for an UnknownError
-buildUnknownError :: Error SrcSpanInfo -> Lint
-buildUnknownError e =
+-- Also allows the pass-through of a messageclass
+buildUnknownError :: Error SrcSpanInfo -> MessageClass  -> Lint
+buildUnknownError e  messageClass =
     let (filename, position) = ("", (-1, -1, -1, -1))
-        messageClass = Warning
         message = prettyError e
     in Lint filename position messageClass message
 
 -- | Transforms every known Error via the previpusly specified functions into
 -- the Lint-Datatype
 transformError :: Error SrcSpanInfo -> Lint
-transformError e@(NoFunDef name _)           = buildForName name e
-transformError e@(Undefined name _)          = buildForName name e
-transformError e@(Duplicated name _ _)       = buildForName name e
-transformError e@(TypeVarApplication name)   = buildForName name e
-transformError e@(HigherOrder info)          = buildForInfo info e
-transformError e@(LambdaFunction info)       = buildForInfo info e
-transformError e@(NoTypeDef name)            = buildForName name e
-transformError e@(Shadowing qname)           = buildForQName qname e
-transformError e@(TypeVar name)              = buildForName name e
-transformError e@(Imported moduleName)       = buildForModuleName moduleName e
-transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e
-transformError e@(OwnDataDecl info)          = buildForInfo info e
-transformError e@(DoUsed info)               = buildForInfo info e
-transformError e                             = buildUnknownError e
+transformError e@(NoFunDef name _)           = buildForName name e Error
+transformError e@(Undefined name _)          = buildForName name e Error
+transformError e@(Duplicated name _ _)       = buildForName name e Error
+transformError e@(TypeVarApplication name)   = buildForName name e Error
+transformError e@(HigherOrder info)          = buildForInfo info e Error
+transformError e@(LambdaFunction info)       = buildForInfo info e Error
+transformError e@(NoTypeDef name)            = buildForName name e Error
+transformError e@(Shadowing qname)           = buildForQName qname e Error
+transformError e@(TypeVar name)              = buildForName name e Error
+transformError e@(Imported moduleName)       = buildForModuleName moduleName e Error
+transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e Error
+transformError e@(OwnDataDecl info)          = buildForInfo info e Error
+transformError e@(DoUsed info)               = buildForInfo info e Error
+transformError e                             = buildUnknownError e Warning
 
 -- | Plain Lintoutput Generator
 lintPlain :: Lint -> String
