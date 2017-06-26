@@ -14,75 +14,85 @@ printFilenameAndPos filename pos =
     let (line, column, _, _) = pos
     in filename ++ ":" ++ show line ++ ":" ++ show column ++ ":\r\n"
 
+printFilenameAndPosWithSwitch :: Bool -> Filename -> Position -> String
+printFilenameAndPosWithSwitch False _ _ = ""
+printFilenameAndPosWithSwitch True  f p = printFilenameAndPos f p
+
 prettyError :: Error SrcSpanInfo -> String
-prettyError (NoFunDef name sims) =
+prettyError = prettyErrorWithInfoSwith False
+
+prettyErrorForLint :: Error SrcSpanInfo -> String
+prettyErrorForLint = prettyErrorWithInfoSwith True
+
+prettyErrorWithInfoSwith :: Bool -> Error SrcSpanInfo -> String
+prettyErrorWithInfoSwith s (NoFunDef name sims) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Type signature for " ++ prettyPrintQ name ++ " at "
        ++ prettyNameLoc name ++ " without a definition.\r\n" ++ prettySims sims
-prettyError (Undefined name sims) =
+prettyErrorWithInfoSwith s (Undefined name sims) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
        ++ prettyNameLoc name ++ ".\r\n" ++ prettySims sims
-prettyError (Duplicated name entity maymod) =
+prettyErrorWithInfoSwith s (Duplicated name entity maymod) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ show entity ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
        ++ " is already defined" ++ mod ++ "."
     where mod = case maymod of
                   Just mname -> " in module " ++ prettyPrintQ mname
                   Nothing    -> ""
-prettyError (TypeVarApplication name) =
+prettyErrorWithInfoSwith s (TypeVarApplication name) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
        ++ " cannot be applied to another type."
-prettyError (HigherOrder position) =
+prettyErrorWithInfoSwith s (HigherOrder position) =
     let (filename, pos) = extractFilenameAndPosition position
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "HigherOrder function located at " ++ prettyLoc position ++ "."
-prettyError (LambdaFunction position) =
+prettyErrorWithInfoSwith s (LambdaFunction position) =
     let (filename, pos) = extractFilenameAndPosition position
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Lambda function located at " ++ prettyLoc position ++ "."
-prettyError (NoTypeDef name) =
+prettyErrorWithInfoSwith s (NoTypeDef name) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "No TypeSignature for function named " ++ prettyPrintQ name ++ " at "
        ++ prettyNameLoc name ++ "."
-prettyError (Shadowing qname) =
+prettyErrorWithInfoSwith s (Shadowing qname) =
     let (filename, pos) = extractFilenameAndPositionFromQName qname
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found shadowing of variable " ++ getNameOfQName qname ++ " at "
        ++ prettyLoc (extractPositionFromQname qname) ++ "."
-prettyError (TypeVar name) =
+prettyErrorWithInfoSwith s (TypeVar name) =
     let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found typevariable " ++ prettyPrintQ name ++ " at "++ prettyNameLoc name ++ "."
-prettyError (Imported name) =
+prettyErrorWithInfoSwith s (Imported name) =
     let (filename, pos) = extractFilenameAndPositionFromModuleName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found import " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name ++ "."
-prettyError (ModuleHeadUsed name) =
+prettyErrorWithInfoSwith s (ModuleHeadUsed name) =
     let (filename, pos) = extractFilenameAndPositionFromModuleName name
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found module head " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name ++ "."
-prettyError (OwnDataDecl l) =
+prettyErrorWithInfoSwith s (OwnDataDecl l) =
     let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found data declaration or type synonym at " ++ prettyLoc l ++ "."
-prettyError (DoUsed l) =
+prettyErrorWithInfoSwith s (DoUsed l) =
     let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
-prettyError (SyntaxError l e) =
+prettyErrorWithInfoSwith s (SyntaxError l e) =
     let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Syntax Error (" ++ e ++ ") at " ++ prettyLoc l ++ "."
-prettyError (InvalidTest l t) =
+prettyErrorWithInfoSwith s (InvalidTest l t) =
     let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPos filename pos
+    in printFilenameAndPosWithSwitch s filename pos
        ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
 
 extractPositionFromQname :: QName l -> l

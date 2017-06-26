@@ -8,14 +8,14 @@ module Testing.TestExpExtractor(
 
 import           Control.Arrow
 import           Data.Char
+import           Data.Either
 import           Data.Functor
 import           Data.List
 import           Data.Maybe
-import           Data.Either
 import           Language.Haskell.Exts
 import           Paths_drhaskell
-import           Util.ModifyAst
 import           StaticAnalysis.Messages.StaticErrors
+import           Util.ModifyAst
 
 
 --module for extracting tests specified in comments
@@ -65,7 +65,7 @@ checkTest a = case a of
   where
     checkTest' (App _ e _)        = findTestFunc e
     checkTest' (InfixApp _ e q _) = isDollar q && findTestFunc e
-    checkTest' _ = False
+    checkTest' _                  = False
     isDollar (QVarOp _ (UnQual _ (Symbol _ "$"))) = True
     isDollar _                                    = False
     findTestFunc (Var _ (UnQual _ (Ident _ "checkExpect"))) = True

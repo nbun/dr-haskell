@@ -51,7 +51,7 @@ ineq = (P./=)
 data Maybe a = Nothing | Just a
 
 map :: (a -> b) -> [a] -> [b]
-map _ [] = []
+map _ []     = []
 map f (x:xs) = f x : map f xs
 
 foldl :: (b -> a -> b) -> b -> [a] -> b
@@ -67,7 +67,7 @@ filter :: (a -> P.Bool) -> [a] -> [a]
 filter = P.filter
 
 not :: P.Bool -> P.Bool
-not P.True = P.False
+not P.True  = P.False
 not P.False = P.True
 
 (&&) :: P.Bool -> P.Bool -> P.Bool
