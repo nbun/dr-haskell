@@ -1,3 +1,4 @@
+-- | Holds the whole Do-Occurence-Check
 module StaticAnalysis.StaticChecks.DoUsed (module StaticAnalysis.StaticChecks.DoUsed) where
 
 import           AstChecks.Check
