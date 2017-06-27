@@ -5,6 +5,7 @@ import           Control.Exception
 import           Language.Haskell.Exts
 import           Paths_drhaskell
 import           StaticAnalysis.Messages.ErrorToLint
+import           StaticAnalysis.Messages.Prettify
 import           System.Directory
 import           System.IO
 import           System.IO.Temp
@@ -26,8 +27,11 @@ parseMix :: Mix -> [Lint]
 parseMix (Mix _ _ _ _ mixpos) = loopMixPos mixpos
     where loopMixPos :: [MixEntry] -> [Lint] --type MixEntry = (HpcPos, BoxLabel)
           loopMixPos []            = []
-          loopMixPos ((pos,_):mes) = Lint "HPC" (fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
-
+          loopMixPos ((pos,ExpBox True):mes) = Lint "HPC" (restorePosition $ fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
+          loopMixPos ((pos,TopLevelBox _):mes) = Lint "HPC" (restorePosition $ fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
+          loopMixPos (_:mes)       = loopMixPos mes
+          restorePosition :: Position -> Position
+          restorePosition (sl, sc, el, ec) = (sl - 1, sc, el - 1, ec)
 extractStartAndEndColumn :: [Integer] -> (Int, Int)
 extractStartAndEndColumn [] = (0,0)
 extractStartAndEndColumn xs = (fromIntegral $ head xs,
