@@ -11,33 +11,41 @@ import           System.IO
 import           System.IO.Temp
 import           System.Process
 import           Trace.Hpc.Mix
+import           Trace.Hpc.Tix
 import           Trace.Hpc.Util
 import           Util.ModifyAst
 
 getConverageOutput :: ModifiedModule -> IO [Lint]
 getConverageOutput m = do
     let plainFile = printModified m
-    tix <- (withSystemTempDirectory "drhaskell-lint." $ runInTempDir plainFile)
-    case tix of
-        Just t  -> return $ parseMix t
-        Nothing -> return []
+    mixtix <- (withSystemTempDirectory "drhaskell-lint."
+                    $ runInTempDir plainFile)
+    case mixtix of
+        Just (mix, tix) -> return $ parseMT mix tix
+        Nothing         -> return []
 
 --Mix FilePath UTCTime Hash Int [MixEntry]
-parseMix :: Mix -> [Lint]
-parseMix (Mix _ _ _ _ mixpos) = loopMixPos mixpos
-    where loopMixPos :: [MixEntry] -> [Lint] --type MixEntry = (HpcPos, BoxLabel)
-          loopMixPos []            = []
-          loopMixPos ((pos,ExpBox True):mes) = Lint "HPC" (restorePosition $ fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
-          loopMixPos ((pos,TopLevelBox _):mes) = Lint "HPC" (restorePosition $ fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
-          loopMixPos (_:mes)       = loopMixPos mes
-          restorePosition :: Position -> Position
-          restorePosition (sl, sc, el, ec) = (sl - 1, sc, el - 1, ec)
+parseMT :: Mix -> Tix -> [Lint]
+parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs))
+    | hash1 == hash2 =
+        let zipped = zip tixpos mixpos
+            filtered = filter (\(i,_) -> i /= 0) zipped
+            filteredMixPos = foldr (\(_,x) xs -> x : xs) [] filtered
+        in loopMixPos filteredMixPos
+    | otherwise = parseMT mix (Tix xs)
+        where loopMixPos :: [MixEntry] -> [Lint]
+              loopMixPos []            = []
+              loopMixPos ((pos,_):mes) = Lint "HPC" (restorePosition $ fromHpcPos pos) Warning "Covered" : loopMixPos mes -- data Lint = Lint Filename Position MessageClass Message
+              restorePosition :: Position -> Position
+              restorePosition (sl, sc, el, ec) = (sl - 1, sc, el - 1, ec)
+--parseMT mix (Tix (x:xs)) = parseMT mix (Tix xs)
+
 extractStartAndEndColumn :: [Integer] -> (Int, Int)
 extractStartAndEndColumn [] = (0,0)
 extractStartAndEndColumn xs = (fromIntegral $ head xs,
                                fromIntegral $ last xs)
 
-runInTempDir :: String -> FilePath -> IO (Maybe Mix)
+runInTempDir :: String -> FilePath -> IO (Maybe (Mix,Tix))
 runInTempDir plainFile tmpDir = do
     setCurrentDirectory tmpDir
     datadir <- getDataDir
@@ -50,13 +58,13 @@ runInTempDir plainFile tmpDir = do
             if tmpCompExists
             then do tmpout <- readProcess "./tmp" [] []
                     hpcDirExists <- doesDirectoryExist (tmpDir ++ "/.hpc")
-                    if hpcDirExists
+                    tixExists <- doesFileExist (tmpDir ++ "/tmp.tix")
+                    if hpcDirExists && tixExists
                     then do mix <- readMix [(tmpDir ++ "/.hpc")] (Left "Main")
-                            return $ Just mix
+                            tix <- readTix (tmpDir ++ "/tmp.tix")
+                            case tix of
+                                Just t  -> return $ Just (mix, t)
+                                Nothing -> return Nothing
                     else return Nothing
-                    --tixExists <- doesFileExist (tmpDir ++ "/tmp.tix")
-                    --if tixExists
-                    --then readTix (tmpDir ++ "/tmp.tix")
-                    --else return Nothing
             else return Nothing
     else return Nothing
