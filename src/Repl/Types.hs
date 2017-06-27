@@ -4,6 +4,7 @@ module Repl.Types (
   ReplState(..),
   filename, forceLevel, runTests, nonStrict, customPrelude,
   initialReplState,
+  initialLintReplState,
   ReplInput,
   ReplInterpreter,
   Repl,
@@ -38,6 +39,16 @@ initialReplState = ReplState {
   _runTests      = True,
   _nonStrict     = False,
   _customPrelude = True
+}
+
+-- some sane defaults
+initialLintReplState :: ReplState
+initialLintReplState = ReplState {
+  _filename      = "",
+  _forceLevel    = Nothing,
+  _runTests      = False,
+  _nonStrict     = False,
+  _customPrelude = False
 }
 
 makeLenses ''ReplState

@@ -1,5 +1,6 @@
 module DrHaskellLint (module DrHaskellLint) where
 
+import           CodeCoverage.Coverage
 import           Control.Lens                        hiding (Level)
 import           Data.List
 import           Data.Maybe
@@ -39,11 +40,12 @@ run level file format = do
 
 runWithRepl :: [Lint] -> String -> Level -> LinterOutput -> IO ()
 runWithRepl hlintHints file lvl format = do
-    let state = forceLevel .~ Just lvl $ initialReplState
+    let state = forceLevel .~ Just lvl $ initialLintReplState
     ParseOk m1 <- parseModified file
     (m2, errs) <- transformModule [] state m1
     errs' <- runCheckLevel lvl file
-    putStrLn (lintErrorHlint hlintHints format (errs ++ errs'))
+    coverage <- getConverageOutput m2
+    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs'))
 
 pushToHlint :: String -> IO [Hlint.Idea]
 pushToHlint file = Hlint.hlint [file, "--quiet"]
