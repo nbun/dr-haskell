@@ -1,58 +1,187 @@
+-- Simplified version of the Prelude without type classes
+
 module MyPrelude (
-    Int,
-    P.Bool(..),
-    ieq,
-    ineq,
-    (-),
-    (+),
-    (++),
-    Maybe(..),
-    map,
-    foldl,
-    foldr,
-    (.),
-    filter,
-    not,
-    (||),
-    (&&),
-    concatMap
-)where
+  -- Data types
+  P.Int,
+  P.Float,
+  P.Bool,
+  P.Maybe(..),
+  P.Either(..),
+  P.Char,
+  P.String,
 
-{-
-  Probleme:
+  -- Comparison operators ==, <, >, <=, >= for Int, Bool and Char
+  ieq,
+  beq,
+  ceq,
+  ineq,
+  bneq,
+  cneq,
+  ilt,
+  blt,
+  clt,
+  ileq,
+  bleq,
+  cleq,
+  igt,
+  bgt,
+  cgt,
+  igeq,
+  bgeq,
+  cgeq,
 
-  Test auf Gleichheit? ieq, ineq, beq, bneq?
-  Eigene Typen für Int/Bool vs. Wiederexportieren?
--}
+  -- Arithmetic operators +, -, * and / for Int and Float
+  (+),
+  (-),
+  (*),
+  (/),
+  (.+),
+  (.-),
+  (.*),
+  (./),
+
+  -- Simple versions of list functions that use Foldable or Num
+  length,
+  concat,
+  foldl,
+  foldr,
+  sum,
+  all,
+  lookup, -- lookup has an extra eq :: a -> a -> Bool argument
+
+  -- More infix operators
+  (P.++),
+  (P..),
+  (P.||),
+  (P.&&),
+  (P.!!),
+
+  -- Functions that appear in the lecture or exercises
+  P.last,
+  P.head,
+  P.tail,
+  P.init,
+  P.fst,
+  P.snd,
+  P.zip,
+  P.unzip,
+  P.take,
+  P.flip,
+  P.map,
+  P.filter,
+  P.curry,
+  P.uncurry,
+  P.const,
+  P.repeat,
+  P.iterate,
+  P.putStr,
+  P.getLine,
+  P.readFile,
+  P.writeFile,
+  P.reverse,
+  P.replicate,
+  P.otherwise
+  ) where
 
 import qualified Prelude as P
 
-type Int = P.Int
---type Bool = P.Bool
+--------------------------------------------------------------------------------
+-- Data types
 
---(==) :: P.Eq a => a -> a -> P.Bool
---(==) = (P.==)
+data Maybe a = Just a | Nothing
 
-ieq :: Int -> Int -> P.Bool
+--------------------------------------------------------------------------------
+-- Comparison operators
+
+ieq :: P.Int -> P.Int -> P.Bool
 ieq = (P.==)
 
-ineq :: Int -> Int -> P.Bool
+beq :: P.Bool -> P.Bool -> P.Bool
+beq = (P.==)
+
+ceq :: P.Char -> P.Char -> P.Bool
+ceq = (P.==)
+
+ineq :: P.Int -> P.Int -> P.Bool
 ineq = (P./=)
 
-(-) :: Int -> Int -> Int
+bneq :: P.Bool -> P.Bool -> P.Bool
+bneq = (P./=)
+
+cneq :: P.Char -> P.Char -> P.Bool
+cneq = (P./=)
+
+ilt :: P.Int -> P.Int -> P.Bool
+ilt = (P.<)
+
+ileq :: P.Int -> P.Int -> P.Bool
+ileq = (P.<=)
+
+igt :: P.Int -> P.Int -> P.Bool
+igt = (P.>)
+
+igeq :: P.Int -> P.Int -> P.Bool
+igeq = (P.>=)
+
+blt :: P.Bool -> P.Bool -> P.Bool
+blt = (P.<)
+
+bleq :: P.Bool -> P.Bool -> P.Bool
+bleq = (P.<=)
+
+bgt :: P.Bool -> P.Bool -> P.Bool
+bgt = (P.>)
+
+bgeq :: P.Bool -> P.Bool -> P.Bool
+bgeq = (P.>=)
+
+clt :: P.Char -> P.Char -> P.Bool
+clt = (P.<)
+
+cleq :: P.Char -> P.Char -> P.Bool
+cleq = (P.<=)
+
+cgt :: P.Char -> P.Char -> P.Bool
+cgt = (P.>)
+
+cgeq :: P.Char -> P.Char -> P.Bool
+cgeq = (P.>=)
+
+--------------------------------------------------------------------------------
+-- Arithmetic operators
+
+(-) :: P.Int -> P.Int -> P.Int
 (-) = (P.-)
-(+) :: Int -> Int -> Int
+
+(+) :: P.Int -> P.Int -> P.Int
 (+) = (P.+)
 
-(++) :: [a] -> [a] -> [a]
-[]     ++ ys = ys
-(x:xs) ++ ys = x : (xs ++ ys)
+(*) :: P.Int -> P.Int -> P.Int
+(*) = (P.*)
 
-data Maybe a = Nothing | Just a
+(/) :: P.Int -> P.Int -> P.Int
+(/) = P.div
 
-map :: (a -> b) -> [a] -> [b]
-map _ []     = []
-map f (x:xs) = f x : map f xs
+(.-) :: P.Float -> P.Float -> P.Float
+(.-) = (P.-)
+
+(.+) :: P.Float -> P.Float -> P.Float
+(.+) = (P.+)
+
+(.*) :: P.Float -> P.Float -> P.Float
+(.*) = (P.*)
+
+(./) :: P.Float -> P.Float -> P.Float
+(./) = (P./)
+
+--------------------------------------------------------------------------------
+-- List functions
+
+length :: [a] -> P.Int
+length = P.length
+
+concat :: [[a]] -> [a]
+concat = P.concat
 
 foldl :: (b -> a -> b) -> b -> [a] -> b
 foldl = P.foldl
@@ -60,23 +189,13 @@ foldl = P.foldl
 foldr :: (a -> b -> b) -> b -> [a] -> b
 foldr = P.foldr
 
-(.) :: (b -> c) -> (a -> b) -> a -> c
-(.) = (P..)
+sum :: [P.Int] -> P.Int
+sum = P.sum
 
-filter :: (a -> P.Bool) -> [a] -> [a]
-filter = P.filter
+all :: (a -> P.Bool) -> [a] -> P.Bool
+all = P.all
 
-not :: P.Bool -> P.Bool
-not P.True  = P.False
-not P.False = P.True
-
-(&&) :: P.Bool -> P.Bool -> P.Bool
-P.True && P.True = P.True
-_      && _      = P.False
-
-(||) :: P.Bool -> P.Bool -> P.Bool
-P.False || P.False = P.False
-_       || _       = P.True
-
-concatMap :: (a -> [b]) -> [a] -> [b]
-concatMap = P.concatMap
+lookup :: (a -> a -> P.Bool) -> a -> [(a, b)] -> Maybe b
+lookup _ _ [] = Nothing
+lookup eq x ((a, b) : xs) | eq x a      = Just b
+                          | P.otherwise = lookup eq x xs
