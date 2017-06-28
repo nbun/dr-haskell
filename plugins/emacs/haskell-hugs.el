@@ -276,23 +276,27 @@ error line otherwise show the Hugs buffer."
   ;; Error message search starts from last load command.
   (goto-char haskell-hugs-load-end)
   (if (re-search-forward
-       "^ERROR \"\\([^ ]*\\)\"\\( (line \\([0-9]*\\))\\|\\)" nil t)
-      (let ((efile (buffer-substring (match-beginning 1)
-				     (match-end 1)))
-	    (eline (if (match-beginning 3)
+       "^\\(.*?\\)\\.drhaskell\\(.*?\\):\\([0-9]+\\):\\([0-9]+\\):.*?\n" nil t)
+      (let ((efile (concat (directory-file-name
+                            (buffer-substring (match-beginning 1) (match-end 1)))
+                           (buffer-substring (match-beginning 2) (match-end 2))))
+	          (eline (if (match-beginning 3)
                        (string-to-int (buffer-substring (match-beginning 3)
                                                         (match-end 3)))))
-	    (emesg (buffer-substring (1+ (point))
-				     (save-excursion (end-of-line) (point)))))
+            (ecolumn (if (match-beginning 4)
+                         (string-to-int (buffer-substring (match-beginning 4)
+                                                        (match-end 4)))))
+            (emesg (buffer-substring (1+ (point))
+                                     (save-excursion (end-of-line) (point)))))
         (pop-to-buffer  haskell-hugs-process-buffer) ; show *hugs* buffer
         (goto-char (point-max))
         (recenter)
-	(message "Hugs error %s %s"
-                 (file-name-nondirectory efile) emesg)
         (if (file-exists-p efile)
             (progn (find-file-other-window efile)
                    (if eline (goto-line eline))
+                   (if ecolumn (move-to-column ecolumn))
                    (recenter)))
+        (message "Hugs error %s %s" (file-name-nondirectory efile) emesg)
         )
     (pop-to-buffer  haskell-hugs-process-buffer) ; show *hugs* buffer
     (goto-char (point-max))
