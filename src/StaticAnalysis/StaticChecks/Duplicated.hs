@@ -1,4 +1,5 @@
-module StaticAnalysis.StaticChecks.Duplicated (module StaticAnalysis.StaticChecks.Duplicated) where
+-- | Check if a module contains duplicated definitions
+module StaticAnalysis.StaticChecks.Duplicated (duplicated) where
 
 import           Control.Monad
 import           Data.Maybe
@@ -6,10 +7,8 @@ import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 
---------------------------------------------------------------------------------
--- Duplicated name in imported module
-
-duplicated :: Eq l => Module l -> [Module l] -> [Error l]
+-- | Checks if a module defines a function or data type that is already imported
+duplicated :: Module l -> [Module l] -> [Error l]
 duplicated m ms = do
   (n, e) <- defNames m
   let m' = definedIn n ms
@@ -17,14 +16,16 @@ duplicated m ms = do
   let Just mname = m'
   return $ Duplicated n e (nameOfModule mname)
 
+-- | Returns a module, if the given name is already defined in the module
 definedIn :: Name l -> [Module l] -> Maybe (Module l)
 definedIn _ []     = Nothing
 definedIn n (m:ms) = defined n m `mplus` definedIn n ms
- where defined n m = if nameString n `elem` exported m
-                       then Just m
+ where defined n' m' = if nameString n' `elem` exported m'
+                       then Just m'
                        else Nothing
-       exported m  = map (nameString .qNameName) $
-                         mapMaybe exportSpecQName (exports m)
+       exported m'  = map (nameString .qNameName) $
+                         mapMaybe exportSpecQName (exports m')
+
 
 exports :: Module l -> [ExportSpec l]
 exports (Module _ (Just (ModuleHead _ _ _ (Just (ExportSpecList _ especs)))) _ _ _)

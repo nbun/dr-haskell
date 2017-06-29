@@ -1,13 +1,14 @@
-module StaticAnalysis.StaticChecks.OwnDataDecl (module StaticAnalysis.StaticChecks.OwnDataDecl) where
+-- | Check if a data declaration is used
+module StaticAnalysis.StaticChecks.OwnDataDecl (ownDataDecl) where
 
 import           Data.Maybe
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
 
+-- | Checks if a data declaration is used
 ownDataDecl :: Module l -> [Error l]
 ownDataDecl (Module _ _ _ _ decls) = map OwnDataDecl $ mapMaybe dataDeclLoc decls
-
+ownDataDecl _ = []
 
 dataDeclLoc :: Decl l -> Maybe l
 dataDeclLoc decl =

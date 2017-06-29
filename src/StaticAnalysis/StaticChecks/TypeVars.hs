@@ -1,13 +1,15 @@
-module StaticAnalysis.StaticChecks.TypeVars (module StaticAnalysis.StaticChecks.TypeVars) where
+-- | Check if type variables are used
+module StaticAnalysis.StaticChecks.TypeVars (checkForTypVar) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 
+-- | Checks if type variables are used
 checkForTypVar :: TypeCheck l (Error l)
-checkForTypVar (TyFun _ x xs) =
+checkForTypVar (TyFun _ x _) =
     case x of
-        (TyVar _ name) -> [TypeVar name]
-        _              -> []
+        (TyVar _ n) -> [TypeVar n]
+        _           -> []
 checkForTypVar _ = []
 

@@ -1,12 +1,11 @@
-module StaticAnalysis.StaticChecks.ImportUsed (module StaticAnalysis.StaticChecks.ImportUsed) where
+-- | Check if a module is imported 
+module StaticAnalysis.StaticChecks.ImportUsed (importUsed) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
 
---------------------------------------------------------------------------------
--- Usage of imports
-
+-- | Checks if a module has import declarations
 importUsed :: Module l -> [Error l]
 importUsed (Module _ _ _ imports _) =
-  map (\(ImportDecl _ name _ _ _ _ _ _) -> Imported name) imports
+  map (\(ImportDecl _ n _ _ _ _ _ _) -> Imported n) imports
+importUsed _ = []

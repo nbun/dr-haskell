@@ -1,4 +1,5 @@
-module StaticAnalysis.StaticChecks.NoTypeDef (module StaticAnalysis.StaticChecks.NoTypeDef) where
+-- | Check if a definition misses an accompanying type signature
+module StaticAnalysis.StaticChecks.NoTypeDef (noTypeDef) where
 
 import           AstChecks.Check
 import           Data.List
@@ -6,6 +7,7 @@ import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 
+-- | Checks if a definition misses an accompanying type signature
 noTypeDef :: ModuleCheck l (Error l)
 noTypeDef m = let
     defs = map fst $ defFuncs m
