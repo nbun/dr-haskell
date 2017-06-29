@@ -1,10 +1,11 @@
 module StaticAnalysis.CheckState (module StaticAnalysis.CheckState) where
 
 import           AstChecks.Check
-import           Control.Monad.Catch
 import           Control.Monad.State.Lazy
+import           Control.Monad.Catch
 import           Data.Functor.Identity
 import           Language.Haskell.Exts
+import           Paths_drhaskell
 import           StaticAnalysis.Messages.StaticErrors
 
 import           StaticAnalysis.Messages.Prettify
@@ -69,8 +70,8 @@ levelOne p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkAST cId cId cId checkForHigherOrderFunction
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
@@ -94,8 +95,8 @@ levelTwo p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkAST cId cId cId checkForHigherOrderFunction
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
@@ -118,13 +119,13 @@ levelThree p = do
   check noFunDef
   check typeVarApplication
   check doUsed
-  checkExt undef [] -- [p]
-  checkExt duplicated [] -- [p]
+  checkExt undef p
+  checkExt duplicated p
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
 
 levelFull :: LevelT
-levelFull p = return ()
+levelFull _ = return ()
 
 levelMapping :: Level -> LevelT
 levelMapping l = case l of
@@ -136,6 +137,9 @@ levelMapping l = case l of
 runCheckLevel :: Level -> FilePath -> IO [Error SrcSpanInfo]
 runCheckLevel level path = do
   m <- getAST path
-  -- p <- getAST "path/to/level/1/prelude.hs"
-  let (CheckState _ errors) = execState (levelMapping level []) (CheckState m [])
+  mods <- handleAll (\_ -> return []) $ do
+                myPrelPath <- getDataFileName "TargetModules/MyPrelude.hs"
+                myPrel <- getAST myPrelPath
+                return [myPrel]
+  let (CheckState _ errors) = execState (levelMapping level mods) (CheckState m [])
   return errors

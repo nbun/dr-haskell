@@ -1,6 +1,18 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TemplateHaskell   #-}
-module Repl.Types (module Repl.Types) where
+module Repl.Types (
+  ReplState(..),
+  filename, forceLevel, runTests, nonStrict, customPrelude,
+  initialReplState,
+  initialLintReplState,
+  ReplInput,
+  ReplInterpreter,
+  Repl,
+  runRepl,
+  liftInput,
+  liftInterpreter,
+  liftRepl,
+) where
 
 import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch
@@ -9,6 +21,7 @@ import           Language.Haskell.Interpreter
 import           StaticAnalysis.CheckState
 import           System.Console.Haskeline
 
+-- includes all state that may be needed in the REPL
 data ReplState = ReplState {
   _filename      :: String,
   _forceLevel    :: Maybe Level,
@@ -18,6 +31,7 @@ data ReplState = ReplState {
 }
   deriving (Show)
 
+-- some sane defaults
 initialReplState :: ReplState
 initialReplState = ReplState {
   _filename      = "",
@@ -27,8 +41,23 @@ initialReplState = ReplState {
   _customPrelude = True
 }
 
+-- some sane defaults
+initialLintReplState :: ReplState
+initialLintReplState = ReplState {
+  _filename      = "",
+  _forceLevel    = Nothing,
+  _runTests      = False,
+  _nonStrict     = False,
+  _customPrelude = False
+}
+
 makeLenses ''ReplState
 
+-- the REPL need functionality supplied by different monads.
+-- IO in needed because the used monads need it
+-- InputT is needed for the Haskeline pretty in-/output
+-- InterpreterT is needed for the Hint Haskell interpreter
+-- StateT ReplState carries our own information
 type ReplInput = InputT IO
 type ReplInterpreter = InterpreterT ReplInput
 type Repl = StateT ReplState ReplInterpreter

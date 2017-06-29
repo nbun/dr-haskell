@@ -9,7 +9,6 @@ import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 import           Text.JSON
 
-
 shadowing :: DeclCheck SrcSpanInfo (Error SrcSpanInfo)
 shadowing (FunBind _ matches) = concatMap checkMatch matches
 shadowing _                   = []

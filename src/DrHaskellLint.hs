@@ -1,8 +1,14 @@
 module DrHaskellLint (module DrHaskellLint) where
 
+import           CodeCoverage.Coverage
+import           Control.Lens                        hiding (Level)
 import           Data.List
 import           Data.Maybe
+import           Language.Haskell.Exts
 import qualified Language.Haskell.HLint3             as Hlint
+import           Repl.CmdOptions
+import           Repl.Loader
+import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.ErrorToLint
 import           StaticAnalysis.Messages.Prettify
@@ -10,26 +16,36 @@ import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
 import           System.IO
+import           Util.ModifyAst
 
 main :: IO ()
 main = do
     args <- getArgs
-    if length args /= 3
+    if (length args) < 3
         then exitFailure
         else do
-            (level, file, format) <- parse args
+            (level, file, format) <- parseArgs args
             run level file format
 
 run :: Integer -> String -> LinterOutput -> IO ()
 run level file format = do
     hlintIdeas <- pushToHlint file
     hlintHints <- return (hLintToLint file hlintIdeas)
-    case (level, file) of
-        (0, file) -> runCheckLevel LevelFull file >>= (putStrLn . lintErrorHlint hlintHints format)
-        (1, file) -> runCheckLevel Level1 file >>= (putStrLn . lintErrorHlint hlintHints format)
-        (2, file) -> runCheckLevel Level2 file >>= (putStrLn . lintErrorHlint hlintHints format)
-        (3, file) -> runCheckLevel Level3 file >>= (putStrLn . lintErrorHlint hlintHints format)
-        (_, _)    -> exitFailure
+    let lvl = case level of
+                    1 -> Level1
+                    2 -> Level2
+                    3 -> Level3
+                    _ -> LevelFull
+    runWithRepl hlintHints file lvl format
+
+runWithRepl :: [Lint] -> String -> Level -> LinterOutput -> IO ()
+runWithRepl hlintHints file lvl format = do
+    let state = forceLevel .~ Just lvl $ initialLintReplState
+    ParseOk m1 <- parseModified file
+    (m2, errs) <- transformModule [] state m1
+    errs' <- runCheckLevel lvl file
+    coverage <- getConverageOutput m2
+    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs'))
 
 pushToHlint :: String -> IO [Hlint.Idea]
 pushToHlint file = Hlint.hlint [file, "--quiet"]
@@ -46,14 +62,19 @@ severityToMessageClass Hlint.Warning    = Warning
 severityToMessageClass Hlint.Error      = Error
 severityToMessageClass Hlint.Ignore     = Suggestion
 
-parse :: [String] -> IO (Integer, String, LinterOutput)
-parse argv = do
+parseArgs :: [String] -> IO (Integer, String, LinterOutput)
+parseArgs argv = do
     let x = fromMaybe 0 (hasLevelHint argv)
     let format = if "--json" ` elem ` argv
                  then json
                  else plain
-    let y = argv !! 1
+    let y = findFile argv
     return (x, y, format)
+
+findFile :: [String] -> String
+findFile []               = ""
+findFile (('-':'-':_):xs) = findFile xs
+findFile (x:_)            = x
 
 hasLevelHint :: [String] -> Maybe Integer
 hasLevelHint [] = Nothing

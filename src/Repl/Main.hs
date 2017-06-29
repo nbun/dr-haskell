@@ -1,7 +1,9 @@
+{-# LANGUAGE TupleSections #-}
+
 module Repl.Main (module Repl.Main) where
 
-import           Control.Lens                     hiding (Level, set)
-import           Control.Monad.Catch              as MC
+import           Control.Lens                 hiding (Level, set)
+import           Control.Monad.Catch          as MC
 import           Control.Monad.State
 import           Paths_drhaskell
 import           System.FilePath
@@ -12,17 +14,11 @@ import           Repl.Loader
 import           Repl.Types
 import           System.Console.Haskeline
 
-import           StaticAnalysis.Messages.Prettify
-
 {-
-
 Current Limitations:
   - history is not used
   - no let-constructs
-  - our custom checks and modifications
-  - anything, really
 -}
-
 
 
 replRead :: ReplInput (Maybe String)
@@ -38,9 +34,9 @@ replLoop = do
   case minput of
        Nothing -> return ()
        Just x -> do
-         res <- replEval x
+         (res, cont) <- replEval x
          liftInput $ replPrint res
-         replLoop
+         when cont replLoop
 
 initInterpreter :: ReplInterpreter ()
 initInterpreter = do
@@ -62,46 +58,55 @@ main = do
        Left err -> putStrLn $ "Error:" ++ show err
        Right _  -> return ()
 
-replEval :: String -> Repl (Maybe String)
+replEval :: String -> Repl (Maybe String, Bool)
 replEval q = case q of
   ':':xs -> replEvalCommand xs
-  _      -> liftInterpreter $ replEvalExp q
+  _      -> liftInterpreter $ (,True) <$> replEvalExp q
 
-replHelp :: Repl String
-replHelp = return $ unlines [
+replHelp :: Maybe String -> Repl String
+replHelp input = return $ unlines $ hint : [
   ":? - This help",
   ":l - load module",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
+  where hint = case input of
+                 Just  s -> "Unrecognized option '" ++ s ++ "'"
+                 Nothing -> ""
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
 replEvalExp q =
-  MC.handleAll (\_ -> do
-                      liftInput $ outputStrLn "Error!"
+  MC.handleAll (\e -> do
+                      liftIO $ putStrLn (displayException e)
                       return Nothing) $ do
     t <- typeOf q
     if t == "IO ()"
       then interpret q (as :: IO ()) >>= liftIO >> return Nothing
       else Just <$> eval q
 
-replEvalCommand :: String -> Repl (Maybe String)
-replEvalCommand cmd = case cmd of
-  "?" -> Just <$> replHelp
-  ('l':' ': xs)-> do
-    previousForceLevel <- use forceLevel
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        liftRepl $ forceLevel .= previousForceLevel
-                        return Nothing) $ do
-      liftRepl $ forceLevel .= Nothing
-      errors <- loadModule xs
-      return (Just (unlines $ map printLoadMessage errors))
-  ('r':_) -> do
-    md <- gets _filename
-    MC.handleAll (\e -> do
-                        liftInput $ outputStrLn $ displayException e
-                        return Nothing) $ do
-      errors <- loadModule md
-      return (Just (unlines $ map printLoadMessage errors))
-  ('t':' ': xs) -> Just <$> liftInterpreter (typeOf xs)
+replEvalCommand :: String -> Repl (Maybe String, Bool)
+replEvalCommand cmd = if null cmd then invalid cmd else
+  case head args of
+    "q"      -> quit
+    "quit"   -> quit
+    "l"      -> load
+    "load"   -> load
+    "r"      -> reload
+    "reload" -> reload
+    "t"      -> typeof
+    "type"   -> typeof
+    s        -> invalid s
+  where args = words cmd
+        quit = return (Nothing, False)
+        load = do
+          previousForceLevel <- use forceLevel
+          liftRepl $ forceLevel .= previousForceLevel
+          errors <- loadModule $ args !! 1
+          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+        reload = do
+          md <- gets _filename
+          errors <- loadModule md
+          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+        typeof =  liftInterpreter (typeOf $ args !! 1) >>=
+                                  \res -> return (Just res, True)
+        invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)

@@ -1,4 +1,6 @@
-module Repl.CmdOptions (module Repl.CmdOptions) where
+module Repl.CmdOptions (
+    handleCmdArgs
+) where
 
 import           Control.Lens              as L
 import           Repl.Types

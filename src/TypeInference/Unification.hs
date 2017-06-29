@@ -1,6 +1,6 @@
 module TypeInference.Unification
   ( UnificationError (..)
-  , showUnificationError, unify, unifiable
+  , unify, unifiable
   ) where
 
 import Data.Either (isRight)
@@ -33,6 +33,9 @@ showUnificationError (OccurCheck v t) = "OccurCheck: " ++ (showVarIdx v)
                                                        ++ " occurs in "
                                                        ++ (show t)
                                                        ++ "!"
+
+instance Show f => Show (UnificationError f) where
+  show = showUnificationError
 
 -- -----------------------------------------------------------------------------
 -- Representation of internal data structures
