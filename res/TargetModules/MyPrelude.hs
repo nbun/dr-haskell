@@ -4,7 +4,7 @@ module MyPrelude (
   -- Data types
   P.Int,
   P.Float,
-  P.Bool,
+  P.Bool(..),
   P.Maybe(..),
   P.Either(..),
   P.Char,

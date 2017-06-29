@@ -28,7 +28,7 @@ data LoadMessage = CheckError (Error SrcSpanInfo)
                  | DirectMessage String
 
 printLoadMessage :: LoadMessage -> String
-printLoadMessage (CheckError e)    = prettyError e
+printLoadMessage (CheckError e)    = prettyErrorForLint e
 printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
