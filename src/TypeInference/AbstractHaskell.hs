@@ -65,31 +65,32 @@ data TypeExpr a = TVar (VarName, a)
 -- Representation of a type signature for a function.
 data TypeSig a = Untyped
                | TypeSig (TypeExpr a)
-
+              deriving Show
 -- Representation of a type annotation used to annotate the type of expressions.
 data TypeAnn a = NoTypeAnn
                | TypeAnn (TypeExpr a)
-
+               deriving Show
 -- Representation of a function declaration consisting of a function name, the
 -- arity and visibility of the function, a type signature and a list of rules.
-data FuncDecl a = Func a (QName, a) Arity Visibility (TypeSig a) (Rules a)
+data FuncDecl a = Func a (QName, a) Arity Visibility (TypeSig a) (Rules a) deriving Show
 
 -- Rules are either a list of single rules or no rule at all if the function is
 -- defined externally.
 data Rules a = Rules [Rule a]
-             | External a (TypeAnn a)
+             | External a (TypeAnn a) deriving Show
 
 -- Representation of a function rule consisting of a type annotation, a list of
 -- patterns, a right-hand side and a list of local declarations.
-data Rule a = Rule a (TypeAnn a) [Pattern a] (Rhs a) [LocalDecl a]
+data Rule a = Rule a (TypeAnn a) [Pattern a] (Rhs a) [LocalDecl a] deriving Show
 
 -- Representation of a rules right-hand side as either guarded or unguarded.
 data Rhs a = SimpleRhs (Expr a)
            | GuardedRhs a [(Expr a, Expr a)]
-
+           deriving Show
 -- Representation of local 'let' or 'where' declarations.
 data LocalDecl a = LocalFunc (FuncDecl a)
                  | LocalPat a (Pattern a) (Expr a) [LocalDecl a]
+                 deriving Show
 
 -- Representation of expressions.
 data Expr a = Var (TypeAnn a) (VarName, a)
@@ -106,12 +107,12 @@ data Expr a = Var (TypeAnn a) (VarName, a)
             | IfThenElse a (TypeAnn a) (Expr a) (Expr a) (Expr a)
             | Tuple a (TypeAnn a) [Expr a]
             | List a (TypeAnn a) [Expr a]
-
+            deriving Show
 -- Representation of statements in 'do' expressions or list comprehensions.
 data Statement a = SExpr (Expr a)
                  | SPat a (Pattern a) (Expr a)
                  | SLet a [LocalDecl a]
-
+                 deriving Show
 -- Representation of pattern expressions.
 data Pattern a = PVar (TypeAnn a) (VarName, a)
                | PLit (TypeAnn a) (Literal, a)
@@ -119,9 +120,9 @@ data Pattern a = PVar (TypeAnn a) (VarName, a)
                | PAs a (TypeAnn a) (VarName, a) (Pattern a)
                | PTuple a (TypeAnn a) [Pattern a]
                | PList a (TypeAnn a) [Pattern a]
-
+                deriving Show
 -- Representation of branches in 'case' expressions.
-data BranchExpr a = Branch a (Pattern a) (Expr a)
+data BranchExpr a = Branch a (Pattern a) (Expr a) deriving Show
 
 -- Representation of literals occurring in expressions. It is either an integer,
 -- a float, a character, or a string constant.
@@ -129,7 +130,7 @@ data Literal = Intc Int
              | Floatc Float
              | Charc Char
              | Stringc String
-
+             deriving Show
 -- -----------------------------------------------------------------------------
 -- Pretty-printing of abstract Haskell data types
 -- -----------------------------------------------------------------------------
