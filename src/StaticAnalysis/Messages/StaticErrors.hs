@@ -1,12 +1,16 @@
-module StaticAnalysis.Messages.StaticErrors (module StaticAnalysis.Messages.StaticErrors) where
+-- | Defintions of error and entity
+module StaticAnalysis.Messages.StaticErrors
+  (module StaticAnalysis.Messages.StaticErrors) where
 
 import           Control.Exception
 import           Data.Typeable
 import           Language.Haskell.Exts
 
+-- | Describes the kind of a declaration
 data Entity = Signature | Definition | Function | Datatype
   deriving (Eq, Ord, Show)
 
+-- | Errors that occur when running static checks, the GHC or check-expect tests
 data Error l = NoFunDef (Name l) [Name l]
              --          name,   similar names in scope
              | Undefined (Name l) [Name l]

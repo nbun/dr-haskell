@@ -1,4 +1,5 @@
-module StaticAnalysis.CheckState (module StaticAnalysis.CheckState) where
+-- | Contains level definitions and functions to run checks comfortably
+module StaticAnalysis.CheckState(runCheckLevel, Level(..)) where
 
 import           AstChecks.Check
 import           Control.Monad.State.Lazy
@@ -42,7 +43,7 @@ checkExt check ext = do
   CheckState m errors <- get
   put $ CheckState m (check m ext ++ errors)
 
-
+-- | A level determine the checks applied to a module
 data Level = Level1 | Level2 | Level3 | LevelFull
   deriving Show
 
@@ -134,6 +135,8 @@ levelMapping l = case l of
                    Level3    -> levelThree
                    LevelFull -> levelFull
 
+-- | Runs the checks determined by the given level on a Haskell file and returns
+--   a list of errors
 runCheckLevel :: Level -> FilePath -> IO [Error SrcSpanInfo]
 runCheckLevel level path = do
   m <- getAST path
