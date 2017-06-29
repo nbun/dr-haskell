@@ -21,7 +21,7 @@ import           Util.ModifyAst
 main :: IO ()
 main = do
     args <- getArgs
-    if length args /= 3
+    if (length args) < 3
         then exitFailure
         else do
             (level, file, format) <- parseArgs args
@@ -68,8 +68,13 @@ parseArgs argv = do
     let format = if "--json" ` elem ` argv
                  then json
                  else plain
-    let y = argv !! 1
+    let y = findFile argv
     return (x, y, format)
+
+findFile :: [String] -> String
+findFile []               = ""
+findFile (('-':'-':_):xs) = findFile xs
+findFile (x:_)            = x
 
 hasLevelHint :: [String] -> Maybe Integer
 hasLevelHint [] = Nothing

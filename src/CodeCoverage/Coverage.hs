@@ -52,11 +52,12 @@ runInTempDir plainFile tmpDir = do
     writeFile (tmpDir ++ "/tmp.hs") plainFile
     tmpExists <- doesFileExist (tmpDir ++ "/tmp.hs")
     if tmpExists
-    then do _ <- catch (readProcess "ghc" ["-fhpc", "tmp.hs", "-o", "tmp", "-idirs:" ++ datadir ++ "/TargetModules"] [])
-                       (\(e :: IOException) -> do return "")
+    then do (_, _, _) <- readProcessWithExitCode "ghc" ["-fhpc", "tmp.hs", "-o", "tmp", "-idirs:" ++ datadir ++ "/TargetModules"] []
+            --appendFile "/tmp/drhaskell-lint.log" ((show stdout1) ++ (show stderr1))
             tmpCompExists <- doesFileExist (tmpDir ++ "/tmp")
             if tmpCompExists
-            then do tmpout <- readProcess "./tmp" [] []
+            then do (_, _, _) <- readProcessWithExitCode "./tmp" [] []
+                    --appendFile "/tmp/drhaskell-lint.log" ((show stdout2) ++ (show stderr2))
                     hpcDirExists <- doesDirectoryExist (tmpDir ++ "/.hpc")
                     tixExists <- doesFileExist (tmpDir ++ "/tmp.tix")
                     if hpcDirExists && tixExists
