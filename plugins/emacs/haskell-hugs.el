@@ -267,8 +267,8 @@ the Hugs buffer."
 
 (defun haskell-hugs-gen-load-file (cmd cd)
   "Save a hugs buffer file and load its file or reload depending on CMD.
-If CD is non-nil, change the process to the current buffer's directory 
-before loading the file. If there is an error, set the cursor at the 
+If CD is non-nil, change the process to the current buffer's directory
+before loading the file. If there is an error, set the cursor at the
 error line otherwise show the Hugs buffer."
   (save-excursion (haskell-hugs-go cmd cd))
   ;; Ensure the Hugs buffer is selected.
@@ -276,27 +276,27 @@ error line otherwise show the Hugs buffer."
   ;; Error message search starts from last load command.
   (goto-char haskell-hugs-load-end)
   (if (re-search-forward
-       "^\\(.*?\\)\\.drhaskell\\(.*?\\):\\([0-9]+\\):\\([0-9]+\\):.*?\n" nil t)
-      (let ((efile (concat (directory-file-name
-                            (buffer-substring (match-beginning 1) (match-end 1)))
-                           (buffer-substring (match-beginning 2) (match-end 2))))
-	          (eline (if (match-beginning 3)
-                       (string-to-int (buffer-substring (match-beginning 3)
+       "^\\(.*?\\):\\([0-9]+\\):\\([0-9]+\\):.*?\n" nil t)
+      (let ((efile (buffer-substring (match-beginning 1) (match-end 1)))
+	          (eline (if (match-beginning 2)
+                       (string-to-int (buffer-substring (match-beginning 2)
+                                                        (match-end 2)))))
+            (ecolumn (if (match-beginning 3)
+                         (string-to-int (buffer-substring (match-beginning 3)
                                                         (match-end 3)))))
-            (ecolumn (if (match-beginning 4)
-                         (string-to-int (buffer-substring (match-beginning 4)
-                                                        (match-end 4)))))
-            (emesg (buffer-substring (1+ (point))
+            (emesg (buffer-substring (point)
                                      (save-excursion (end-of-line) (point)))))
         (pop-to-buffer  haskell-hugs-process-buffer) ; show *hugs* buffer
         (goto-char (point-max))
         (recenter)
         (if (file-exists-p efile)
+            ;;(and (file-exists-p efile)
+            ;;     (not (string-match-p (regexp-quote ".drhaskell") efile)))
             (progn (find-file-other-window efile)
                    (if eline (goto-line eline))
                    (if ecolumn (move-to-column ecolumn))
                    (recenter)))
-        (message "Hugs error %s %s" (file-name-nondirectory efile) emesg)
+        (message "Dr.Haskell found an error in %s: %s" (file-name-nondirectory efile) emesg)
         )
     (pop-to-buffer  haskell-hugs-process-buffer) ; show *hugs* buffer
     (goto-char (point-max))

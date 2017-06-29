@@ -28,7 +28,7 @@ data LoadMessage = CheckError (Error SrcSpanInfo)
                  | DirectMessage String
 
 printLoadMessage :: LoadMessage -> String
-printLoadMessage (CheckError e)    = prettyError e
+printLoadMessage (CheckError e)    = prettyErrorForLint e
 printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
@@ -50,13 +50,13 @@ loadModule does the following:
 -}
 
 loadModule :: FilePath -> Repl [LoadMessage]
-loadModule fn = MC.handleAll handler $ loadModule' fn
+loadModule fname = MC.handleAll handler $ loadModule' fname
   where
     -- handles IO errors thrown by parseModified
     handler e = return [DirectMessage (displayException e)]
-    loadModule' fn' = do
+    loadModule' fn = do
       nonstrict <- use nonStrict
-      pr <- liftIO $ parseModified fn'
+      pr <- liftIO $ parseModified fn
       case pr of
         ParseFailed l e ->
           return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
@@ -109,14 +109,14 @@ duplPrelImps :: [Error l] -> ([Error l], [ImportSpec l])
 duplPrelImps []     = ([],[])
 duplPrelImps (e:es) =
   case e of
-    Duplicated name entity mod -> 
+    Duplicated name entity mod ->
       case (isMyPrelude mod, entity) of
         -- TODO add warning that a function/datatype was hidden
         (True, Function)   -> (es', ivar name : is)
         (True, Definition) -> (es', ivar name : is)
         (True, Datatype)   -> (es', IThingAll (namePos name) name : is)
         _                  -> (e:es', is)
-    _ -> duplPrelImps es
+    _ ->  (e:es', is)
   where (es', is) = duplPrelImps es
         ivar name = IVar (namePos name) name
 
