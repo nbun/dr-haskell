@@ -154,8 +154,8 @@ transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
 transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule m
   if s ^. customPrelude
-  then return (addMyPrelude hide m', es)
-  else return (m', es)
+  then return (addMyPrelude hide (addDerivingToAllData "deriving (Prelude.Show, Prelude.Read, Prelude.Eq, Prelude.Ord)" m'), es)
+  else return ((addDerivingToAllData "deriving (Show, Read, Eq, Ord)" m'), es)
 
 transformModuleS :: (MonadIO m, MonadState ReplState m) => [ImportSpec SrcSpanInfo]
                  -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
