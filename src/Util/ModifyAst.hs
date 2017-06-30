@@ -6,9 +6,12 @@ module Util.ModifyAst (
   addImport,
   prependDecl,
   appendDecl,
+  addDeriving,
+  addDerivingToAllData,
   printModified,
 ) where
 
+import           Data.Maybe
 import           Language.Haskell.Exts
 
 {-
@@ -72,6 +75,10 @@ modifySpanInfo :: Functor f => (SrcSpan -> SrcSpan) -> f SrcSpanInfo -> f SrcSpa
 modifySpanInfo modifySpan = fmap modifyInfo
   where
     modifyInfo (SrcSpanInfo s pts) = SrcSpanInfo (modifySpan s) (map modifySpan pts)
+
+restorePositionInfo :: Functor f => SrcSpanInfo -> f SrcSpanInfo -> f SrcSpanInfo
+restorePositionInfo (SrcSpanInfo (SrcSpan f l _ _ _) _) =
+  modifySpanInfo $ \(SrcSpan _ sl sc el ec) -> SrcSpan f (sl+l-1) sc (el+l-1) ec
 
 -- adds the length of an insertion to all row information that are below the
 -- start line of the insertion
@@ -175,6 +182,48 @@ prependDecl d m =
     annDecl' = pushAfter 0 pos annDecl
     (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
   in recordModification (pos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
+
+-- This is a huuuge hack as it doesn't modify the AST, but instead prints,
+-- modifies the textual representation and then parses again. It works well
+-- enough though.
+-- Just make sure to only pass valid deriving strings (ex: "deriving (Show, Eq, Ord)").
+addDeriving' :: String -> Decl SrcSpanInfo -> (Decl SrcSpanInfo, Maybe (Int, Int))
+addDeriving' d (DataDecl l t@(DataType _) ctx dh cs _) = let
+    -- print into string, omit any previous deriving clause
+    printed = exactPrint (DataDecl l t ctx dh cs Nothing) []
+    -- append the new deriving clause
+    appended = printed ++ (' ' : d)
+    -- parse it back to AST elements
+    ParseOk reparsed = parseDecl appended
+    -- we need some offset for adjusting comments
+    SrcSpanInfo (SrcSpan _ _ _ bel bec) _ = foldl (flip const) l (DataDecl l t ctx dh cs Nothing)
+    SrcSpanInfo (SrcSpan _ _ _ _   aec) _ = foldl (flip const) l reparsed
+  in
+    (reparsed, Just (bel, aec - bec + 1))
+addDeriving' _ x = (x, Nothing)
+
+addDeriving :: String -> Decl SrcSpanInfo -> Decl SrcSpanInfo
+addDeriving d = fst . addDeriving' d
+
+addDerivingToAllData :: String -> ModifiedModule -> ModifiedModule
+addDerivingToAllData d (ModifiedModule mods (Module l h ps is ds) cs) = let
+      -- try to add the deriving clause to all fitting declarations
+      modDs = map (addDeriving' d) ds
+      -- extract all comment-relocations
+      commentModders = foldl (.) id $ map fixComment $ catMaybes (map snd modDs)
+    in
+      (ModifiedModule mods (Module l h ps is (map fst modDs)) (map commentModders cs))
+  where
+    -- add offsets to comments in the applicable lines
+    fixComment (l,n) (Comment ml (SrcSpan f sl sc el ec) t) = Comment ml (SrcSpan f sl
+      (if sl == l
+       then sc + n
+       else sc)
+      el
+      (if el == l
+       then ec + n
+       else ec) )
+      t
 
 printModified :: ModifiedModule -> String
 printModified m = exactPrint (modifiedModule m) (modifiedComments m)
