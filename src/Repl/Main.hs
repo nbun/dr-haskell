@@ -2,7 +2,7 @@
 
 module Repl.Main (module Repl.Main) where
 
-import           Control.Lens                 hiding (Level, set)
+import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch          as MC
 import           Control.Monad.State
 import           Paths_drhaskell
@@ -41,7 +41,8 @@ replLoop = do
 initInterpreter :: ReplInterpreter ()
 initInterpreter = do
   datadir <- liftIO getDataDir
-  set [searchPath := [".", datadir </> "TargetModules"]]
+  Language.Haskell.Interpreter.set
+    [searchPath := [".", datadir </> "TargetModules"]]
   setImports ["Prelude"]
 
 main :: IO ()
@@ -98,10 +99,11 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
-        load = do
+        load = let fn = args !! 1 in do
           previousForceLevel <- use forceLevel
           liftRepl $ forceLevel .= previousForceLevel
-          errors <- loadModule $ args !! 1
+          liftRepl $ modify (Control.Lens.set filename fn)
+          errors <- loadModule fn
           return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
