@@ -1,3 +1,5 @@
+-- | The module DrHaskellLint provides the whole "call of the linter"-functionallity.
+-- Additionally it provides the call of the tests.
 module DrHaskellLint (module DrHaskellLint) where
 
 import           CodeCoverage.Coverage
@@ -18,64 +20,77 @@ import           System.Exit
 import           System.IO
 import           Util.ModifyAst
 
+-- | Entry point for the cli call
 main :: IO ()
 main = do
     args <- getArgs
-    if (length args) < 3
+    if (length args) < 2 -- check if we have enough parameters to run
         then exitFailure
         else do
-            (level, file, format) <- parseArgs args
-            run level file format
+            (level, file, format) <- parseArgs args -- parse the cli parameters for level, filename and the output format (plain,json)
+            run level file format -- the running, testing and linting
 
+-- | Determines from the level the correct levelCode and invokes hlint (including conversion of linting datastructures).
 run :: Integer -> String -> LinterOutput -> IO ()
 run level file format = do
-    hlintIdeas <- pushToHlint file
-    hlintHints <- return (hLintToLint file hlintIdeas)
-    let lvl = case level of
+    hlintIdeas <- pushToHlint file -- run hlint
+    hlintHints <- return (hLintToLint file hlintIdeas) -- convert hlint to lint
+    let lvl = case level of -- determine levelcode
                     1 -> Level1
                     2 -> Level2
                     3 -> Level3
                     _ -> LevelFull
-    runWithRepl hlintHints file lvl format
+    runWithRepl hlintHints file lvl format -- run the rest of the linting
 
+-- | Calls the analysis used in our Repl and attaches coverage and hlint results
 runWithRepl :: [Lint] -> String -> Level -> LinterOutput -> IO ()
 runWithRepl hlintHints file lvl format = do
-    let state = forceLevel .~ Just lvl $ initialLintReplState
-    ParseOk m1 <- parseModified file
-    (m2, errs) <- transformModule [] state m1
-    errs' <- runCheckLevel lvl file
-    coverage <- getConverageOutput m2
-    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs'))
+    let state = forceLevel .~ Just lvl $ initialLintReplState -- get Repl state
+    ParseOk m1 <- parseModified file -- Parse input file with repl impl
+    (m2, errs) <- transformModule [] state m1 -- "
+    errs' <- runCheckLevel lvl file -- run checks
+    coverage <- getConverageOutput m2 -- run coverage
+    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs')) -- build output
 
+-- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]
 pushToHlint file = Hlint.hlint [file, "--quiet"]
 
+-- | Converts Hlint Ideas to Lints
 hLintToLint :: String -> [Hlint.Idea] -> [Lint]
 hLintToLint _ [] = []
 hLintToLint file (x:xs) =
-    Lint file (extractStartPosition (Hlint.ideaSpan x)) (severityToMessageClass (Hlint.ideaSeverity x)) (Hlint.ideaHint x)
+    Lint file
+         (extractStartPosition (Hlint.ideaSpan x)) -- get startposition from hlint idea spaninfo
+         (severityToMessageClass (Hlint.ideaSeverity x)) -- get message class from hlint idea severity
+         (Hlint.ideaHint x)
     : hLintToLint file xs
 
+-- | Convert Severity into MessagaeClass
 severityToMessageClass :: Hlint.Severity -> MessageClass
 severityToMessageClass Hlint.Suggestion = Suggestion
 severityToMessageClass Hlint.Warning    = Warning
 severityToMessageClass Hlint.Error      = Error
 severityToMessageClass Hlint.Ignore     = Suggestion
 
+-- | Naive implementation of parameter parsing
+-- simple occurence check and some pattern matching for file extraction
 parseArgs :: [String] -> IO (Integer, String, LinterOutput)
 parseArgs argv = do
-    let x = fromMaybe 0 (hasLevelHint argv)
-    let format = if "--json" ` elem ` argv
+    let x = fromMaybe 0 (hasLevelHint argv) -- get level
+    let format = if "--json" `elem` argv -- json or plain
                  then json
-                 else plain
-    let y = findFile argv
+                 else plain {- --plain -}
+    let y = findFile argv -- get file
     return (x, y, format)
 
+-- | Simple implementation to get the filename
 findFile :: [String] -> String
 findFile []               = ""
 findFile (('-':'-':_):xs) = findFile xs
 findFile (x:_)            = x
 
+-- | Get leve from hint-Parameter (since most of the default linter implementations provide the hint-Parameter in there config gui)
 hasLevelHint :: [String] -> Maybe Integer
 hasLevelHint [] = Nothing
 hasLevelHint (('-':'-':'h':'i':'n':'t':'=':'l':level):_) =

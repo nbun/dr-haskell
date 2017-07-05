@@ -45,7 +45,7 @@ lintErrorHlint lints JSON es =
 lintErrorHlint lints PLAIN es =
     let lintedErrors = map transformError es
         out = map lintPlain (lintedErrors ++ lints)
-    in foldr (\x xs -> x ++ "\r\n" ++ xs) "" out
+    in foldr (\x xs -> x ++ "\n\n" ++ xs) "" out
 
 -- | Builds the Lint-Datatype for an Error specified by its ErrorName.
 -- Also allows the pass-through of a messageclass
