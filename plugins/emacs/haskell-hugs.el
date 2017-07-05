@@ -77,6 +77,7 @@
   :prefix "haskell-hugs-")
 
 (defun turn-on-haskell-hugs ()
+  (interactive)
   "Turn on Haskell interaction mode with a Hugs interpreter running in an
 another Emacs buffer named *hugs*.
 Maps the followind commands in the haskell keymap.
@@ -93,6 +94,7 @@ Maps the followind commands in the haskell keymap.
   (local-set-key "\C-c\C-b" 'haskell-hugs-show-hugs-buffer))
 
 (defun turn-off-haskell-hugs ()
+  (interactive)
   "Turn off Haskell interaction mode with a Hugs interpreter within a buffer."
   (local-unset-key  "\C-c\C-s")
   (local-unset-key  "\C-c\C-l")
