@@ -12,7 +12,7 @@ type Position = (Int, Int, Int, Int)
 printFilenameAndPos :: Filename -> Position -> String
 printFilenameAndPos filename pos =
     let (line, column, _, _) = pos
-    in filename ++ ":" ++ show line ++ ":" ++ show column ++ ":\r\n"
+    in filename ++ ":" ++ show line ++ ":" ++ show column ++ ":\n"
 
 printFilenameAndPosWithSwitch :: Bool -> Filename -> Position -> String
 printFilenameAndPosWithSwitch False _ _ = ""
@@ -29,12 +29,12 @@ prettyErrorWithInfoSwith s (NoFunDef name sims) =
     let (filename, pos) = extractFilenameAndPositionFromName name
     in printFilenameAndPosWithSwitch s filename pos
        ++ "Type signature for " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ " without a definition.\r\n" ++ prettySims sims
+       ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
 prettyErrorWithInfoSwith s (Undefined name sims) =
     let (filename, pos) = extractFilenameAndPositionFromName name
     in printFilenameAndPosWithSwitch s filename pos
        ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ ".\r\n" ++ prettySims sims
+       ++ prettyNameLoc name ++ ".\n" ++ prettySims sims
 prettyErrorWithInfoSwith s (Duplicated name entity maymod) =
     let (filename, pos) = extractFilenameAndPositionFromName name
     in printFilenameAndPosWithSwitch s filename pos
