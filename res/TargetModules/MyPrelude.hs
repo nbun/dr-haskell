@@ -1,7 +1,7 @@
--- Simplified version of the Prelude without type classes
+-- | Simplified version of the Prelude without type classes
 
 module MyPrelude (
-  -- Data types
+  -- | Data types
   P.Int,
   P.Float,
   P.Bool(..),
@@ -10,7 +10,7 @@ module MyPrelude (
   P.Char,
   P.String,
 
-  -- Comparison operators ==, <, >, <=, >= for Int, Bool and Char
+  -- | Comparison operators ==, <, >, <=, >= for Int, Bool and Char
   ieq,
   beq,
   ceq,
@@ -30,7 +30,7 @@ module MyPrelude (
   bgeq,
   cgeq,
 
-  -- Arithmetic operators +, -, * and / for Int and Float
+  -- | Arithmetic operators +, -, * and / for Int and Float
   (+),
   (-),
   (*),
@@ -40,23 +40,23 @@ module MyPrelude (
   (.*),
   (./),
 
-  -- Simple versions of list functions that use Foldable or Num
+  -- | Simple versions of list functions that use Foldable or Num
   length,
   concat,
   foldl,
   foldr,
   sum,
   all,
-  lookup, -- lookup has an extra eq :: a -> a -> Bool argument
+  lookup, -- | lookup has an extra eq :: a -> a -> Bool argument
 
-  -- More infix operators
+  -- | More infix operators
   (P.++),
   (P..),
   (P.||),
   (P.&&),
   (P.!!),
 
-  -- Functions that appear in the lecture or exercises
+  -- | Functions that appear in the lecture or exercises
   P.last,
   P.head,
   P.tail,
@@ -86,12 +86,12 @@ module MyPrelude (
 import qualified Prelude as P
 
 --------------------------------------------------------------------------------
--- Data types
+-- | Data types
 
 data Maybe a = Just a | Nothing
 
 --------------------------------------------------------------------------------
--- Comparison operators
+-- | Comparison operators
 
 ieq :: P.Int -> P.Int -> P.Bool
 ieq = (P.==)
@@ -148,7 +148,7 @@ cgeq :: P.Char -> P.Char -> P.Bool
 cgeq = (P.>=)
 
 --------------------------------------------------------------------------------
--- Arithmetic operators
+-- | Arithmetic operators
 
 (-) :: P.Int -> P.Int -> P.Int
 (-) = (P.-)
@@ -175,7 +175,7 @@ cgeq = (P.>=)
 (./) = (P./)
 
 --------------------------------------------------------------------------------
--- List functions
+-- | List functions
 
 length :: [a] -> P.Int
 length = P.length
