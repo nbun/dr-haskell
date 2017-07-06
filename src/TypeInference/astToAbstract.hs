@@ -6,19 +6,186 @@ import TypeInference.AbstractHaskell
 import Control.Monad.State.Lazy
 import Data.Map.Lazy
 
--- neative Literale überprüfen
--- klammern bei expr überprüen
--- where verschwindet noch
-
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 -- LAMBDA LIFTING FÜR LOKALE DEKLARATIONEN ------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------
+lambdaLifting :: Prog l -> Prog l
+lambdaLifting prog =  evalState (lambdaProg prog) initialStateLambda
 
--- dann in Aufrufen ergänzen
--- verschachtelte Lokale Definitionen mitbeachten
+initialStateLambda = LambdaState empty empty
 
-data LambdaState = LambdaState { locals :: Map String Int
-                               , frees :: Map String [VarName]
+lambdaProg prog = undefined --o
+--  prog1 <- findLocalDefinitions prog
+--  prog2 <- abstrHaskToAbstrRepr prog1
+--  prog3 <- findLocalDefinitions prog2
+--  let prog4 = transFormLocal prog3
+
+abstrHaskToAbstrRepr :: MonadState LambdaState m => Prog a -> m (Prog a)
+abstrHaskToAbstrRepr (Prog name imps types fundecls) =
+  do
+  funDefN <- mapM abstrReprFuncDef fundecls
+  return $ Prog name imps types funDefN
+
+abstrReprFuncDef :: MonadState LambdaState m => FuncDecl a -> m (FuncDecl a)
+abstrReprFuncDef (Func a name arity visibility tsig rules)  =
+  do
+    rulesN <- abstrReprRules (snd $ fst name) rules
+    return $ Func a name arity visibility tsig rulesN
+
+abstrReprRules :: MonadState LambdaState m => String -> Rules a -> m (Rules a)
+abstrReprRules name (Rules rules) =
+  do
+    newRules <- mapM (abstrReprRule name) rules
+    return $ Rules newRules
+
+abstrReprRule :: MonadState LambdaState m => String -> TypeInference.AbstractHaskell.Rule a -> m (TypeInference.AbstractHaskell.Rule a)
+abstrReprRule name (TypeInference.AbstractHaskell.Rule a tanno pats rhs localdecls) = do
+   rhside <- abstrReprRhs name rhs
+   ldcls <- mapM (abstrReprLocal name) localdecls
+   return $ TypeInference.AbstractHaskell.Rule a tanno pats rhside ldcls
+
+abstrReprRhs :: MonadState LambdaState m => String -> TypeInference.AbstractHaskell.Rhs a -> m (TypeInference.AbstractHaskell.Rhs a)
+abstrReprRhs name (SimpleRhs expr) = do
+  exprN <- abstrReprExpr name expr
+  return  $ SimpleRhs exprN
+abstrReprRhs name (TypeInference.AbstractHaskell.GuardedRhs a exprsTups) = do
+  newTups <- mapM (abstrReprExprTups name) exprsTups
+  return $ TypeInference.AbstractHaskell.GuardedRhs a newTups
+
+abstrReprExprTups :: MonadState LambdaState m => String -> (Expr a, Expr a1) -> m (Expr a, Expr a1)
+abstrReprExprTups name (expr1,expr2) =
+  do
+    exprN1 <- abstrReprExpr name expr1
+    exprN2 <- abstrReprExpr name expr2
+    return (exprN1,exprN2)
+
+abstrReprLocal :: MonadState LambdaState m => String -> LocalDecl a -> m (LocalDecl a)
+abstrReprLocal name (LocalFunc funcdecls) = do
+  x <- abstrReprFuncDef funcdecls
+  return $ LocalFunc x
+abstrReprLocal name (LocalPat a pat expr locals) = do
+  exprN <- abstrReprExpr name expr
+  localsN <- mapM (abstrReprLocal name) locals
+  return $ LocalPat a pat exprN localsN
+
+abstrReprExpr :: MonadState LambdaState m => String -> Expr a -> m (Expr a)
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Var tanno vname)              =
+  do
+    lds <- get
+    let realName = snd $ fst vname
+    let newName = "name"++"realName"
+    case Data.Map.Lazy.lookup name (frees lds) of
+      Nothing -> return x
+      Just y -> case (elem realName (filteringVNames y)) of
+                  False -> return x
+                  True -> return $ TypeInference.AbstractHaskell.Var tanno ((fst $ fst vname ,newName),(snd vname))
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Lit tanno lit)                = return x
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Symbol tyanno qname)          = return x
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Lambda a tyanno pats expr)    = do
+  exprN <- abstrReprExpr name expr
+  return $ TypeInference.AbstractHaskell.Lambda a tyanno pats exprN
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Let a tyanno locals expr)     = do
+   newLocals <- mapM (abstrReprLocal name) locals
+   newExpr   <- abstrReprExpr name expr
+   return $ TypeInference.AbstractHaskell.Let a tyanno newLocals newExpr
+abstrReprExpr name x@(DoExpr a tyanno stms)                                         = do
+  stmtN <- mapM (abstrReprStmts name) stms
+  return $  DoExpr a tyanno stmtN
+abstrReprExpr name x@(TypeInference.AbstractHaskell.ListComp a tyanno expr stmts) = do
+  exprN <- abstrReprExpr name expr
+  stmtN <- mapM (abstrReprStmts name) stmts
+  return $TypeInference.AbstractHaskell.ListComp a tyanno exprN stmtN
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Case a tyanno expr bes)       = do
+  exprN <- abstrReprExpr name expr
+  bexp <- mapM (abstrReprBranchExpr name) bes
+  return $ TypeInference.AbstractHaskell.Case a tyanno exprN bexp
+abstrReprExpr name x@(Typed a tyanno expr texpr)                                  = do
+  exprN <- abstrReprExpr name expr
+  return $ Typed a tyanno exprN texpr
+abstrReprExpr name x@(IfThenElse a tyanno expr1 expr2 expr3)                      = do
+  exprN1 <- abstrReprExpr name expr1
+  exprN2 <- abstrReprExpr name expr2
+  exprN3 <- abstrReprExpr name expr3
+  return $  IfThenElse a tyanno exprN1 exprN2 exprN3
+abstrReprExpr name x@(TypeInference.AbstractHaskell.Tuple a tyanno exprs)         = do
+  exprsN <- mapM (abstrReprExpr name) exprs
+  return $ TypeInference.AbstractHaskell.Tuple a tyanno exprsN
+abstrReprExpr name x@(TypeInference.AbstractHaskell.List a tyanno exprs)          = do
+  exprsN <- mapM (abstrReprExpr name) exprs
+  return $ TypeInference.AbstractHaskell.List a tyanno exprsN
+abstrReprExpr name x@(Apply a tyanno z@(TypeInference.AbstractHaskell.Var tanno vname) expr2) = do
+  lds <- get
+  case Data.Map.Lazy.lookup (snd $ fst vname) (frees lds) of
+    Nothing -> do
+               z' <- abstrReprExpr name z
+               exprN2 <- abstrReprExpr name expr2
+               return $ Apply a tyanno z' exprN2
+    Just y -> do
+              expr2Ext <- extendParameters (snd $ fst vname)  expr2
+              ex2 <- abstrReprExpr name expr2Ext
+              z' <-  abstrReprExpr name z
+              return $ Apply a tyanno z' ex2
+abstrReprExpr name x@(Apply a tyanno expr1 expr2)                                 = do
+  exprN1 <- abstrReprExpr name expr1
+  exprN2 <- abstrReprExpr name expr2
+  return $ Apply a tyanno exprN1 exprN2
+abstrReprExpr name x@(InfixApply a tyanno z@(TypeInference.AbstractHaskell.Var tanno vname) qname expr2) = do
+  lds <- get
+  case Data.Map.Lazy.lookup (snd $ fst vname) (frees lds) of
+    Nothing -> do
+               z' <- abstrReprExpr name z
+               exprN2 <- abstrReprExpr name expr2
+               return $ InfixApply a tyanno z' qname exprN2
+    Just y -> do
+              expr2Ext <- extendParameters (snd $ fst vname)  expr2
+              ex2 <- abstrReprExpr name expr2Ext
+              z' <-  abstrReprExpr name z
+              return $ InfixApply a tyanno z' qname ex2
+abstrReprExpr name x@ (InfixApply a tyanno expr1 qname expr2)                     = do
+  exprN1 <- abstrReprExpr name expr1
+  exprN2 <- abstrReprExpr name expr2
+  return $ InfixApply a tyanno exprN1 qname exprN2
+extendParameters name x@(TypeInference.AbstractHaskell.List a tyanno exprs) = do
+  lds <- get
+  let  values = (frees lds) ! name
+  let eprVars = transformVars a values exprs
+  return $ TypeInference.AbstractHaskell.List a tyanno eprVars
+extendParameters name x                                                   = do
+  lds <- get
+  let values = (frees lds) ! name
+  let exprVars = transformVars undefined values [x]
+  return $ TypeInference.AbstractHaskell.List undefined NoTypeAnn exprVars
+
+transformVars a  [] z = z
+transformVars a (x:xs) y = transformVars a xs (y ++[(TypeInference.AbstractHaskell.Var NoTypeAnn (x, a ))])
+
+filteringVNames :: [(Int,String)] -> [String]
+filteringVNames []             = []
+filteringVNames ((i,s):xs) = [s] ++ filteringVNames xs
+
+abstrReprStmts :: MonadState LambdaState m => String -> Statement a -> m (Statement a)
+abstrReprStmts name (SExpr expr)      =
+  do
+    expr1 <- abstrReprExpr name expr
+    return $ SExpr expr1
+abstrReprStmts name (SPat a pat expr) =
+  do
+    expr1 <- abstrReprExpr name expr
+    return $ SPat a pat expr1
+abstrReprStmts name (SLet a locals)   =
+  do
+    newLocals <- mapM (abstrReprLocal name) locals
+    return $ SLet a newLocals
+
+abstrReprBranchExpr :: MonadState LambdaState m => String -> BranchExpr a -> m (BranchExpr a)
+abstrReprBranchExpr name (Branch a pat expr) =
+  do
+    exprN <- abstrReprExpr name expr
+    return $ Branch a pat exprN
+
+--------------------------------------------------------------------------------------------------------------------
+data LambdaState = LambdaState { locals :: Map String Int -- wie viele freie Variablen in einer Funktion
+                               , frees :: Map String [VarName] -- welche Variablen wurden zu welcher Funktion ergänzt
                                }
 
 getCountOfFrees :: MonadState LambdaState m => String -> m Int
@@ -62,8 +229,7 @@ extractVarOutOfExpr2 (InfixApply l t expr1 n expr2)                         =
 extractVarOutOfExpr2 (TypeInference.AbstractHaskell.Lambda l t pats expr)   =
    findDifference (extractVars pats)(extractVarOutOfExpr2 expr)
 extractVarOutOfExpr2 (TypeInference.AbstractHaskell.Let l t locals expr)    =
-  extractVarOutOfExpr2 expr
--- hier noch die lokalen Deklarartionen mit anpassen
+  extractVarOutOfExpr2 expr ++ extractVarsOutOfLocals locals
 extractVarOutOfExpr2 (IfThenElse l t expr1 expr2 expr3)                     =
   extractVarOutOfExpr2 expr1 ++ extractVarOutOfExpr2 expr2 ++ extractVarOutOfExpr2 expr3
 extractVarOutOfExpr2 (TypeInference.AbstractHaskell.List l t exprs)         =
@@ -138,8 +304,7 @@ extractVarOutOfExpr (InfixApply l t expr1 n expr2)                         =
 extractVarOutOfExpr (TypeInference.AbstractHaskell.Lambda l t pats expr)   =
   extractVars pats ++ extractVarOutOfExpr expr
 extractVarOutOfExpr (TypeInference.AbstractHaskell.Let l t locals expr)    =
-  extractVarOutOfExpr expr
--- hier noch die lokalen Deklarartionen mit anpassen
+  extractVarOutOfExpr expr ++ extractVarsOutOfLocals locals
 extractVarOutOfExpr (IfThenElse l t expr1 expr2 expr3)                     =
   extractVarOutOfExpr expr1 ++ extractVarOutOfExpr expr2 ++ extractVarOutOfExpr expr3
 extractVarOutOfExpr (TypeInference.AbstractHaskell.List l t exprs)         =
@@ -160,14 +325,37 @@ extractVarOutOfStmts :: [Statement l] -> [VarName]
 extractVarOutOfStmts []                     = []
 extractVarOutOfStmts ((SExpr expr):xs)      = extractVarOutOfExpr expr ++ extractVarOutOfStmts xs
 extractVarOutOfStmts ((SPat l pat expr):xs) = extractVarOutOfExpr expr ++ extractVarOutOfStmts xs
-extractVarOutOfStmts (x:xs)                 = extractVarOutOfStmts xs --hier noch LocalDecl  SLet
+extractVarOutOfStmts ((SLet l locals):xs)   = extractVarsOutOfLocals locals
+
+extractVarsOutOfLocals :: [LocalDecl l] -> [VarName]
+extractVarsOutOfLocals []                   = []
+extractVarsOutOfLocals ((LocalFunc funcdecl):xs) =
+  extractVarsOutOfFuncDecl funcdecl ++ extractVarsOutOfLocals xs
+extractVarsOutOfLocals ((LocalPat a pat expr locals):xs) =
+  extractVarOutOfExpr expr ++ extractVarsOutOfLocals locals ++ extractVarsOutOfLocals xs
+
+extractVarsOutOfFuncDecl (Func a name arity visibility tsig rules) = extractVarOutOfRules rules
+
+extractVarOutOfRules (Rules xs) = extractVarOutOfRule xs
+
+extractVarOutOfRule [] = []
+extractVarOutOfRule ((TypeInference.AbstractHaskell.Rule a tyanno pats rhs locals):xs) =
+  extractVarOutOfRhs rhs ++ extractVarsOutOfLocals locals ++ extractVarOutOfRule xs
+
+extractVarOutOfRhs (SimpleRhs expr) = extractVarOutOfExpr expr
+extractVarOutOfRhs (TypeInference.AbstractHaskell.GuardedRhs a es) = extractVarOutOfTups es
+
+
+extractVarOutOfTups []     = []
+extractVarOutOfTups (e:es) =
+  extractVarOutOfExpr (fst e) ++ extractVarOutOfExpr (snd e) ++ extractVarOutOfTups es
 
 extractVarOutOfBranches :: BranchExpr l -> [VarName]
 extractVarOutOfBranches (Branch l pat expr) = extractVars [pat] ++ extractVarOutOfExpr expr
 
 transFormLocal :: LocalDecl l -> [FuncDecl l]
 transFormLocal (LocalFunc fd) = [fd]
---transFormLocal (LocalPat l pat rhs lcs) =
+transFormLocal (LocalPat l pat expr lcs) = undefined
 --  [Func l (("",""),l) undefined Public Untyped (Rules [TypeInference.AbstractHaskell.Rule l NoTypeAnn [pat] rhs []])]
 --  ++ (concatMap transFormLocal lcs)--
 --mit expr und nicht mit rhs
@@ -387,20 +575,52 @@ parseFuncPatDecls _ _ []                                      = return []
 parseFuncPatDecls str t ((s@(FunBind l matches)):xs)          = do
                                                                   fd <- parseFunDecls str t s
                                                                   return $ [LocalFunc fd]
-parseFuncPatDecls str t ((PatBind l pat rhs (Just wbind)):xs) =  do
-                                                                   rh <- parseExprOutOfRhs str t rhs
-                                                                   patt <- parsePatterns str pat
-                                                                   bnd <- parseBinds str t wbind
-                                                                   return $ [LocalPat l patt undefined bnd]
-                                                                  -- mit expr und ncht mit einer rhs
+parseFuncPatDecls str t ((PatBind l pat rhs@(UnGuardedRhs a expr) (Just wbind)):xs) =
+   do
+    rh <- parseExprOutOfRhs str t rhs
+    patt <- parsePatterns str pat
+    bnd <- parseBinds str t wbind
+    return $ [LocalPat l patt rh bnd]
+--parseFuncPatDecls str t ((PatBind l pat rhs@(GuardedRhss a gds) (Just wbind)):xs) |length gds <= 1 =
+--   do
+--     rh <- parseExprOutOfGrd str t (head gds)
+--     patt <- parsePatterns str pat
+--     bnd <- parseBinds str t wbind
+--     return $ [LocalPat l patt rh bnd]
+--                                                                                  |otherwise      =
+--   do
+--     let name = parseNameOutOfPattern pat
+--     rh <- parseExprOutOfGrd str t (head gds)
+--     patt <- parsePatterns str pat
+--     bnd <- parseBinds str t wbind
+--     rules <- mapM (parseRulesOutOfGuarded str t) gds
+--     rulesR <- makeRules rules
+--     return $ [LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules rulesR)]
 parseFuncPatDecls _  _  _                                     =  return []
+
+--makeRules []     = []
+--makeRules (x:xs) =
+
+--parseRulesOutOfGuarded ::MonadState AHState m => MName -> [(Name a, Type a)] -> Language.Haskell.Exts.GuardedRhs l -> m [(Expr l, Expr l)]
+parseRulesOutOfGuarded str t (Language.Haskell.Exts.GuardedRhs l stmts expr) = do
+  tups <- mapM (parseTupels str t expr) stmts
+  return $ TypeInference.AbstractHaskell.GuardedRhs l tups
+--  parseTupels str t stmts expr
+
+parseTupels :: MonadState AHState m => MName -> [(Name a, Type a)] ->  Exp a -> Stmt a -> m (Expr a, Expr a)
+parseTupels str t expr2 (Qualifier l expr1) = do
+   ex1 <- parseExpr str t expr1
+   ex2 <- parseExpr str t expr2
+   return $ (ex1,ex2)
 
 parseExprOutOfRhs :: MonadState AHState m => MName -> [(Name a, Type a)] -> Language.Haskell.Exts.Rhs a -> m (Expr a)
 parseExprOutOfRhs str t (UnGuardedRhs l expr) =
   do
     expr1 <- parseExpr str t expr
     return expr1
-parseExprOutOfRhs str t (GuardedRhss l gds) = undefined
+
+parseExprOutOfGrd :: MonadState AHState m => MName -> [(Name a, Type a)] -> GuardedRhs a -> m (Expr a)
+parseExprOutOfGrd str t (Language.Haskell.Exts.GuardedRhs l stmts expr) = parseExpr str t expr
 
 parseRigthHands :: MonadState AHState m => MName -> [(Name a, Type a)] -> Language.Haskell.Exts.Rhs a -> m (TypeInference.AbstractHaskell.Rhs a)
 parseRigthHands str t (UnGuardedRhs l e)   = do
@@ -410,7 +630,7 @@ parseRigthHands str t (GuardedRhss l grhs) = do
                                                gud <- mapM (parseGuarded str t) grhs
                                                return $ TypeInference.AbstractHaskell.GuardedRhs l (concat gud)
 
---parseLocal :: MonadState AHState m => String -> [(Name a, Type a)] -> Exp a -> m [LocalDecl a]
+parseLocal :: MonadState AHState m => String -> [(Name a, Type a)] -> Exp a -> m [LocalDecl a]
 parseLocal str t(Language.Haskell.Exts.Let l binds e) = do
                                                           bnd <- parseBinds str t binds
                                                           return bnd
