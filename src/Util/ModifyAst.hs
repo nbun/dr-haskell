@@ -107,17 +107,21 @@ numLines x = let (SrcSpanInfo (SrcSpan _ sl _ el _) _) = ann x
 
 -- finds the last position where an element is placed
 -- assumes typical ordering of elements as can be found in a module
-lastPos :: Maybe (ModuleHead SrcSpanInfo) -> [ModulePragma SrcSpanInfo] -> [ImportDecl SrcSpanInfo] -> [Decl SrcSpanInfo] -> Int
-lastPos h ps is ds = case (h, ps, is, ds) of
-    (Nothing, [], [], []) -> 0
-    (Just x,  [], [], []) -> lastOfElement x
-    (_,      _:_, [], []) -> lastOfElement $ last ps
-    (_,       _, _:_, []) -> lastOfElement $ last is
-    (_,        _, _, _:_) -> lastOfElement $ last ds
+lastPos :: SrcSpanInfo -> Maybe (ModuleHead SrcSpanInfo) -> [ModulePragma SrcSpanInfo] -> [ImportDecl SrcSpanInfo] -> [Decl SrcSpanInfo] -> (Int,Int)
+lastPos l h ps is ds = case (h, ps, is, ds) of
+    (Nothing, [], [], []) -> (extractFirst l, extractFirst l + 1)
+    (Just x,  [], [], []) -> mkTuple $ lastOfElement x
+    (_,      _:_, [], []) -> mkTuple $ lastOfElement $ last ps
+    (_,       _, _:_, []) -> mkTuple $ lastOfElement $ last is
+    (_,        _, _, _:_) -> mkTuple $ lastOfElement $ last ds
   where
     lastOfElement :: Annotated f => f SrcSpanInfo -> Int
     lastOfElement x = let (SrcSpanInfo (SrcSpan _ _ _ el _) _) = ann x
                       in el
+    extractFirst :: SrcSpanInfo -> Int
+    extractFirst (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = sl - 1
+    mkTuple :: a -> (a,a)
+    mkTuple x = (x,x)
 
 -- haskell-src-exts uses the first two (or more) SrcSpan points to align the
 -- module header
@@ -150,14 +154,14 @@ addImport d m =
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
-    pos = lastPos h ps is []
-    annDecl' = pushAfter 0 pos annDecl
-    (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
+    (elemPos, pushPos) = lastPos l h ps is []
+    annDecl' = pushAfter 0 elemPos annDecl
+    (Module l' h' ps' is' ds') = pushAfter (elemPos+1) len ast
     -- as imports may be added as the first lines of the module, we may have
     -- modified the first few position points (which behave strangely)
     -- we reset those to their previous values
-    l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l annDecl'
-  in recordModification (pos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
+    l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l (pushAfter 0 (elemPos-pushPos) annDecl')
+  in recordModification (pushPos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
 
 appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
 appendDecl d m =
@@ -166,10 +170,10 @@ appendDecl d m =
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
-    pos = lastPos h ps is ds
-    annDecl' = pushAfter 0 pos annDecl
-    Just l' = pushAfter pos len $ Just l
-  in recordModification (pos,len) m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
+    (elemPos, pushPos) = lastPos l h ps is ds
+    annDecl' = pushAfter 0 elemPos annDecl
+    Just l' = pushAfter elemPos len $ Just l
+  in recordModification (pushPos,len) m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
 prependDecl d m =
@@ -178,10 +182,10 @@ prependDecl d m =
     annDecl = generateSrcSpanInfo d
     len = numLines annDecl
     (Module l h ps is ds) = ast
-    pos = lastPos h ps is []
-    annDecl' = pushAfter 0 pos annDecl
-    (Module l' h' ps' is' ds') = pushAfter (pos+1) len ast
-  in recordModification (pos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
+    (elemPos, pushPos) = lastPos l h ps is []
+    annDecl' = pushAfter 0 elemPos annDecl
+    (Module l' h' ps' is' ds') = pushAfter (elemPos+1) len ast
+  in recordModification (pushPos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
 
 -- This is a huuuge hack as it doesn't modify the AST, but instead prints,
 -- modifies the textual representation and then parses again. It works well
