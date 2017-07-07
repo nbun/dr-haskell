@@ -101,7 +101,7 @@ determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
     extractLevel _                                       = Nothing
 
 runAllTests :: Repl [String]
-runAllTests = MC.handleAll (\_ -> return []) $
+runAllTests = MC.handleAll (\e -> return [displayException e]) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
 
@@ -146,6 +146,15 @@ addMyPrelude hideDefs = addImport ImportDecl
   , importPkg = Nothing
   , importAs = Nothing
   , importSpecs = Nothing}
+  . addImport ImportDecl
+  {importAnn = noSrcSpan
+  , importModule = ModuleName noSrcSpan "Prelude"
+  , importQualified = False
+  , importSrc = False
+  , importSafe = False
+  , importPkg = Nothing
+  , importAs = Nothing
+  , importSpecs = Just $ ImportSpecList noSrcSpan False [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
 
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude
