@@ -9,7 +9,6 @@ module MyPrelude (
   P.Either(..),
   P.Char,
   P.String,
-
   -- | Comparison operators ==, <, >, <=, >= for Int, Bool and Char
   eqInt,
   eqBool,
@@ -29,7 +28,6 @@ module MyPrelude (
   geqInt,
   geqBool,
   geqChar,
-
   -- | Arithmetic operators +, -, * and / for Int and Float
   (+),
   (-),
@@ -39,7 +37,6 @@ module MyPrelude (
   (-.),
   (.*),
   (./),
-
   -- | Simple versions of list functions that use Foldable or Num
   length,
   concat,
@@ -48,14 +45,12 @@ module MyPrelude (
   sum,
   all,
   lookup, -- | lookup has an extra eq :: a -> a -> Bool argument
-
   -- | More infix operators
   (P.++),
   (P..),
   (P.||),
   (P.&&),
   (P.!!),
-
   -- | Functions that appear in the lecture or exercises
   P.last,
   P.head,
@@ -87,12 +82,10 @@ import qualified Prelude as P
 
 --------------------------------------------------------------------------------
 -- | Data types
-
 data Maybe a = Just a | Nothing
 
 --------------------------------------------------------------------------------
 -- | Comparison operators
-
 eqInt :: P.Int -> P.Int -> P.Bool
 eqInt = (P.==)
 
@@ -149,7 +142,6 @@ geqChar = (P.>=)
 
 --------------------------------------------------------------------------------
 -- | Arithmetic operators
-
 (-) :: P.Int -> P.Int -> P.Int
 (-) = (P.-)
 
@@ -176,7 +168,6 @@ geqChar = (P.>=)
 
 --------------------------------------------------------------------------------
 -- | List functions
-
 length :: [a] -> P.Int
 length = P.length
 
