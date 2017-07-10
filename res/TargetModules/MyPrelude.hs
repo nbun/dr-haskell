@@ -11,24 +11,24 @@ module MyPrelude (
   P.String,
 
   -- | Comparison operators ==, <, >, <=, >= for Int, Bool and Char
-  ieq,
-  beq,
-  ceq,
-  ineq,
-  bneq,
-  cneq,
-  ilt,
-  blt,
-  clt,
-  ileq,
-  bleq,
-  cleq,
-  igt,
-  bgt,
-  cgt,
-  igeq,
-  bgeq,
-  cgeq,
+  eqInt,
+  eqBool,
+  eqChar,
+  neqInt,
+  neqBool,
+  neqChar,
+  ltInt,
+  ltBool,
+  ltChar,
+  leqInt,
+  leqBool,
+  leqChar,
+  gtInt,
+  gtBool,
+  gtChar,
+  geqInt,
+  geqBool,
+  geqChar,
 
   -- | Arithmetic operators +, -, * and / for Int and Float
   (+),
@@ -36,7 +36,7 @@ module MyPrelude (
   (*),
   (/),
   (.+),
-  (.-),
+  (-.),
   (.*),
   (./),
 
@@ -68,7 +68,7 @@ module MyPrelude (
   P.take,
   P.flip,
   P.map,
-  P.filter,
+  P.fltInter,
   P.curry,
   P.uncurry,
   P.const,
@@ -93,59 +93,59 @@ data Maybe a = Just a | Nothing
 --------------------------------------------------------------------------------
 -- | Comparison operators
 
-ieq :: P.Int -> P.Int -> P.Bool
-ieq = (P.==)
+eqInt :: P.Int -> P.Int -> P.Bool
+eqInt = (P.==)
 
-beq :: P.Bool -> P.Bool -> P.Bool
-beq = (P.==)
+eqBool :: P.Bool -> P.Bool -> P.Bool
+eqBool = (P.==)
 
-ceq :: P.Char -> P.Char -> P.Bool
-ceq = (P.==)
+eqChar :: P.Char -> P.Char -> P.Bool
+eqChar = (P.==)
 
-ineq :: P.Int -> P.Int -> P.Bool
-ineq = (P./=)
+neqInt :: P.Int -> P.Int -> P.Bool
+neqInt = (P./=)
 
-bneq :: P.Bool -> P.Bool -> P.Bool
-bneq = (P./=)
+neqBool :: P.Bool -> P.Bool -> P.Bool
+neqBool = (P./=)
 
-cneq :: P.Char -> P.Char -> P.Bool
-cneq = (P./=)
+neqChar :: P.Char -> P.Char -> P.Bool
+neqChar = (P./=)
 
-ilt :: P.Int -> P.Int -> P.Bool
-ilt = (P.<)
+ltInt :: P.Int -> P.Int -> P.Bool
+ltInt = (P.<)
 
-ileq :: P.Int -> P.Int -> P.Bool
-ileq = (P.<=)
+leqInt :: P.Int -> P.Int -> P.Bool
+leqInt = (P.<=)
 
-igt :: P.Int -> P.Int -> P.Bool
-igt = (P.>)
+gtInt :: P.Int -> P.Int -> P.Bool
+gtInt = (P.>)
 
-igeq :: P.Int -> P.Int -> P.Bool
-igeq = (P.>=)
+geqInt :: P.Int -> P.Int -> P.Bool
+geqInt = (P.>=)
 
-blt :: P.Bool -> P.Bool -> P.Bool
-blt = (P.<)
+ltBool :: P.Bool -> P.Bool -> P.Bool
+ltBool = (P.<)
 
-bleq :: P.Bool -> P.Bool -> P.Bool
-bleq = (P.<=)
+leqBool :: P.Bool -> P.Bool -> P.Bool
+leqBool = (P.<=)
 
-bgt :: P.Bool -> P.Bool -> P.Bool
-bgt = (P.>)
+gtBool :: P.Bool -> P.Bool -> P.Bool
+gtBool = (P.>)
 
-bgeq :: P.Bool -> P.Bool -> P.Bool
-bgeq = (P.>=)
+geqBool :: P.Bool -> P.Bool -> P.Bool
+geqBool = (P.>=)
 
-clt :: P.Char -> P.Char -> P.Bool
-clt = (P.<)
+ltChar :: P.Char -> P.Char -> P.Bool
+ltChar = (P.<)
 
-cleq :: P.Char -> P.Char -> P.Bool
-cleq = (P.<=)
+leqChar :: P.Char -> P.Char -> P.Bool
+leqChar = (P.<=)
 
-cgt :: P.Char -> P.Char -> P.Bool
-cgt = (P.>)
+gtChar :: P.Char -> P.Char -> P.Bool
+gtChar = (P.>)
 
-cgeq :: P.Char -> P.Char -> P.Bool
-cgeq = (P.>=)
+geqChar :: P.Char -> P.Char -> P.Bool
+geqChar = (P.>=)
 
 --------------------------------------------------------------------------------
 -- | Arithmetic operators
@@ -162,17 +162,17 @@ cgeq = (P.>=)
 (/) :: P.Int -> P.Int -> P.Int
 (/) = P.div
 
-(.-) :: P.Float -> P.Float -> P.Float
-(.-) = (P.-)
+(-.) :: P.Float -> P.Float -> P.Float
+(-.) = (P.-)
 
-(.+) :: P.Float -> P.Float -> P.Float
-(.+) = (P.+)
+(+.) :: P.Float -> P.Float -> P.Float
+(+.) = (P.+)
 
-(.*) :: P.Float -> P.Float -> P.Float
-(.*) = (P.*)
+(*.) :: P.Float -> P.Float -> P.Float
+(*.) = (P.*)
 
-(./) :: P.Float -> P.Float -> P.Float
-(./) = (P./)
+(/.) :: P.Float -> P.Float -> P.Float
+(/.) = (P./)
 
 --------------------------------------------------------------------------------
 -- | List functions
