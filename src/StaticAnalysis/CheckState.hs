@@ -1,5 +1,8 @@
 -- | Contains level definitions and functions to run checks comfortably
-module StaticAnalysis.CheckState(runCheckLevel, Level(..)) where
+module StaticAnalysis.CheckState (
+  runCheckLevel,
+  Level(..)
+) where
 
 import           AstChecks.Check
 import           Control.Monad.Catch
@@ -29,9 +32,9 @@ data CheckState l = CheckState (Module l) [Error l]
 instance Show l => Show (CheckState l) where
   show (CheckState _ es) = unlines $ map show es
 
-prettyCheckState :: CheckState SrcSpanInfo -> String
-prettyCheckState (CheckState _ es) =
-  unlines $ map prettyError es
+--prettyCheckState :: CheckState SrcSpanInfo -> String
+--prettyCheckState (CheckState _ es) =
+--  unlines $ map prettyError es
 
 check :: (Module l -> [Error l]) -> State (CheckState l) ()
 check check = do
@@ -42,10 +45,6 @@ checkExt :: (Module l -> a -> [Error l]) -> a -> State (CheckState l) ()
 checkExt check ext = do
   CheckState m errors <- get
   put $ CheckState m (check m ext ++ errors)
-
--- | A level determine the checks applied to a module
-data Level = Level1 | Level2 | Level3 | LevelFull
-  deriving Show
 
 type LevelT = [Module SrcSpanInfo] -> StateT (CheckState SrcSpanInfo) Identity ()
 

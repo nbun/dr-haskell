@@ -25,11 +25,11 @@ import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.TestExpExtractor             as Tee
 import           Util.ModifyAst
 
-data LoadMessage = CheckError (Error SrcSpanInfo)
+data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
                  | DirectMessage String
 
 printLoadMessage :: LoadMessage -> String
-printLoadMessage (CheckError e)    = prettyErrorForLint e
+printLoadMessage (CheckError l e)  = prettyErrorForLintWithLevel l e
 printLoadMessage (DirectMessage m) = m
 
 --todo: better path handling
@@ -60,7 +60,7 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
       pr <- liftIO $ parseModified fn
       case pr of
         ParseFailed l e ->
-          return [CheckError $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
+          return [CheckError Nothing $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
@@ -77,7 +77,7 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
 
           let errors = checkErrors' ++ transErrors
           if null errors || nonstrict
-            then let es   = map CheckError errors
+            then let es   = map (CheckError (Just level)) errors
                      dm e = DirectMessage $ displayException e
                      handler' e = return $ es ++ [dm e]
                  in MC.handleAll handler' $ do
@@ -88,7 +88,7 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
                       testErrors <- if rt then runAllTests else return []
                       return $ es ++ map DirectMessage testErrors
             else
-              return $ map CheckError errors
+              return $ map (CheckError (Just level)) errors
 
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
