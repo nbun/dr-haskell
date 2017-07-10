@@ -2,8 +2,8 @@
 module StaticAnalysis.CheckState(runCheckLevel, Level(..)) where
 
 import           AstChecks.Check
-import           Control.Monad.State.Lazy
 import           Control.Monad.Catch
+import           Control.Monad.State.Lazy
 import           Data.Functor.Identity
 import           Language.Haskell.Exts
 import           Paths_drhaskell
@@ -144,5 +144,6 @@ runCheckLevel level path = do
                 myPrelPath <- getDataFileName "TargetModules/MyPrelude.hs"
                 myPrel <- getAST myPrelPath
                 return [myPrel]
-  let (CheckState _ errors) = execState (levelMapping level mods) (CheckState m [])
+  let (CheckState _ errors) = execState (levelMapping level mods)
+                                        (CheckState m [])
   return errors

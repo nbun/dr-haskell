@@ -1,5 +1,7 @@
 -- | Holds the whole HigherOrderFunction-Occurence Check. Only checks on signatures.
-module StaticAnalysis.StaticChecks.HigherOrder (module StaticAnalysis.StaticChecks.HigherOrder) where
+module StaticAnalysis.StaticChecks.HigherOrder (
+    checkForHigherOrderFunction
+) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

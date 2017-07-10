@@ -1,5 +1,7 @@
 -- | Holds the whole Do-Occurence-Check
-module StaticAnalysis.StaticChecks.DoUsed (doUsed) where
+module StaticAnalysis.StaticChecks.DoUsed (
+    doUsed
+) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

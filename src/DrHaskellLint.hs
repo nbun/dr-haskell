@@ -1,4 +1,5 @@
--- | The module DrHaskellLint provides the whole "call of the linter"-functionallity.
+-- | The module DrHaskellLint provides the whole "call of the linter"
+--   -functionallity.
 -- Additionally it provides the call of the tests.
 module DrHaskellLint (module DrHaskellLint) where
 
@@ -24,13 +25,16 @@ import           Util.ModifyAst
 main :: IO ()
 main = do
     args <- getArgs
-    if (length args) < 2 -- check if we have enough parameters to run
+    if length args < 2 -- check if we have enough parameters to run
         then exitFailure
         else do
-            (level, file, format) <- parseArgs args -- parse the cli parameters for level, filename and the output format (plain,json)
+            (level, file, format) <- parseArgs args
+            -- parse the cli parameters for level,
+            -- filename and the output format (plain,json)
             run level file format -- the running, testing and linting
 
--- | Determines from the level the correct levelCode and invokes hlint (including conversion of linting datastructures).
+-- | Determines from the level the correct levelCode and invokes hlint
+--   (including conversion of linting datastructures).
 run :: Integer -> String -> LinterOutput -> IO ()
 run level file format = do
     hlintIdeas <- pushToHlint file -- run hlint
@@ -50,7 +54,8 @@ runWithRepl hlintHints file lvl format = do
     (m2, errs) <- transformModule [] state m1 -- "
     errs' <- runCheckLevel lvl file -- run checks
     coverage <- getConverageOutput m2 -- run coverage
-    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs')) -- build output
+    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs'))
+    -- build output
 
 -- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]
@@ -61,8 +66,10 @@ hLintToLint :: String -> [Hlint.Idea] -> [Lint]
 hLintToLint _ [] = []
 hLintToLint file (x:xs) =
     Lint file
-         (extractStartPosition (Hlint.ideaSpan x)) -- get startposition from hlint idea spaninfo
-         (severityToMessageClass (Hlint.ideaSeverity x)) -- get message class from hlint idea severity
+         (extractStartPosition (Hlint.ideaSpan x))
+         -- get startposition from hlint idea spaninfo
+         (severityToMessageClass (Hlint.ideaSeverity x))
+         -- get message class from hlint idea severity
          (Hlint.ideaHint x)
     : hLintToLint file xs
 
@@ -90,7 +97,8 @@ findFile []               = ""
 findFile (('-':'-':_):xs) = findFile xs
 findFile (x:_)            = x
 
--- | Get leve from hint-Parameter (since most of the default linter implementations provide the hint-Parameter in there config gui)
+-- | Get leve from hint-Parameter (since most of the default linter
+--   implementations provide the hint-Parameter in there config gui)
 hasLevelHint :: [String] -> Maybe Integer
 hasLevelHint [] = Nothing
 hasLevelHint (('-':'-':'h':'i':'n':'t':'=':'l':level):_) =

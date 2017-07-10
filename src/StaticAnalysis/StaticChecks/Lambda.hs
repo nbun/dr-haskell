@@ -1,5 +1,7 @@
 -- | Check if a lambda function is used
-module StaticAnalysis.StaticChecks.Lambda (lambdaCheck) where
+module StaticAnalysis.StaticChecks.Lambda (
+    lambdaCheck
+) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

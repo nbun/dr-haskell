@@ -1,6 +1,8 @@
 -- | Holds everything needed for the Error-Datatype to Lint-Datatype Conversion
 -- The Error-Datatype comes from the Haskell-Src-Extensions module
-module StaticAnalysis.Messages.ErrorToLint (module StaticAnalysis.Messages.ErrorToLint) where
+module StaticAnalysis.Messages.ErrorToLint (
+    module StaticAnalysis.Messages.ErrorToLint
+) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.Prettify
@@ -55,8 +57,9 @@ buildForName name e messageClass =
         message = prettyError e
     in Lint filename position messageClass message
 
--- | Builds the Lint-Datatype for an Error specified by its ErrorPositionInformation
--- Also allows the pass-through of a messageclass
+-- | Builds the Lint-Datatype for an Error specified by its
+--   ErrorPositionInformation.
+--   Also allows the pass-through of a messageclass
 buildForInfo :: SrcSpanInfo -> Error SrcSpanInfo -> MessageClass -> Lint
 buildForInfo info e messageClass =
     let (filename, position) = extractFilenameAndPosition info
@@ -73,7 +76,8 @@ buildForQName qname e messageClass =
 
 -- | Builds the Lint-Datatype for an Error specified by its ModuleName
 -- Also allows the pass-through of a messageclass
-buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo-> MessageClass  -> Lint
+buildForModuleName :: ModuleName SrcSpanInfo -> Error SrcSpanInfo-> MessageClass
+                                             -> Lint
 buildForModuleName mname e messageClass =
     let (filename, position) = extractFilenameAndPositionFromModuleName mname
         message = prettyError e
@@ -99,8 +103,12 @@ transformError e@(LambdaFunction info)       = buildForInfo info e Error
 transformError e@(NoTypeDef name)            = buildForName name e Error
 transformError e@(Shadowing qname)           = buildForQName qname e Error
 transformError e@(TypeVar name)              = buildForName name e Error
-transformError e@(Imported moduleName)       = buildForModuleName moduleName e Error
-transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName e Error
+transformError e@(Imported moduleName)       = buildForModuleName moduleName
+                                                                  e
+                                                                  Error
+transformError e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName
+                                                                  e
+                                                                  Error
 transformError e@(OwnDataDecl info)          = buildForInfo info e Error
 transformError e@(DoUsed info)               = buildForInfo info e Error
 transformError e                             = buildUnknownError e Warning
@@ -134,6 +142,7 @@ buildJson (Lint filename position messageClass message) =
                ("hint", toJSString message)]
     in Json.JSObject $ Json.toJSObject obj
 
--- | Helperfunction to Convert a String into its Json Representation inside Haskell
+-- | Helperfunction to Convert a String into its Json Representation
+--   inside Haskell
 toJSString :: String -> Json.JSValue
 toJSString = Json.JSString . Json.toJSString

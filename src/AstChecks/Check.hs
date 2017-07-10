@@ -1,50 +1,79 @@
-module AstChecks.Check where
+-- | Provides generall patternmatching on the AST
+module AstChecks.Check (
+    module AstChecks.Check
+) where
 
 import           Control.Monad
 import           Language.Haskell.Exts
 
+-- | Interface for the patternmatching on the AST parts
 type ImportDeclCheck l a = ImportDecl l -> [a]
 type DeclCheck l a       = Decl l -> [a]
 type ExpCheck l a        = Exp l -> [a]
 type TypeCheck l a       = Type l -> [a]
 type ModuleCheck l a     = Module l -> [a]
 
+-- | ID Patternmatching
 cId _ = []
 
+-- | ID Patternmatching
 checkIdString :: a -> String
 checkIdString _ = ""
 
+-- | Gets AST from file
 getAST path = do
     (ParseOk ast) <- parseFile path
     return ast
 
-runCheck :: FilePath -> ImportDeclCheck SrcSpanInfo a -> DeclCheck SrcSpanInfo a -> ExpCheck SrcSpanInfo a -> TypeCheck SrcSpanInfo a -> IO [a]
+-- | Generall entrypoint for every AST check
+runCheck :: FilePath -> ImportDeclCheck SrcSpanInfo a
+                     -> DeclCheck SrcSpanInfo a
+                     -> ExpCheck SrcSpanInfo a
+                     -> TypeCheck SrcSpanInfo a -> IO [a]
 runCheck path idcF dcF ecF tcF =
     checkAST idcF dcF ecF tcF <$> getAST path
 
-runCheckv2 :: FilePath -> ImportDeclCheck SrcSpanInfo a -> DeclCheck SrcSpanInfo a -> ExpCheck SrcSpanInfo a -> TypeCheck SrcSpanInfo a -> ModuleCheck SrcSpanInfo a -> IO [a]
+-- | General entrypoint for every AST check with additional module check
+runCheckv2 :: FilePath -> ImportDeclCheck SrcSpanInfo a
+                       -> DeclCheck SrcSpanInfo a
+                       -> ExpCheck SrcSpanInfo a
+                       -> TypeCheck SrcSpanInfo a
+                       -> ModuleCheck SrcSpanInfo a -> IO [a]
 runCheckv2 path idcF dcF ecF tcF mcF =
     checkASTv2 idcF dcF ecF tcF mcF <$> getAST path
 
--- TODO: check for missing patternmatchings
-checkAST :: ImportDeclCheck l a -> DeclCheck l a -> ExpCheck l a -> TypeCheck l a -> Module l -> [a]
-checkAST idcF dcF ecF tcF (Module srcInfo modulehead modulepragmas importdecls decls) =
+checkAST :: ImportDeclCheck l a -> DeclCheck l a
+                                -> ExpCheck l a
+                                -> TypeCheck l a
+                                -> Module l -> [a]
+checkAST idcF dcF ecF tcF (Module srcInfo
+                                  modulehead
+                                  modulepragmas
+                                  importdecls
+                                  decls) =
     concatMap idcF importdecls
     ++ concatMap dcF decls
     ++ mapOverDeclsNew dcF ecF decls
     ++ mapOverTypes tcF decls
 
-checkASTv2 :: ImportDeclCheck l a -> DeclCheck l a -> ExpCheck l a -> TypeCheck l a -> ModuleCheck l a -> Module l -> [a]
-checkASTv2 idcF dcF ecF tcF mcF m@(Module srcInfo modulehead modulepragmas importdecls decls) =
-    checkAST idcF dcF ecF tcF m
-    ++ mcF m
+checkASTv2 :: ImportDeclCheck l a -> DeclCheck l a
+                                  -> ExpCheck l a
+                                  -> TypeCheck l a
+                                  -> ModuleCheck l a
+                                  -> Module l -> [a]
+checkASTv2 idcF dcF ecF tcF mcF m@(Module srcInfo
+                                          modulehead
+                                          modulepragmas
+                                          importdecls
+                                          decls) =
+    checkAST idcF dcF ecF tcF m ++ mcF m
 
 mapOverDecls :: ExpCheck l a -> [Decl l] -> [a]
 mapOverDecls = mapOverDeclsNew (const [])
 
 mapOverDeclsNew :: DeclCheck l a -> ExpCheck l a -> [Decl l] -> [a]
 mapOverDeclsNew _ _ [] = []
-mapOverDeclsNew dcF ecF (x:xs) = --TODO: use dcF on all cases
+mapOverDeclsNew dcF ecF (x:xs) =
     case x of
         SpliceDecl _ e        -> ecF e
                                  ++ mapOverExpNew dcF ecF e
@@ -73,18 +102,17 @@ mapOverRhs :: ExpCheck l a -> Rhs l -> [a]
 mapOverRhs = mapOverRhsNew (const [])
 
 mapOverRhsNew :: DeclCheck l a -> ExpCheck l a -> Rhs l -> [a]
-mapOverRhsNew dcF ecF (UnGuardedRhs _ e)    = ecF e
-                                              ++ mapOverExpNew dcF ecF e
-                                              ++ mapOverExpNew dcF ecF e
-mapOverRhsNew dcF ecF (GuardedRhss _ gRhss) = concatMap (mapOverGuardedRhsNew dcF ecF) gRhss
+mapOverRhsNew dcF ecF (UnGuardedRhs _ e)    =
+    ecF e ++ mapOverExpNew dcF ecF e ++ mapOverExpNew dcF ecF e
+mapOverRhsNew dcF ecF (GuardedRhss _ gRhss) =
+    concatMap (mapOverGuardedRhsNew dcF ecF) gRhss
 
 mapOverGuardedRhs :: ExpCheck l a -> GuardedRhs l -> [a]
 mapOverGuardedRhs = mapOverGuardedRhsNew (const [])
 
 mapOverGuardedRhsNew :: DeclCheck l a -> ExpCheck l a -> GuardedRhs l -> [a]
-mapOverGuardedRhsNew dcF ecF (GuardedRhs _ stmts e) = mapOverStmtsNew dcF ecF stmts
-                                                      ++ ecF e
-                                                      ++ mapOverExpNew dcF ecF e
+mapOverGuardedRhsNew dcF ecF (GuardedRhs _ stmts e) =
+    mapOverStmtsNew dcF ecF stmts ++ ecF e ++ mapOverExpNew dcF ecF e
 
 mapOverStmts :: ExpCheck l a -> [Stmt l] -> [a]
 mapOverStmts = mapOverStmtsNew (const [])
@@ -113,10 +141,13 @@ mapOverBindsNew dcF ecF (x:xs) =
     case x of
         (BDecls _ decls)    -> concatMap dcF decls
                                ++ mapOverDeclsNew dcF ecF decls
-        (IPBinds _ ipbinds) -> foldr (\(IPBind _ _ e) ips -> ecF e
-                                                             ++ mapOverExpNew dcF ecF e ++ ips)
-                                     [] ipbinds
-     ++ mapOverBindsNew dcF ecF xs
+        (IPBinds _ ipbinds) ->
+            foldr (\(IPBind _ _ e) ips -> ecF e
+                                          ++ mapOverExpNew dcF ecF e
+                                          ++ ips)
+                  []
+                  ipbinds
+    ++ mapOverBindsNew dcF ecF xs
 
 mapOverMaybeBinds :: ExpCheck l a -> Maybe (Binds l) -> [a]
 mapOverMaybeBinds = mapOverMaybeBindsNew (const [])
@@ -134,10 +165,12 @@ mapOverTypes tcF (x:xs) =
         TypeInsDecl _ t1 t2                -> tcF t1
                                               ++ tcF t2
                                               ++ mapOverTypes tcF xs
-        ClosedTypeFamDecl _ _ _ _ typeEqns -> foldr (\(TypeEqn _ t1 t2) ts -> tcF t1
-                                                                              ++ tcF t2
-                                                                              ++ ts)
-                                                    [] typeEqns
+        ClosedTypeFamDecl _ _ _ _ typeEqns ->
+            foldr (\(TypeEqn _ t1 t2) ts -> tcF t1
+                                            ++ tcF t2
+                                            ++ ts)
+                  []
+                  typeEqns
                                               ++ mapOverTypes tcF xs
         DataInsDecl _ _ t _ _              -> tcF t
                                               ++ mapOverTypes tcF xs
@@ -214,33 +247,40 @@ mapOverExpRecNew rec dcF ecF e =
                                            ++ mapOverExpRecNew rec dcF ecF e1
                                            ++ mapOverExpRecNew rec dcF ecF e2
                                            ++ mapOverExpRecNew rec dcF ecF e3
-        (MultiIf _ gRhss)               -> foldr (\x xs -> mapOverGuardedRhsNew dcF ecF x
-                                                           ++ xs)
-                                                 [] gRhss
-        (Case _ e alts)                 -> ecF e
-                                           ++ mapOverExpRecNew rec dcF ecF e
-                                           ++ foldr (\(Alt _ _ rhs mBinds) xs -> mapOverRhsNew dcF ecF rhs
-                                                                                 ++ case mBinds of
-                                                                                        Nothing -> []
-                                                                                        Just bind -> mapOverBindsNew dcF ecF [bind])
-                                                    [] alts
+        (MultiIf _ gRhss)               ->
+            foldr (\x xs -> mapOverGuardedRhsNew dcF ecF x
+                            ++ xs)
+                  [] gRhss
+        (Case _ e alts)                 ->
+            ecF e
+            ++ mapOverExpRecNew rec dcF ecF e
+            ++ foldr (\(Alt _ _ rhs mBinds) xs ->
+                        mapOverRhsNew dcF ecF rhs
+                        ++ case mBinds of
+                            Nothing   -> []
+                            Just bind -> mapOverBindsNew dcF ecF [bind])
+                     [] alts
         (Do _ stmts)                    -> mapOverStmtsNew dcF ecF stmts
         (MDo _ stmts)                   -> mapOverStmtsNew dcF ecF stmts
-        (Tuple _ _ exps)                -> foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
-                                                           ++ xs)
-                                                 [] exps
-        (TupleSection _ _ mExps)        -> foldr (\x xs -> case x of
-                                                            Nothing -> []
-                                                            Just e  -> ecF e
-                                                                       ++ mapOverExpRecNew rec dcF ecF e
-                                                                       ++ xs)
-                                                 [] mExps
-        (List _ exps)                   -> foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
-                                                           ++ xs)
-                                                 [] exps
-        (ParArray _ exps)               -> foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
-                                                           ++ xs)
-                                                 [] exps
+        (Tuple _ _ exps)                ->
+            foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
+                            ++ xs)
+                  [] exps
+        (TupleSection _ _ mExps)        ->
+            foldr (\x xs -> case x of
+                                Nothing -> []
+                                Just e  -> ecF e
+                                           ++ mapOverExpRecNew rec dcF ecF e
+                                           ++ xs)
+                  [] mExps
+        (List _ exps)                   ->
+            foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
+                            ++ xs)
+                  [] exps
+        (ParArray _ exps)               ->
+            foldr (\x xs -> mapOverExpRecNew rec dcF ecF x
+                            ++ xs)
+                  [] exps
         (Paren _ e)                     -> ecF e
                                            ++ mapOverExpRecNew rec dcF ecF e
         (LeftSection _ e _)             -> ecF e
@@ -248,9 +288,10 @@ mapOverExpRecNew rec dcF ecF e =
         (RightSection _ _ e)            -> ecF e
                                            ++ mapOverExpRecNew rec dcF ecF e
         (RecConstr _ _ fieldUpdates)    -> mapOverFieldsUpdates ecF fieldUpdates
-        (RecUpdate _ e fieldUpdates)    -> ecF e
-                                           ++ mapOverExpRecNew rec dcF ecF e
-                                           ++ mapOverFieldsUpdates ecF fieldUpdates
+        (RecUpdate _ e fieldUpdates)    ->
+            ecF e
+            ++ mapOverExpRecNew rec dcF ecF e
+            ++ mapOverFieldsUpdates ecF fieldUpdates
         (EnumFrom _ e)                  -> ecF e
                                            ++ mapOverExpRecNew rec dcF ecF e
         (EnumFromTo _ e1 e2)            -> ecF e1
@@ -280,16 +321,18 @@ mapOverExpRecNew rec dcF ecF e =
         (ListComp _ e qualStmts)        -> ecF e
                                            ++ mapOverExpRecNew rec dcF ecF e
                                            ++ mapOverQualStmts ecF qualStmts
-        (ParComp _ e qualStmtss)        -> ecF e
-                                           ++ mapOverExpRecNew rec dcF ecF e
-                                           ++ foldr (\x xs -> mapOverQualStmtsNew dcF ecF x
-                                                              ++ xs)
-                                                    [] qualStmtss
-        (ParArrayComp _ e qualStmtss)   -> ecF e
-                                           ++ mapOverExpRecNew rec dcF ecF e
-                                           ++ foldr (\x xs -> mapOverQualStmtsNew dcF ecF x
-                                                              ++ xs)
-                                                    [] qualStmtss
+        (ParComp _ e qualStmtss)        ->
+            ecF e
+            ++ mapOverExpRecNew rec dcF ecF e
+            ++ foldr (\x xs -> mapOverQualStmtsNew dcF ecF x
+                               ++ xs)
+                     [] qualStmtss
+        (ParArrayComp _ e qualStmtss)   ->
+            ecF e
+            ++ mapOverExpRecNew rec dcF ecF e
+            ++ foldr (\x xs -> mapOverQualStmtsNew dcF ecF x
+                               ++ xs)
+                     [] qualStmtss
         (ExpTypeSig _ e _)              -> ecF e
                                            ++ mapOverExpRecNew rec dcF ecF e
         (BracketExp _ bracket)          -> mapOverBracket ecF bracket

@@ -1,4 +1,5 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Repl.Loader (
   LoadMessage(..),
   printLoadMessage,
@@ -16,7 +17,7 @@ import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
 import           System.FilePath
 
-import           Language.Haskell.Exts as Exts
+import           Language.Haskell.Exts                as Exts
 import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.Prettify
@@ -154,7 +155,9 @@ addMyPrelude hideDefs = addImport ImportDecl
   , importSafe = False
   , importPkg = Nothing
   , importAs = Nothing
-  , importSpecs = Just $ ImportSpecList noSrcSpan False [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
+  , importSpecs = Just $ ImportSpecList noSrcSpan
+                                        False
+                                        [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
 
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude
@@ -164,7 +167,7 @@ transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule m
   if s ^. customPrelude
   then return (addMyPrelude hide (addDerivingToAllData "deriving (Prelude.Show, Prelude.Read, Prelude.Eq, Prelude.Ord)" m'), es)
-  else return ((addDerivingToAllData "deriving (Show, Read, Eq, Ord)" m'), es)
+  else return (addDerivingToAllData "deriving (Show, Read, Eq, Ord)" m', es)
 
 transformModuleS :: (MonadIO m, MonadState ReplState m) => [ImportSpec SrcSpanInfo]
                  -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])

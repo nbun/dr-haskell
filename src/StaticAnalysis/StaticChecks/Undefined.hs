@@ -1,5 +1,7 @@
 -- | Check if an entity is not defined
-module StaticAnalysis.StaticChecks.Undefined (undef) where
+module StaticAnalysis.StaticChecks.Undefined (
+  undef
+  ) where
 
 import           Control.Monad
 import           Data.List
@@ -8,13 +10,15 @@ import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 
--- | Checks if an entity is not defined in the module or the given imported modules
+-- | Checks if an entity is not defined in the module or the given imported
+--   modules
 undef :: Eq l => Module l -> [Module l] -> [Error l]
 undef m@(Module _ _ _ _ ds) ms = if impModsAsArg then concatMap undef' ds
                                                  else []
   where
     impMods      = map modName $ importedModules m
-    argMods      = filter (/= "Prelude") $ map modName $ mapMaybe nameOfModule ms
+    argMods      = filter (/= "Prelude") $ map modName $ mapMaybe nameOfModule
+                                                                  ms
     impModsAsArg = all (`elem` argMods) impMods
     qns d        = nub $ qNamesOfExps (expsOfDecl d)
     defStrs d    = map nameString $ map fst (defNames m) ++ varsOfDecl d

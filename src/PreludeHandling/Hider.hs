@@ -5,7 +5,8 @@ import           Language.Haskell.Exts
 import           Util.ModifyAst
 
 extractDefinedFun :: ModifiedModule -> [String]
-extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds
+extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) =
+  nub $ concatMap eD ds
   where
     eD :: Decl l -> [String]
     --eD (TypeDecl _ (DHead _ (Ident _ n)) _) = Just n
@@ -20,7 +21,8 @@ extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD 
     eD _ = []
 
 extractDefinedData :: ModifiedModule -> [String]
-extractDefinedData (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD ds
+extractDefinedData (ModifiedModule _ (Module _ _ _ _ ds) _) =
+  nub $ concatMap eD ds
   where
     eD :: Decl l -> [String]
     eD (TypeDecl _ (DHead _ (Ident _ n)) _) = [n]
@@ -29,7 +31,18 @@ extractDefinedData (ModifiedModule _ (Module _ _ _ _ ds) _) = nub $ concatMap eD
     eD (DataDecl _ _ _ (DHInfix _ _ (Ident _ n)) _ _) = [n]
     eD _ = []
 
-preludeFunctions = ["length", "head", "tail", "last", "map", "foldl", "foldr", "filter", "fst", "snd", "zip", "unzip"]
+preludeFunctions = ["length",
+                    "head",
+                    "tail",
+                    "last",
+                    "map",
+                    "foldl",
+                    "foldr",
+                    "filter",
+                    "fst",
+                    "snd",
+                    "zip",
+                    "unzip"]
 preludeDatatypes = ["Maybe", "String", "Either"]
 
 makeImportDecl :: [String] -> [String] -> ImportDecl ()

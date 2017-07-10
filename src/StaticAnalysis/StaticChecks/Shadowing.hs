@@ -1,4 +1,6 @@
-module StaticAnalysis.StaticChecks.Shadowing (module StaticAnalysis.StaticChecks.Shadowing) where
+module StaticAnalysis.StaticChecks.Shadowing (
+    shadowing
+) where
 
 import           AstChecks.Check
 import           Data.List
@@ -17,13 +19,19 @@ checkMatch :: Match SrcSpanInfo -> [Error SrcSpanInfo]
 checkMatch match = checkMatchWithAddNames match []
 
 checkMatchWithAddNames :: Match SrcSpanInfo -> [String] -> [Error SrcSpanInfo]
-checkMatchWithAddNames (Match _ _ patterns body _)   = extractNameAndSearchBodyWithAddNames patterns body
-checkMatchWithAddNames (InfixMatch _ p1 _ p2 body _) = extractNameAndSearchBodyWithAddNames (p1 : p2) body
+checkMatchWithAddNames (Match _ _ patterns body _)   =
+    extractNameAndSearchBodyWithAddNames patterns body
+checkMatchWithAddNames (InfixMatch _ p1 _ p2 body _) =
+    extractNameAndSearchBodyWithAddNames (p1 : p2) body
 
-extractNameAndSearchBody :: [Pat SrcSpanInfo] -> Rhs SrcSpanInfo -> [Error SrcSpanInfo]
-extractNameAndSearchBody pats body = extractNameAndSearchBodyWithAddNames pats body []
+extractNameAndSearchBody :: [Pat SrcSpanInfo] -> Rhs SrcSpanInfo
+                                              -> [Error SrcSpanInfo]
+extractNameAndSearchBody pats body =
+    extractNameAndSearchBodyWithAddNames pats body []
 
-extractNameAndSearchBodyWithAddNames :: [Pat SrcSpanInfo] -> Rhs SrcSpanInfo -> [String] -> [Error SrcSpanInfo]
+extractNameAndSearchBodyWithAddNames :: [Pat SrcSpanInfo] -> Rhs SrcSpanInfo
+                                                          -> [String]
+                                                          -> [Error SrcSpanInfo]
 extractNameAndSearchBodyWithAddNames pats body ns =
     let names = ns ++ extractName pats
     in mkUniq $ searchBodyForNames names body
@@ -53,7 +61,9 @@ shadowingOnAlts (Alt li pat rhs _:alts) names =
     ++ shadowingOnAlts alts names
 shadowingOnAlts _ _ = []
 
-shadowingOnBinds :: Binds SrcSpanInfo -> Exp SrcSpanInfo -> [String] -> [Error SrcSpanInfo]
+shadowingOnBinds :: Binds SrcSpanInfo -> Exp SrcSpanInfo
+                                      -> [String]
+                                      -> [Error SrcSpanInfo]
 shadowingOnBinds (BDecls _ (PatBind li pat rhs _:decls)) exp names =
     let newnames = extractName [pat]
         diff = names `intersect` newnames
@@ -65,7 +75,8 @@ shadowingOnBinds (IPBinds li ipbinds) exp names =
     matchAgainstIpBinds ipbinds names
 shadowingOnBinds _ _ _ = []
 
-mapOverDeclsWithAddNames :: [Decl SrcSpanInfo] -> [String] -> [Error SrcSpanInfo]
+mapOverDeclsWithAddNames :: [Decl SrcSpanInfo] -> [String]
+                                               -> [Error SrcSpanInfo]
 mapOverDeclsWithAddNames [] _ = []
 mapOverDeclsWithAddNames (FunBind _ matches:decls) names =
     concatMap (`checkMatchWithAddNames` names) matches
@@ -80,7 +91,8 @@ matchAgainstIpBinds (IPBind _ ipname _:binds) names =
         (IPDup li n) -> [Shadowing (UnQual li (Ident li n)) | n `elem` names]
         (IPLin li n) -> [Shadowing (UnQual li (Ident li n)) | n `elem` names]
 
-matchMatchesAgainstNames :: [Match SrcSpanInfo] -> [String] -> [Error SrcSpanInfo]
+matchMatchesAgainstNames :: [Match SrcSpanInfo] -> [String]
+                                                -> [Error SrcSpanInfo]
 matchMatchesAgainstNames (m:matches) names =
     case m of
         (Match li _ pats rhs _)           ->

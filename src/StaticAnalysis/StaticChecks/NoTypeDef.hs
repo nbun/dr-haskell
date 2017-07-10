@@ -1,5 +1,7 @@
 -- | Check if a definition misses an accompanying type signature
-module StaticAnalysis.StaticChecks.NoTypeDef (noTypeDef) where
+module StaticAnalysis.StaticChecks.NoTypeDef (
+    noTypeDef
+) where
 
 import           AstChecks.Check
 import           Data.List

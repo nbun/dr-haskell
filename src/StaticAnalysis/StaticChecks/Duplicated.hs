@@ -1,5 +1,7 @@
 -- | Check if a module contains duplicated definitions
-module StaticAnalysis.StaticChecks.Duplicated (duplicated) where
+module StaticAnalysis.StaticChecks.Duplicated (
+    duplicated
+) where
 
 import           Control.Monad
 import           Data.Maybe
@@ -36,5 +38,5 @@ exportSpecQName :: ExportSpec l -> Maybe (QName l)
 exportSpecQName e = case e of
                       EVar _ qn           -> Just qn
                       EAbs _ _ qn         -> Just qn
-                      EThingWith _ _ qn _ -> Just qn -- TODO constructor names?
+                      EThingWith _ _ qn _ -> Just qn
                       _                   -> Nothing

@@ -74,8 +74,17 @@ instance (MonadException m, MonadCatch m) => MonadCatch (InputT m) where
   catch = System.Console.Haskeline.catch
 
 instance (MonadException m, MonadMask m) => MonadMask (InputT m) where
-  mask a = lift $ mask $ \u -> runInputT defaultSettings (a (lift . u . runInputT defaultSettings))
-  uninterruptibleMask a = lift $ uninterruptibleMask $ \u -> runInputT defaultSettings (a (lift . u . runInputT defaultSettings))
+  mask a = lift $
+           mask $
+           \u ->
+             runInputT
+              defaultSettings
+                (a (lift . u . runInputT defaultSettings))
+  uninterruptibleMask a = lift $
+                          uninterruptibleMask $
+                          \u -> runInputT
+                                  defaultSettings
+                                    (a (lift . u . runInputT defaultSettings))
 
 --this is quick and dirty using FlexibleInstances
 --I think, this can be improved and generalized a

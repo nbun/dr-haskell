@@ -1,5 +1,7 @@
 -- | Check if type variables are used
-module StaticAnalysis.StaticChecks.TypeVars (checkForTypVar) where
+module StaticAnalysis.StaticChecks.TypeVars (
+    checkForTypVar
+) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts

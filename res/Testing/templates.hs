@@ -11,5 +11,6 @@ runAllTests = do
              show n ++ ": " ++
                case res of
                  Success l -> "(Line " ++ show l ++ ") passed"
-                 Failure l pexp o -> "(Line " ++ show l ++ ") failed: " ++ pexp ++ "\n" ++ o)
+                 Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
+                                     ++ pexp ++ "\n" ++ o)
     ztests) :: Prelude.IO [Prelude.String]

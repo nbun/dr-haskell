@@ -1,5 +1,7 @@
 -- | Pretty printing of errors
-module StaticAnalysis.Messages.Prettify (module StaticAnalysis.Messages.Prettify) where
+module StaticAnalysis.Messages.Prettify (
+    module StaticAnalysis.Messages.Prettify
+) where
 
 import           Data.List
 import           Language.Haskell.Exts
@@ -69,15 +71,18 @@ prettyErrorWithInfoSwith s (Shadowing qname) =
 prettyErrorWithInfoSwith s (TypeVar name) =
     let (filename, pos) = extractFilenameAndPositionFromName name
     in printFilenameAndPosWithSwitch s filename pos
-       ++ "Found typevariable " ++ prettyPrintQ name ++ " at "++ prettyNameLoc name ++ "."
+       ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
+       ++ prettyNameLoc name ++ "."
 prettyErrorWithInfoSwith s (Imported name) =
     let (filename, pos) = extractFilenameAndPositionFromModuleName name
     in printFilenameAndPosWithSwitch s filename pos
-       ++ "Found import " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name ++ "."
+       ++ "Found import " ++ prettyPrintQ name ++ " at "
+       ++ prettyModNameLoc name ++ "."
 prettyErrorWithInfoSwith s (ModuleHeadUsed name) =
     let (filename, pos) = extractFilenameAndPositionFromModuleName name
     in printFilenameAndPosWithSwitch s filename pos
-       ++ "Found module head " ++ prettyPrintQ name ++ " at " ++ prettyModNameLoc name ++ "."
+       ++ "Found module head " ++ prettyPrintQ name ++ " at "
+       ++ prettyModNameLoc name ++ "."
 prettyErrorWithInfoSwith s (OwnDataDecl l) =
     let (filename, pos) = extractFilenameAndPosition l
     in printFilenameAndPosWithSwitch s filename pos
@@ -134,11 +139,15 @@ extractFilenameAndPositionFromQName (Qual l _ _) = extractFilenameAndPosition l
 extractFilenameAndPositionFromQName (UnQual l _) = extractFilenameAndPosition l
 
 extractFilenameAndPositionFromName :: Name SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromName (Ident info _) = extractFilenameAndPosition info
-extractFilenameAndPositionFromName (Symbol info _) = extractFilenameAndPosition info
+extractFilenameAndPositionFromName (Ident info _) =
+    extractFilenameAndPosition info
+extractFilenameAndPositionFromName (Symbol info _) =
+    extractFilenameAndPosition info
 
-extractFilenameAndPositionFromModuleName :: ModuleName SrcSpanInfo -> (Filename, Position)
-extractFilenameAndPositionFromModuleName (ModuleName info _) = extractFilenameAndPosition info
+extractFilenameAndPositionFromModuleName :: ModuleName SrcSpanInfo
+                                            -> (Filename, Position)
+extractFilenameAndPositionFromModuleName (ModuleName info _) =
+    extractFilenameAndPosition info
 
 extractFilenameAndPosition :: SrcSpanInfo -> (Filename, Position)
 extractFilenameAndPosition (SrcSpanInfo infoSpan _) =
@@ -150,7 +159,8 @@ extractFileName :: SrcSpan -> Filename
 extractFileName (SrcSpan filename _ _ _ _) = filename
 
 extractStartPosition :: SrcSpan -> Position
-extractStartPosition (SrcSpan _ line column lineE columnE) = (line, column, lineE, columnE)
+extractStartPosition (SrcSpan _ line column lineE columnE) =
+    (line, column, lineE, columnE)
 
 prettyLineNum :: SrcSpanInfo -> String
 prettyLineNum (SrcSpanInfo (SrcSpan _ sl _ _ _) _) = show sl

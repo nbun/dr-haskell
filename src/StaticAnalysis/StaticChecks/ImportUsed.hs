@@ -1,5 +1,7 @@
--- | Check if a module is imported 
-module StaticAnalysis.StaticChecks.ImportUsed (importUsed) where
+-- | Check if a module is imported
+module StaticAnalysis.StaticChecks.ImportUsed (
+  importUsed
+) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors

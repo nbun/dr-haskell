@@ -1,5 +1,7 @@
 -- | Check if a type signature misses an accompanying definition
-module StaticAnalysis.StaticChecks.NoFunDef (noFunDef) where
+module StaticAnalysis.StaticChecks.NoFunDef (
+      noFunDef
+) where
 
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors

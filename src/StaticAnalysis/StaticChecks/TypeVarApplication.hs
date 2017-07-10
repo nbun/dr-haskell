@@ -1,5 +1,7 @@
 -- | Check if a type variable is applied to something
-module StaticAnalysis.StaticChecks.TypeVarApplication (typeVarApplication) where
+module StaticAnalysis.StaticChecks.TypeVarApplication (
+  typeVarApplication
+) where
 
 import           AstChecks.Check
 import           Language.Haskell.Exts
