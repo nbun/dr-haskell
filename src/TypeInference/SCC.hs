@@ -36,22 +36,24 @@ scc :: Eq b => (a -> [b]) -> (a -> [b]) -> [a] -> [[a]]
 scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
   where
     wrap i n = Node i (bvs' n) (fvs' n) n
+
     tsort :: Eq b => [Node a b] -> [Node a b]
     tsort ns = snd (dfs ns empty [])
       where
-        dfs []      marks stack = (marks, stack)
+        dfs []      marks stack                  = (marks, stack)
         dfs (n:ns') marks stack | member n marks = dfs ns' marks stack
                                 | otherwise      = dfs ns' marks' (n:stack')
           where
             (marks', stack') = dfs (defs n) (insert n marks) stack
             defs n1 = filter (any (`elem` (fvs n1)) . bvs) ns
+
     tsort' :: Eq b => [Node a b] -> [[Node a b]]
     tsort' ns = snd (dfs ns empty [])
       where
         dfs []      marks stack = (marks, stack)
         dfs (n:ns') marks stack
-          | member n marks = dfs ns' marks stack
-          | otherwise      = dfs ns' marks' ((n:(concat stack')):stack)
+          | member n marks      = dfs ns' marks stack
+          | otherwise           = dfs ns' marks' ((n:(concat stack')):stack)
           where
             (marks', stack') = dfs (uses n) (insert n marks) []
             uses n1 = filter (any (`elem` (bvs n1)) . fvs) ns
