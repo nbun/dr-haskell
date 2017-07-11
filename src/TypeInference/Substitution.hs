@@ -34,7 +34,7 @@ showSubst sub = "{" ++ intercalate "," (map showMapping (substToList sub))
                     ++ "}"
   where
     showMapping :: Show f => (VarIdx, Term f a) -> String
-    showMapping (v, t) = showVarIdx v ++ " \8614 "  ++ show t
+    showMapping (v, t) = showVarIdx v ++ " \8614 " ++ show t
 
 -- -----------------------------------------------------------------------------
 -- Functions for substitutions on first-order terms
