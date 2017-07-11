@@ -6,7 +6,7 @@
 
 module TypeInference.Unification
   ( UnificationError (..)
-  , showUnificationError, unify, unifiable
+  , unify, unifiable
   ) where
 
 import Data.Either (isRight)
