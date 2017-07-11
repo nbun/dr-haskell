@@ -7,7 +7,7 @@ module TypeInference.AbstractHaskell
   , ConsDecl (..), TypeExpr (..), TypeSig (..), TypeAnn (..), FuncDecl (..)
   , Rules (..), Rule (..), Rhs (..), LocalDecl (..), Expr (..), Statement (..)
   , Pattern (..), BranchExpr (..), Literal (..), AHOptions (..)
-  , defaultAHOptions, showQName, showVarName, showTypeExpr
+  , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
   ) where
 
 import Data.List (intercalate)
@@ -156,6 +156,15 @@ data Literal = Intc Int
 -- -----------------------------------------------------------------------------
 -- Pretty-printing of abstract Haskell data types
 -- -----------------------------------------------------------------------------
+
+-- | Transforms a variable into a string representation.
+varToString :: Int -> String
+varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
+              | otherwise = error err
+  where
+    (q, r) = divMod v 26
+    c = ['a'..'z'] !! r
+    err = "Variables can not be represented by negative integers!"
 
 -- | Representation of pretty-printing options for abstract Haskell data types.
 data AHOptions = AHOptions { currentModule :: String

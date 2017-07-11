@@ -27,15 +27,6 @@ type TESubst a = DM.Map Int (TypeExpr a)
 -- Pretty-printing of substitutions on type expressions
 -- -----------------------------------------------------------------------------
 
--- | Transforms a variable into a string representation.
-varToString :: Int -> String
-varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
-              | otherwise = error err
-  where
-    (q, r) = divMod v 26
-    c = ['a'..'z'] !! r
-    err = "Variables can not be represented by negative integers!"
-
 -- \8614 = RIGHTWARDS ARROW FROM BAR
 
 -- | Transforms a substitution into a string representation.
