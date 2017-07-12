@@ -3,10 +3,11 @@
 -}
 
 module TypeInference.AbstractHaskell
-  ( MName, QName, VarName, Arity, Visibility (..), Prog (..), TypeDecl (..)
-  , ConsDecl (..), TypeExpr (..), TypeSig (..), TypeAnn (..), FuncDecl (..)
-  , Rules (..), Rule (..), Rhs (..), LocalDecl (..), Expr (..), Statement (..)
-  , Pattern (..), BranchExpr (..), Literal (..), AHOptions (..)
+  ( MName, QName, VarName, Arity, TypeExprEq, TypeExprEqs, Visibility (..)
+  , Prog (..), TypeDecl (..), ConsDecl (..), TypeExpr (..), TypeSig (..)
+  , TypeAnn (..), FuncDecl (..), Rules (..), Rule (..), Rhs (..), LocalDecl (..)
+  , Expr (..), Statement (..), Pattern (..), BranchExpr (..), Literal (..)
+  , AHOptions (..)
   , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
   ) where
 
@@ -31,6 +32,14 @@ type VarName = (Int, String)
 -- | The arity of a function or type constructor represented as an integer
 --   greater than or equal to zero.
 type Arity = Int
+
+-- | A type expression equation represented as a pair of type expressions and
+--   parameterized over the type of annotations.
+type TypeExprEq a = (TypeExpr a, TypeExpr a)
+
+-- | Multiple type expression equations represented as a list of type expression
+--   equations and parameterized over the type of annotations.
+type TypeExprEqs a = [TypeExprEq a]
 
 -- | The visibility of a function, type constructor or type is either private
 --   (not exported) or public (exported).
