@@ -2,7 +2,7 @@
   Library for normalization of type variables.
 -}
 
-module Normalization
+module TypeInference.Normalization
   ( Normalization
   , normalize, normTypeExpr, normTypeSig, normTypeAnn, normFuncDecl, normRules
   , normRule, normRhs, normLocalDecl, normExpr, normStatement, normPattern
