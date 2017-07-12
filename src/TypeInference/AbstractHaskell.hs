@@ -167,8 +167,8 @@ varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
     err = "Variables can not be represented by negative integers!"
 
 -- | Representation of pretty-printing options for abstract Haskell data types.
-data AHOptions = AHOptions { currentModule :: String
-                           , unqModules    :: [String] }
+data AHOptions = AHOptions { currentModule :: MName
+                           , unqModules    :: [MName] }
 
 -- | The default pretty-printing options.
 defaultAHOptions :: AHOptions
