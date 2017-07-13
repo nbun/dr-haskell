@@ -46,14 +46,23 @@ lambdaProg p@(Prog m n t fs) = do
 abstrHaskToAbstrRepr :: MonadState LambdaState m => Prog a -> m (Prog a)
 abstrHaskToAbstrRepr (Prog name imps types fundecls) =
   do
-  funDefN <- mapM abstrReprFuncDef fundecls
+  funDefN <- mapM (abstrReprFuncDef "") fundecls
   return $ Prog name imps types funDefN
-  
-abstrReprFuncDef :: MonadState LambdaState m => FuncDecl a -> m (FuncDecl a)
-abstrReprFuncDef (Func a name arity visibility tsig rules)  =
+
+abstrReprFuncName :: MonadState LambdaState m => String -> (TypeInference.AbstractHaskell.QName,a) -> m (TypeInference.AbstractHaskell.QName,a)
+abstrReprFuncName name fname =
   do
-    rulesN <- abstrReprRules (snd $ fst name) rules
-    return $ Func a name arity visibility tsig rulesN
+    ldb <- get
+    case Data.Map.Lazy.lookup (snd $ fst fname) (frees ldb) of
+      Nothing -> return fname
+      Just y -> return ((fst $ fst fname, name ++ "." ++ (snd $ fst fname)),snd fname)
+
+abstrReprFuncDef :: MonadState LambdaState m => String -> FuncDecl a -> m (FuncDecl a)
+abstrReprFuncDef name (Func a fname arity visibility tsig rules)  =
+  do
+    newName <- abstrReprFuncName name fname
+    rulesN <- abstrReprRules (snd $ fst fname) rules
+    return $ Func a newName arity visibility tsig rulesN
 
 abstrReprRules :: MonadState LambdaState m => String -> Rules a -> m (Rules a)
 abstrReprRules name (Rules rules) =
@@ -84,7 +93,7 @@ abstrReprExprTups name (expr1,expr2) =
 
 abstrReprLocal :: MonadState LambdaState m => String -> LocalDecl a -> m (LocalDecl a)
 abstrReprLocal name (LocalFunc funcdecls) = do
-  x <- abstrReprFuncDef funcdecls
+  x <- abstrReprFuncDef name funcdecls
   return $ LocalFunc x
 abstrReprLocal name (LocalPat a pat expr locals) = do
   exprN <- abstrReprExpr name expr
