@@ -16,7 +16,7 @@ highOrd fa fb = fb . fa
 type MyType a b = a -> b -> Bool
 type MyType2 c = Int -> c -> Bool
 --Shadowing Test
-funSig :: Int -> Int
+funSig :: Int -> Int 
 funSig n =
     let n = 0
     in n
