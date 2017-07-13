@@ -46,7 +46,9 @@ parseModified fn = do
     ParseFailed l e -> return $ ParseFailed l e
 
 insertModification :: Modification -> [Modification] -> [Modification]
-insertModification a@(start, len) = (a:) . map (\(s,l) -> (s + if s>=start then len else 0, l))
+insertModification a@(start, len) = (a:) . map (\(s,l) -> (s + if s>=start
+                                                              then len
+                                                              else 0, l))
 
 -- this function handles comments transparently when recording a modification
 recordModification :: Modification -> ModifiedModule -> ModifiedModule
@@ -71,14 +73,22 @@ instance SrcSpanGenerator Decl where
   generateSrcSpanInfo = fromParseResult . parseDecl . prettyPrint
 
 -- generalized map for SrcSpanInfo inside a functor
-modifySpanInfo :: Functor f => (SrcSpan -> SrcSpan) -> f SrcSpanInfo -> f SrcSpanInfo
+modifySpanInfo :: Functor f =>
+                  (SrcSpan -> SrcSpan)
+               -> f SrcSpanInfo
+               -> f SrcSpanInfo
 modifySpanInfo modifySpan = fmap modifyInfo
   where
-    modifyInfo (SrcSpanInfo s pts) = SrcSpanInfo (modifySpan s) (map modifySpan pts)
+    modifyInfo (SrcSpanInfo s pts) = SrcSpanInfo (modifySpan s)
+                                                 (map modifySpan pts)
 
-restorePositionInfo :: Functor f => SrcSpanInfo -> f SrcSpanInfo -> f SrcSpanInfo
+restorePositionInfo :: Functor f =>
+                       SrcSpanInfo
+                    -> f SrcSpanInfo
+                    -> f SrcSpanInfo
 restorePositionInfo (SrcSpanInfo (SrcSpan f l _ _ _) _) =
-  modifySpanInfo $ \(SrcSpan _ sl sc el ec) -> SrcSpan f (sl+l-1) sc (el+l-1) ec
+  modifySpanInfo $ \(SrcSpan _ sl sc el ec) ->
+                     SrcSpan f (sl+l-1) sc (el+l-1) ec
 
 -- adds the length of an insertion to all row information that are below the
 -- start line of the insertion
@@ -107,7 +117,12 @@ numLines x = let (SrcSpanInfo (SrcSpan _ sl _ el _) _) = ann x
 
 -- finds the last position where an element is placed
 -- assumes typical ordering of elements as can be found in a module
-lastPos :: SrcSpanInfo -> Maybe (ModuleHead SrcSpanInfo) -> [ModulePragma SrcSpanInfo] -> [ImportDecl SrcSpanInfo] -> [Decl SrcSpanInfo] -> (Int,Int)
+lastPos :: SrcSpanInfo
+        -> Maybe (ModuleHead SrcSpanInfo)
+        -> [ModulePragma SrcSpanInfo]
+        -> [ImportDecl SrcSpanInfo]
+        -> [Decl SrcSpanInfo]
+        -> (Int,Int)
 lastPos l h ps is ds = case (h, ps, is, ds) of
     (Nothing, [], [], []) -> (extractFirst l, extractFirst l + 1)
     (Just x,  [], [], []) -> mkTuple $ lastOfElement x
@@ -128,8 +143,14 @@ lastPos l h ps is ds = case (h, ps, is, ds) of
 -- this is non obvious and not documented at all. THis behavior was reverse
 -- engineered from the haskell-src-exts code and may be faulty and/or
 -- incomplete.
-fixFirstSpans :: Annotated a => Int -> SrcSpanInfo -> SrcSpanInfo -> a SrcSpanInfo -> SrcSpanInfo
-fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z = SrcSpanInfo (minStart s) ((map minStart $ take n ys) ++ drop n xs)
+fixFirstSpans :: Annotated a =>
+                 Int
+              -> SrcSpanInfo
+              -> SrcSpanInfo
+              -> a SrcSpanInfo
+              -> SrcSpanInfo
+fixFirstSpans n (SrcSpanInfo s xs) (SrcSpanInfo _ ys) z =
+    SrcSpanInfo (minStart s) ((map minStart $ take n ys) ++ drop n xs)
   where
     (SrcSpanInfo (SrcSpan _ zs _ _ _) _) = ann z
     minStart :: SrcSpan -> SrcSpan
@@ -160,8 +181,13 @@ addImport d m =
     -- as imports may be added as the first lines of the module, we may have
     -- modified the first few position points (which behave strangely)
     -- we reset those to their previous values
-    l'' = fixFirstSpans (max (length ps' + 1) 2 + length is') l' l (pushAfter 0 (elemPos-pushPos) annDecl')
-  in recordModification (pushPos,len) m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
+    l'' = fixFirstSpans (max (length ps' + 1) 2 + length is')
+                        l'
+                        l
+                        (pushAfter 0 (elemPos-pushPos) annDecl')
+  in recordModification
+       (pushPos,len)
+       m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
 
 appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
 appendDecl d m =
@@ -173,7 +199,9 @@ appendDecl d m =
     (elemPos, pushPos) = lastPos l h ps is ds
     annDecl' = pushAfter 0 elemPos annDecl
     Just l' = pushAfter elemPos len $ Just l
-  in recordModification (pushPos,len) m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
+  in recordModification
+       (pushPos,len)
+       m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
 prependDecl d m =
@@ -185,13 +213,18 @@ prependDecl d m =
     (elemPos, pushPos) = lastPos l h ps is []
     annDecl' = pushAfter 0 elemPos annDecl
     (Module l' h' ps' is' ds') = pushAfter (elemPos+1) len ast
-  in recordModification (pushPos,len) m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
+  in recordModification
+       (pushPos,len)
+       m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
 
 -- This is a huuuge hack as it doesn't modify the AST, but instead prints,
 -- modifies the textual representation and then parses again. It works well
 -- enough though.
--- Just make sure to only pass valid deriving strings (ex: "deriving (Show, Eq, Ord)").
-addDeriving' :: String -> Decl SrcSpanInfo -> (Decl SrcSpanInfo, Maybe (Int, Int))
+-- Just make sure to only pass valid deriving strings
+-- (eg: "deriving (Show, Eq, Ord)").
+addDeriving' :: String
+             -> Decl SrcSpanInfo
+             -> (Decl SrcSpanInfo, Maybe (Int, Int))
 addDeriving' d (DataDecl l t@(DataType _) ctx dh cs _) = let
     -- print into string, omit any previous deriving clause
     printed = exactPrint (DataDecl l t ctx dh cs Nothing) []
@@ -200,8 +233,10 @@ addDeriving' d (DataDecl l t@(DataType _) ctx dh cs _) = let
     -- parse it back to AST elements
     ParseOk reparsed = parseDecl appended
     -- we need some offset for adjusting comments
-    SrcSpanInfo (SrcSpan _ _ _ bel bec) _ = foldl (flip const) l (DataDecl l t ctx dh cs Nothing)
-    SrcSpanInfo (SrcSpan _ _ _ _   aec) _ = foldl (flip const) l reparsed
+    SrcSpanInfo (SrcSpan _ _ _ bel bec) _ =
+      foldl (flip const) l (DataDecl l t ctx dh cs Nothing)
+    SrcSpanInfo (SrcSpan _ _ _ _   aec) _ =
+      foldl (flip const) l reparsed
   in
     (reparsed, Just (bel, aec - bec + 1))
 addDeriving' _ x = (x, Nothing)
@@ -214,20 +249,24 @@ addDerivingToAllData d (ModifiedModule mods (Module l h ps is ds) cs) = let
       -- try to add the deriving clause to all fitting declarations
       modDs = map (addDeriving' d) ds
       -- extract all comment-relocations
-      commentModders = foldl (.) id $ map fixComment $ catMaybes (map snd modDs)
+      commentModders = foldl (.) id $ map fixComment $
+                                          catMaybes (map snd modDs)
     in
-      (ModifiedModule mods (Module l h ps is (map fst modDs)) (map commentModders cs))
+      (ModifiedModule mods
+                      (Module l h ps is (map fst modDs))
+                      (map commentModders cs))
   where
     -- add offsets to comments in the applicable lines
-    fixComment (l,n) (Comment ml (SrcSpan f sl sc el ec) t) = Comment ml (SrcSpan f sl
-      (if sl == l
-       then sc + n
-       else sc)
-      el
-      (if el == l
-       then ec + n
-       else ec) )
-      t
+    fixComment (l,n) (Comment ml (SrcSpan f sl sc el ec) t) =
+      Comment ml (SrcSpan f sl
+        (if sl == l
+         then sc + n
+         else sc)
+        el
+        (if el == l
+         then ec + n
+         else ec) )
+        t
 
 printModified :: ModifiedModule -> String
 printModified m = exactPrint (modifiedModule m) (modifiedComments m)

@@ -39,7 +39,11 @@ commentsLines :: [Comment] -> [(Int,String)]
 commentsLines = concatMap commentLines
 
 filterCommentLines :: [(Int,String)] -> [(Int,String)]
-filterCommentLines = map (second (dropWhile (\x -> or $ ($ x) <$> [isSpace, (== '>')]))) . filter (isPrefixOf "> " . snd) . map (second (dropWhile isSpace))
+filterCommentLines = map (second (dropWhile (\x ->
+                                              or $ ($ x) <$>
+                                                   [isSpace, (== '>')]))) .
+                     filter (isPrefixOf "> " . snd) .
+                     map (second (dropWhile isSpace))
 
 -- this adds the test expression's string representation to the test expression
 -- for pretty printing of failed tests
@@ -71,7 +75,8 @@ checkTest a = case a of
     findTestFunc (Var _ (UnQual _ (Ident _ "checkExpect"))) = True
     findTestFunc (Var _ (UnQual _ (Ident _ "quickCheck")))  = True
     findTestFunc (App _ e _)                                = findTestFunc e
-    findTestFunc (InfixApp _ e q _)                         = isDollar q && findTestFunc e
+    findTestFunc (InfixApp _ e q _)                         = isDollar q &&
+                                                              findTestFunc e
     findTestFunc _                                          = False
 
 
@@ -84,7 +89,10 @@ parseTest (l, s) = case parseExp s of
                                          else Left $ InvalidTest l s
 
 extractTests :: (a, [Comment]) -> [Either (Error Int) (Exp ())]
-extractTests = map parseTest . filterCommentLines . commentsLines . extractComments
+extractTests = map parseTest .
+               filterCommentLines .
+               commentsLines .
+               extractComments
 
 makeTestsNode :: [Exp ()] -> Exp ()
 makeTestsNode = List ()
@@ -95,9 +103,11 @@ getPatBind n (Module _ _ _ _ ds) = find correctPat ds
     correctPat (PatBind _ (PVar _ (Ident _ p)) _ _) = p == n
     correctPat _                                    = False
 
--- replaces the placeholder __allTests__ in the template with the actual list of tests
+-- replaces the placeholder __allTests__ in the template with the actual list
+-- of tests
 replaceAllTests :: Exp a -> Decl a -> Decl a
-replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) = PatBind l p (UnGuardedRhs l1 r') b
+replaceAllTests replacement (PatBind l p (UnGuardedRhs l1 r) b) =
+    PatBind l p (UnGuardedRhs l1 r') b
   where
     r' = repExp r
     repStms = map repStm
@@ -121,7 +131,9 @@ buildTestMethod es = do
   return $ replaceAllTests (makeTestsNode es) runAllTestDecl
 
 transformErrors :: Error Int -> Error SrcSpanInfo
-transformErrors (InvalidTest l t) = let s = SrcLoc "" l 0 in InvalidTest (infoSpan (mkSrcSpan s s) []) t
+transformErrors (InvalidTest l t) =
+  let s = SrcLoc "" l 0
+  in  InvalidTest (infoSpan (mkSrcSpan s s) []) t
 
 -- does all of the above:
 -- extracts all test expressions from comments, collects them in a list,
@@ -134,7 +146,14 @@ transformModule m = do
       errors         = lefts testsAndErrors
   testDeclAST <- buildTestMethod tests
   let
-    impAdded = addImport ImportDecl {importAnn = (), importModule = ModuleName () "Tests", importQualified = False, importSrc = False, importSafe = False, importPkg = Nothing, importAs = Nothing, importSpecs = Nothing} m
+    impAdded = addImport ImportDecl {importAnn = (),
+                                     importModule = ModuleName () "Tests",
+                                     importQualified = False,
+                                     importSrc = False,
+                                     importSafe = False,
+                                     importPkg = Nothing,
+                                     importAs = Nothing,
+                                     importSpecs = Nothing} m
     m' = appendDecl testDeclAST impAdded
   return (m', transformErrors <$> errors)
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod

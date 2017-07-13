@@ -63,7 +63,9 @@ type ReplInterpreter = InterpreterT ReplInput
 type Repl = StateT ReplState ReplInterpreter
 
 runRepl :: ReplState -> Repl a -> IO (Either InterpreterError a)
-runRepl state = runInputT defaultSettings . runInterpreter . (`evalStateT` state)
+runRepl state = runInputT defaultSettings .
+                runInterpreter .
+                (`evalStateT` state)
 
 -- no idea if these instances are valid
 -- they work in my small tests

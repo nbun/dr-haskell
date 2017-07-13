@@ -60,7 +60,8 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
       pr <- liftIO $ parseModified fn
       case pr of
         ParseFailed l e ->
-          return [CheckError Nothing $ SyntaxError (infoSpan (mkSrcSpan l l) []) e]
+          return [CheckError Nothing $
+                             SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
@@ -155,9 +156,10 @@ addMyPrelude hideDefs = addImport ImportDecl
   , importSafe = False
   , importPkg = Nothing
   , importAs = Nothing
-  , importSpecs = Just $ ImportSpecList noSrcSpan
-                                        False
-                                        [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
+  , importSpecs = Just $ ImportSpecList
+                           noSrcSpan
+                           False
+                           [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
 
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude
@@ -166,9 +168,17 @@ transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
 transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule m
   if s ^. customPrelude
-  then return (addMyPrelude hide (addDerivingToAllData "deriving (Prelude.Show, Prelude.Read, Prelude.Eq, Prelude.Ord)" m'), es)
+  then return
+    (addMyPrelude
+      hide $
+      addDerivingToAllData
+        "deriving (Prelude.Show, Prelude.Read, Prelude.Eq, Prelude.Ord)"
+        m',
+    es)
   else return (addDerivingToAllData "deriving (Show, Read, Eq, Ord)" m', es)
 
-transformModuleS :: (MonadIO m, MonadState ReplState m) => [ImportSpec SrcSpanInfo]
-                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
+transformModuleS :: (MonadIO m, MonadState ReplState m) =>
+                       [ImportSpec SrcSpanInfo]
+                    -> ModifiedModule
+                    -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModuleS hide m = MS.get >>= flip (transformModule hide) m
