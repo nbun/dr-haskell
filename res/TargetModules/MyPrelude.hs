@@ -63,7 +63,7 @@ module MyPrelude (
   P.take,
   P.flip,
   P.map,
-  P.fltInter,
+  P.filter,
   P.curry,
   P.uncurry,
   P.const,

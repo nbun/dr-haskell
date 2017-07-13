@@ -115,7 +115,7 @@ TODO:
 -}
 levelThree :: LevelT
 levelThree p = do
-  check moduleHeadUsed
+  --check moduleHeadUsed
   check noFunDef
   check typeVarApplication
   check doUsed
