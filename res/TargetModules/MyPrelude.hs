@@ -33,10 +33,10 @@ module MyPrelude (
   (-),
   (*),
   (/),
-  (.+),
+  (+.),
   (-.),
-  (.*),
-  (./),
+  (*.),
+  (/.),
   -- | Simple versions of list functions that use Foldable or Num
   length,
   concat,
