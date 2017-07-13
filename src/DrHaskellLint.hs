@@ -54,7 +54,8 @@ runWithRepl hlintHints file lvl format = do
     (m2, errs) <- transformModule [] state m1 -- "
     errs' <- runCheckLevel lvl file -- run checks
     coverage <- getConverageOutput m2 -- run coverage
-    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (errs ++ errs'))
+    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
+                                                             (errs ++ errs'))
     -- build output
 
 -- | Invokes hlint via hlint module

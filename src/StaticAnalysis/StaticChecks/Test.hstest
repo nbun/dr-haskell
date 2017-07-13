@@ -1,13 +1,24 @@
+--Names Check
 tEst :: Int
 test x = let y = 42
              z = a
          in b
-  where b = h + (teest y)
-
+  where b = h + teest y
+--TypeSig Test
 teest = 4
 testTest = 2
 setStack :: a b
-setStack = 5
-
-replEval :: (a -> a b)
-replEval = "duplicate"
+setStack = 5 
+--Higher-Order Test
+highOrd :: (a -> b) -> (b -> c) -> (a -> c)
+highOrd fa fb = fb . fa
+--TypeVars Test
+type MyType a b = a -> b -> Bool
+type MyType2 c = Int -> c -> Bool
+--Shadowing Test
+funSig :: Int -> Int
+funSig n =
+    let n = 0
+    in n
+--Lambda Test
+lam = \x -> if x > 0 then x - 1 else 1 - x
