@@ -12,6 +12,7 @@ module TypeInference.Term
   ) where
 
 import Data.List (intercalate)
+import Goodies (parensIf)
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations
@@ -75,11 +76,3 @@ showTermEq (l, r) = show l ++ " = " ++ show r
 -- | Transforms a list of term equations into a string representation.
 showTermEqs :: Show f => TermEqs f a -> String
 showTermEqs = unlines . (map showTermEq)
-
--- -----------------------------------------------------------------------------
--- Definition of helper functions
--- -----------------------------------------------------------------------------
-
--- | Encloses a string in parenthesis if the given condition is true.
-parensIf :: Bool -> String -> String
-parensIf b s = if b then "(" ++ s ++ ")" else s
