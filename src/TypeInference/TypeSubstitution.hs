@@ -7,12 +7,14 @@ module TypeInference.TypeSubstitution
   , showTESubst, emptyTESubst, extendTESubst, listToTESubst, teSubstToList
   , lookupTESubst, applyTESubst, applyTESubstTS, applyTESubstTA, applyTESubstFD
   , applyTESubstRS, applyTESubstR, applyTESubstRHS, applyTESubstLD
-  , applyTESubstE, applyTESubstS, applyTESubstP, applyTESubstBE
+  , applyTESubstE, applyTESubstS, applyTESubstP, applyTESubstBE, restrictTESubst
+  , composeTESubst
   ) where
 
 import Data.List (intercalate)
 import qualified Data.Map as DM
 import Data.Maybe (fromMaybe)
+import Goodies (both)
 import TypeInference.AbstractHaskell
 
 -- -----------------------------------------------------------------------------
@@ -185,10 +187,15 @@ applyTESubstS sub (SPat x p e)
   = SPat x (applyTESubstP sub p) (applyTESubstE sub e)
 applyTESubstS sub (SLet x lds) = SLet x (map (applyTESubstLD sub) lds)
 
--- -----------------------------------------------------------------------------
--- Definition of helper functions
--- -----------------------------------------------------------------------------
+-- | Returns a new substitution with only those mappings from the given
+--   substitution whose variable is in the given list of variables.
+restrictTESubst :: TESubst a -> [Int] -> TESubst a
+restrictTESubst sub vs
+  = listToTESubst [(v, te) | v <- vs, Just te <- [lookupTESubst v sub]]
 
--- | Applies a function to both components of a tuple.
-both :: (a -> b) -> (a, a) -> (b, b)
-both f (x, y) = (f x, f y)
+-- | Composes the first substitution @phi@ with the second substitution @sigma@.
+--   The resulting substitution @sub@ fulfills the property
+--   @sub(t) = phi(sigma(t))@ for a term @t@. Mappings in the first substitution
+--   shadow those in the second.
+composeTESubst :: TESubst a -> TESubst a -> TESubst a
+composeTESubst phi sigma = DM.union phi (DM.map (applyTESubst phi) sigma)
