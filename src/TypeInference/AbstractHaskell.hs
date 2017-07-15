@@ -12,6 +12,7 @@ module TypeInference.AbstractHaskell
   ) where
 
 import Data.List (intercalate)
+import Goodies (one, parensIf)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -179,7 +180,7 @@ varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
 data AHOptions = AHOptions { currentModule :: MName
                            , unqModules    :: [MName] }
 
--- | The default pretty-printing options.
+-- | The default pretty-printing options for abstract Haskell data types.
 defaultAHOptions :: AHOptions
 defaultAHOptions = AHOptions { currentModule = ""
                              , unqModules    = [] }
@@ -203,7 +204,7 @@ showTypeExpr opts = showTypeExpr' 0
     showTypeExpr' p (FuncType _ t1 t2)
       = parensIf (p > 0) (showTypeExpr' 1 t1 ++ " -> " ++ showTypeExpr opts t2)
     showTypeExpr' p (TCons _ (qn, _) tes)
-      | isListCons qn && one tes
+      | snd qn == "[]" && one tes
         = "[" ++ showTypeExpr opts (head tes) ++ "]"
       | isTupleCons qn
         = tupled (map (showTypeExpr opts) tes)
@@ -213,21 +214,8 @@ showTypeExpr opts = showTypeExpr' 0
             (intercalate " " ((showQName opts qn):(map (showTypeExpr' 2) tes)))
 
 -- -----------------------------------------------------------------------------
--- Definition of helper functions
+-- Definition of auxiliary functions
 -- -----------------------------------------------------------------------------
-
--- | Encloses a string in parenthesis if the given condition is true.
-parensIf :: Bool -> String -> String
-parensIf b s = if b then "(" ++ s ++ ")" else s
-
--- | Checks whether the given list has exactly one element.
-one :: [a] -> Bool
-one []     = False
-one (_:xs) = null xs
-
--- | Checks whether the given qualified name is the list type constructor.
-isListCons :: QName -> Bool
-isListCons (_, n) = n == "[]"
 
 -- | Checks whether the given qualified name is the tuple type constructor.
 isTupleCons :: QName -> Bool
