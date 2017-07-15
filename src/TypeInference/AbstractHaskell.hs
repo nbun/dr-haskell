@@ -9,6 +9,7 @@ module TypeInference.AbstractHaskell
   , Expr (..), Statement (..), Pattern (..), BranchExpr (..), Literal (..)
   , AHOptions (..)
   , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
+  , showTypeSig, showTypeAnn, showLiteral
   ) where
 
 import Data.List (intercalate)
@@ -212,6 +213,24 @@ showTypeExpr opts = showTypeExpr' 0
         = parensIf
             (p > 1 && not (null tes))
             (intercalate " " ((showQName opts qn):(map (showTypeExpr' 2) tes)))
+
+-- | Transforms a type signature for the given function into a string
+--   representation.
+showTypeSig :: AHOptions -> String -> TypeSig a -> String
+showTypeSig _    _ Untyped      = ""
+showTypeSig opts n (TypeSig te) = n ++ " :: " ++ showTypeExpr opts te
+
+-- | Transforms a type annotation into a string representation.
+showTypeAnn :: AHOptions -> TypeAnn a -> String
+showTypeAnn _    NoTypeAnn    = ""
+showTypeAnn opts (TypeAnn te) = showTypeExpr opts te
+
+-- | Transforms a literal into a string representation.
+showLiteral :: Literal -> String
+showLiteral (Intc i)    = show i
+showLiteral (Floatc f)  = show f
+showLiteral (Charc c)   = [c]
+showLiteral (Stringc s) = s
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions
