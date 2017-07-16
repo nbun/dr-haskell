@@ -7,7 +7,7 @@ module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
   , typeSigType, typeAnnType, rhsType, exprType, patternType, teVar, (=.=)
-  , hasTypeSig
+  , hasTypeSig, funcName
   ) where
 
 import TypeInference.AbstractHaskell
@@ -144,3 +144,7 @@ te1 =.= te2 = (te1, te2)
 hasTypeSig :: FuncDecl a -> Bool
 hasTypeSig (Func _ _ _ _ Untyped _)     = False
 hasTypeSig (Func _ _ _ _ (TypeSig _) _) = True
+
+-- | Returns the qualified name of the given function declaration.
+funcName :: FuncDecl a -> QName
+funcName (Func _ (qn, _) _ _ _ _) = qn
