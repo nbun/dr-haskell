@@ -6,7 +6,8 @@
 module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
-  , teVar, (=.=), hasTypeSig
+  , typeSigType, typeAnnType, rhsType, exprType, patternType, teVar, (=.=)
+  , hasTypeSig
   ) where
 
 import TypeInference.AbstractHaskell
@@ -85,6 +86,51 @@ literalType (Intc _)    = intType
 literalType (Floatc _)  = floatType
 literalType (Charc _)   = charType
 literalType (Stringc _) = stringType
+
+-- | Returns the type expression from the given type signature or 'Nothing' if
+--   no such type expression exists.
+typeSigType :: TypeSig a -> Maybe (TypeExpr a)
+typeSigType Untyped      = Nothing
+typeSigType (TypeSig te) = Just te
+
+-- | Returns the type expression from the given type annotation or 'Nothing' if
+--   no type is annotated.
+typeAnnType :: TypeAnn a -> Maybe (TypeExpr a)
+typeAnnType NoTypeAnn    = Nothing
+typeAnnType (TypeAnn te) = Just te
+
+-- | Returns the list of type expressions from the given right-hand side.
+rhsType :: Rhs a -> [Maybe (TypeExpr a)]
+rhsType (SimpleRhs e)      = [exprType e]
+rhsType (GuardedRhs _ eqs) = map (exprType . snd) eqs
+
+-- | Returns the annotated type from the given expression or 'Nothing' if no
+--   type is annotated.
+exprType :: Expr a -> Maybe (TypeExpr a)
+exprType (Var ta _)              = typeAnnType ta
+exprType (Lit ta _)              = typeAnnType ta
+exprType (Symbol ta _)           = typeAnnType ta
+exprType (Apply _ ta _ _)        = typeAnnType ta
+exprType (InfixApply _ ta _ _ _) = typeAnnType ta
+exprType (Lambda _ ta _ _)       = typeAnnType ta
+exprType (Let _ ta _ _)          = typeAnnType ta
+exprType (DoExpr _ ta _)         = typeAnnType ta
+exprType (ListComp _ ta _ _)     = typeAnnType ta
+exprType (Case _ ta _ _)         = typeAnnType ta
+exprType (Typed _ ta _ _)        = typeAnnType ta
+exprType (IfThenElse _ ta _ _ _) = typeAnnType ta
+exprType (Tuple _ ta _)          = typeAnnType ta
+exprType (List _ ta _)           = typeAnnType ta
+
+-- | Returns the annotated type from the given pattern or 'Nothing' if no type
+--   is annotated.
+patternType :: Pattern a -> Maybe (TypeExpr a)
+patternType (PVar ta _)      = typeAnnType ta
+patternType (PLit ta _)      = typeAnnType ta
+patternType (PComb _ ta _ _) = typeAnnType ta
+patternType (PAs _ ta _ _)   = typeAnnType ta
+patternType (PTuple _ ta _)  = typeAnnType ta
+patternType (PList _ ta _)   = typeAnnType ta
 
 -- | Returns a type variable with the given index and the given annotation.
 teVar :: Int -> a -> TypeExpr a
