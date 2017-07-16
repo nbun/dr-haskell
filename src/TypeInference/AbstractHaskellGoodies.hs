@@ -36,19 +36,19 @@ baseType qn x = TCons x (qn, x) []
 
 -- | Returns the 'Bool' type with the given annotation.
 boolType :: a -> TypeExpr a
-boolType x = baseType (preName "Bool") x
+boolType = baseType (preName "Bool")
 
 -- | Returns the 'Char' type with the given annotation.
 charType :: a -> TypeExpr a
-charType x = baseType (preName "Char") x
+charType = baseType (preName "Char")
 
 -- | Returns the 'Int' type with the given annotation.
 intType :: a -> TypeExpr a
-intType x = baseType (preName "Int") x
+intType = baseType (preName "Int")
 
 -- | Returns the 'Float' type with the given annotation.
 floatType :: a -> TypeExpr a
-floatType x = baseType (preName "Float") x
+floatType = baseType (preName "Float")
 
 -- | Returns a list type with the given type expression and the given
 --   annotation.
@@ -138,7 +138,7 @@ teVar v x = TVar ((v, varToString v), x)
 
 -- | Returns a type expression equation with the given type expressions.
 (=.=) :: TypeExpr a -> TypeExpr a -> TypeExprEq a
-te1 =.= te2 = (te1, te2)
+(=.=) = (,)
 
 -- | Checks whether the given function declaration has a type signature.
 hasTypeSig :: FuncDecl a -> Bool
