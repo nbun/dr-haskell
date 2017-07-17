@@ -214,8 +214,8 @@ showTypeExpr opts = showTypeExpr' 0
             (p > 1 && not (null tes))
             (intercalate " " ((showQName opts qn):(map (showTypeExpr' 2) tes)))
 
--- | Transforms a type signature for the given function into a string
---   representation.
+-- | Transforms a type signature for the function with the given name into a
+--   string representation.
 showTypeSig :: AHOptions -> String -> TypeSig a -> String
 showTypeSig _    _ Untyped      = ""
 showTypeSig opts n (TypeSig te) = n ++ " :: " ++ showTypeExpr opts te
