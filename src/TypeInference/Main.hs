@@ -19,7 +19,6 @@ import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
-import TypeInference.SCC (scc)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
 import TypeInference.Unification (UnificationError (..), unify)
@@ -121,65 +120,6 @@ solve eqs = case unify (fromTypeExprEqs eqs) of
     toTIError :: UnificationError QName a -> TIError a
     toTIError (Clash t1 t2)    = TIClash (toTypeExpr t1) (toTypeExpr t2)
     toTIError (OccurCheck v t) = TIOccurCheck (v, varToString v) (toTypeExpr t)
-
--- -----------------------------------------------------------------------------
--- Functions for computation of function dependency graphs
--- -----------------------------------------------------------------------------
-
--- | Returns the strongly connected components of the given list of function
---   declarations within the module with the given name.
-depGraph :: MName -> [FuncDecl a] -> [[FuncDecl a]]
-depGraph mn = scc def use
-  where
-    def :: FuncDecl a -> [QName]
-    def = (:[]) . funcName
-
-    use :: FuncDecl a -> [QName]
-    use (Func _ _ _ _ _ rs) = calledRS rs
-
-    calledRS :: Rules a -> [QName]
-    calledRS (Rules rs)     = concatMap calledR rs
-    calledRS (External _ _) = []
-
-    calledR :: Rule a -> [QName]
-    calledR (Rule _ _ _ rhs lds) = calledRhs rhs ++ concatMap calledLD lds
-
-    calledRhs :: Rhs a -> [QName]
-    calledRhs (SimpleRhs e)      = called e
-    calledRhs (GuardedRhs _ eqs)
-      = concatMap (\(l, r) -> called l ++ called r) eqs
-
-    calledLD :: LocalDecl a -> [QName]
-    calledLD (LocalFunc fd)       = use fd
-    calledFD (LocalPat _ _ e lds) = called e ++ concatMap calledLD lds
-
-    called :: Expr a -> [QName]
-    called (Var _ _)                         = []
-    called (Lit _ _)                         = []
-    called (Symbol _ (qn, _)) | fst qn == mn = [qn]
-                              | otherwise    = []
-    called (Apply _ _ e1 e2)                 = called e1 ++ called e2
-    called (InfixApply _ _ e1 (qn, _) e2)
-      | fst qn == mn                         = [qn] ++ called e1 ++ called e2
-      | otherwise                            = called e1 ++ called e2
-    called (Lambda _ _ _ e)                  = called e
-    called (Let _ _ lds e)
-      = concatMap calledLD lds ++ called e
-    called (DoExpr _ _ sts)                  = concatMap calledS sts
-    called (ListComp _ _ e sts)              = called e ++ concatMap calledS sts
-    called (Case _ _ e bs)                   = called e ++ concatMap calledBE bs
-    called (Typed _ _ e _)                   = called e
-    called (IfThenElse _ _ e1 e2 e3)         = concatMap called [e1, e2, e3]
-    called (Tuple _ _ es)                    = concatMap called es
-    called (List _ _ es)                     = concatMap called es
-
-    calledS :: Statement a -> [QName]
-    calledS (SExpr e)    = called e
-    calledS (SPat _ _ e) = called e
-    calledS (SLet _ lds) = concatMap calledLD lds
-
-    calledBE :: BranchExpr a -> [QName]
-    calledBE (Branch _ _ e) = called e
 
 -- -----------------------------------------------------------------------------
 -- Functions for type inference monads
@@ -411,22 +351,6 @@ eqsRhs (GuardedRhs x eqs) = do eqs' <- mapM (eqsExpr . snd) eqs
 
 guardEq :: Expr a -> TIMonad a (TypeExprEq a)
 guardEq e = return ((boolType (exprAnn e)) =.= (exprType' e))
-
-exprAnn :: Expr a -> a
-exprAnn (Var _ (_, x))         = x
-exprAnn (Lit _ (_, x))         = x
-exprAnn (Symbol _ (_, x))      = x
-exprAnn (Apply x _ _ _)        = x
-exprAnn (InfixApply x _ _ _ _) = x
-exprAnn (Lambda x _ _ _)       = x
-exprAnn (Let x _ _ _)          = x
-exprAnn (DoExpr x _ _)         = x
-exprAnn (ListComp x _ _ _)     = x
-exprAnn (Case x _ _ _)         = x
-exprAnn (Typed x _ _ _)        = x
-exprAnn (IfThenElse x _ _ _ _) = x
-exprAnn (Tuple x _ _)          = x
-exprAnn (List x _ _)           = x
 
 -- | Returns the type expression equations for the given branch expression.
 eqsBranch :: TypeExpr a -> Expr a -> BranchExpr a -> TIMonad a (TypeExprEqs a)

@@ -6,11 +6,12 @@
 module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
-  , typeSigType, typeAnnType, rhsType, exprType, patternType, teVar, (=.=)
-  , hasTypeSig, funcName
+  , typeSigType, typeAnnType, rhsType, exprType, patternType, exprAnn, teVar
+  , (=.=), hasTypeSig, funcName, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
+import TypeInference.SCC (scc)
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions for abstract Haskell data types
@@ -132,6 +133,23 @@ patternType (PAs _ ta _ _)   = typeAnnType ta
 patternType (PTuple _ ta _)  = typeAnnType ta
 patternType (PList _ ta _)   = typeAnnType ta
 
+-- | Returns the annotation from the given expression.
+exprAnn :: Expr a -> a
+exprAnn (Var _ (_, x))         = x
+exprAnn (Lit _ (_, x))         = x
+exprAnn (Symbol _ (_, x))      = x
+exprAnn (Apply x _ _ _)        = x
+exprAnn (InfixApply x _ _ _ _) = x
+exprAnn (Lambda x _ _ _)       = x
+exprAnn (Let x _ _ _)          = x
+exprAnn (DoExpr x _ _)         = x
+exprAnn (ListComp x _ _ _)     = x
+exprAnn (Case x _ _ _)         = x
+exprAnn (Typed x _ _ _)        = x
+exprAnn (IfThenElse x _ _ _ _) = x
+exprAnn (Tuple x _ _)          = x
+exprAnn (List x _ _)           = x
+
 -- | Returns a type variable with the given index and the given annotation.
 teVar :: Int -> a -> TypeExpr a
 teVar v x = TVar ((v, varToString v), x)
@@ -148,3 +166,59 @@ hasTypeSig (Func _ _ _ _ (TypeSig _) _) = True
 -- | Returns the qualified name of the given function declaration.
 funcName :: FuncDecl a -> QName
 funcName (Func _ (qn, _) _ _ _ _) = qn
+
+-- -----------------------------------------------------------------------------
+-- Functions for computation of function dependency graphs
+-- -----------------------------------------------------------------------------
+
+-- | Returns the strongly connected components of the given list of function
+--   declarations within the module with the given name.
+depGraph :: MName -> [FuncDecl a] -> [[FuncDecl a]]
+depGraph mn = scc (pure . funcName) use
+  where
+    use :: FuncDecl a -> [QName]
+    use (Func _ _ _ _ _ rs) = calledRS rs
+
+    calledRS :: Rules a -> [QName]
+    calledRS (Rules rs)     = concatMap calledR rs
+    calledRS (External _ _) = []
+
+    calledR :: Rule a -> [QName]
+    calledR (Rule _ _ _ rhs lds) = calledRhs rhs ++ concatMap calledLD lds
+
+    calledRhs :: Rhs a -> [QName]
+    calledRhs (SimpleRhs e)      = called e
+    calledRhs (GuardedRhs _ eqs)
+      = concatMap (\(l, r) -> called l ++ called r) eqs
+
+    calledLD :: LocalDecl a -> [QName]
+    calledLD (LocalFunc fd)       = use fd
+    calledLD (LocalPat _ _ e lds) = called e ++ concatMap calledLD lds
+
+    called :: Expr a -> [QName]
+    called (Var _ _)                         = []
+    called (Lit _ _)                         = []
+    called (Symbol _ (qn, _)) | fst qn == mn = [qn]
+                              | otherwise    = []
+    called (Apply _ _ e1 e2)                 = called e1 ++ called e2
+    called (InfixApply _ _ e1 (qn, _) e2)
+      | fst qn == mn                         = [qn] ++ called e1 ++ called e2
+      | otherwise                            = called e1 ++ called e2
+    called (Lambda _ _ _ e)                  = called e
+    called (Let _ _ lds e)
+      = concatMap calledLD lds ++ called e
+    called (DoExpr _ _ sts)                  = concatMap calledS sts
+    called (ListComp _ _ e sts)              = called e ++ concatMap calledS sts
+    called (Case _ _ e bs)                   = called e ++ concatMap calledBE bs
+    called (Typed _ _ e _)                   = called e
+    called (IfThenElse _ _ e1 e2 e3)         = concatMap called [e1, e2, e3]
+    called (Tuple _ _ es)                    = concatMap called es
+    called (List _ _ es)                     = concatMap called es
+
+    calledS :: Statement a -> [QName]
+    calledS (SExpr e)    = called e
+    calledS (SPat _ _ e) = called e
+    calledS (SLet _ lds) = concatMap calledLD lds
+
+    calledBE :: BranchExpr a -> [QName]
+    calledBE (Branch _ _ e) = called e
