@@ -229,8 +229,8 @@ showTypeAnn opts (TypeAnn te) = showTypeExpr opts te
 showLiteral :: Literal -> String
 showLiteral (Intc i)    = show i
 showLiteral (Floatc f)  = show f
-showLiteral (Charc c)   = [c]
-showLiteral (Stringc s) = s
+showLiteral (Charc c)   = show c
+showLiteral (Stringc s) = show s
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions
