@@ -4,6 +4,7 @@
 
 module TypeInference.SCC (scc) where
 
+import Data.Function (on)
 import Data.Set (Set (..), empty, insert, member)
 
 -- -----------------------------------------------------------------------------
@@ -19,10 +20,10 @@ data Node a b = Node { key  :: Int
                      , node :: a   }
 
 instance Eq (Node a b) where
-  n1 == n2 = key n1 == key n2
+  (==) = on (==) key
 
 instance Ord (Node a b) where
-  n1 <= n2 = key n1 <= key n2
+  (<=) = on (<=) key
 
 -- -----------------------------------------------------------------------------
 -- Functions for computation of strongly connected components

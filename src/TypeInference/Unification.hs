@@ -148,14 +148,12 @@ rTermToTerm rt (RTermCons a c ts) = TermCons a c (map (rTermToTerm rt) ts)
 --   same value for 'RTermVar' and 'RTermCons'. The given reference table is
 --   used for reference lookups.
 deref :: RefTable f a -> RTerm f a -> RTerm f a
-deref rt (Ref i)             = case DM.lookup i rt of
-                                 Nothing -> error ("deref: " ++ show i)
-                                 Just t  -> case t of
-                                              Ref _           -> deref rt t
-                                              RTermVar _ _    -> t
-                                              RTermCons _ _ _ -> t
-deref _  t@(RTermVar _ _)    = t
-deref _  t@(RTermCons _ _ _) = t
+deref rt (Ref i) = case DM.lookup i rt of
+                     Nothing -> error ("deref: " ++ showVarIdx i)
+                     Just t  -> case t of
+                                  Ref _ -> deref rt t
+                                  _     -> t
+deref _  t       = t
 
 -- -----------------------------------------------------------------------------
 -- Unification algorithm
