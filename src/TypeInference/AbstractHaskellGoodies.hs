@@ -7,7 +7,7 @@ module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
   , typeSigType, typeAnnType, rhsType, exprType, patternType, exprAnn, teVar
-  , (=.=), hasTypeSig, funcName, depGraph
+  , (=.=), hasTypeSig, funcName, leftFuncType, rightFuncType, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -31,58 +31,58 @@ tupleName n | n == 0    = preName "()"
     err = "The arity of a tuple type constructor can not be one or negative!"
 
 -- | Returns a base type (type constructor without arguments) with the given
---   qualified name and the given annotation.
-baseType :: QName -> a -> TypeExpr a
-baseType qn x = TCons x (qn, x) []
+--   qualified name and the given annotations.
+baseType :: QName -> a -> a -> TypeExpr a
+baseType qn x y = TCons x (qn, y) []
 
--- | Returns the 'Bool' type with the given annotation.
-boolType :: a -> TypeExpr a
+-- | Returns the 'Bool' type with the given annotations.
+boolType :: a -> a -> TypeExpr a
 boolType = baseType (preName "Bool")
 
--- | Returns the 'Char' type with the given annotation.
-charType :: a -> TypeExpr a
+-- | Returns the 'Char' type with the given annotations.
+charType :: a -> a -> TypeExpr a
 charType = baseType (preName "Char")
 
--- | Returns the 'Int' type with the given annotation.
-intType :: a -> TypeExpr a
+-- | Returns the 'Int' type with the given annotations.
+intType :: a -> a -> TypeExpr a
 intType = baseType (preName "Int")
 
--- | Returns the 'Float' type with the given annotation.
-floatType :: a -> TypeExpr a
+-- | Returns the 'Float' type with the given annotations.
+floatType :: a -> a -> TypeExpr a
 floatType = baseType (preName "Float")
 
 -- | Returns a list type with the given type expression and the given
---   annotation.
-listType :: TypeExpr a -> a -> TypeExpr a
-listType te x = TCons x (preName "[]", x) [te]
+--   annotations.
+listType :: TypeExpr a -> a -> a -> TypeExpr a
+listType te x y = TCons x (preName "[]", y) [te]
 
 -- | Returns the 'IO' type with the given type expression and the given
---   annotation.
-ioType :: TypeExpr a -> a -> TypeExpr a
-ioType te x = TCons x (preName "IO", x) [te]
+--   annotations.
+ioType :: TypeExpr a -> a -> a -> TypeExpr a
+ioType te x y = TCons x (preName "IO", y) [te]
 
 -- | Returns the 'Maybe' type with the given type expression and the given
---   annotation.
-maybeType :: TypeExpr a -> a -> TypeExpr a
-maybeType te x = TCons x (preName "Maybe", x) [te]
+--   annotations.
+maybeType :: TypeExpr a -> a -> a -> TypeExpr a
+maybeType te x y = TCons x (preName "Maybe", y) [te]
 
 -- | Returns the 'Either' type with the given type expressions and the given
---   annotation.
-eitherType :: TypeExpr a -> TypeExpr a -> a -> TypeExpr a
-eitherType te1 te2 x = TCons x (preName "Either", x) [te1, te2]
+--   annotations.
+eitherType :: TypeExpr a -> TypeExpr a -> a -> a -> TypeExpr a
+eitherType te1 te2 x y = TCons x (preName "Either", y) [te1, te2]
 
--- | Returns the 'String' type with the given annotation.
-stringType :: a -> TypeExpr a
-stringType x = listType (charType x) x
+-- | Returns the 'String' type with the given annotations.
+stringType :: a -> a -> TypeExpr a
+stringType x y = listType (charType x y) x y
 
 -- | Returns a tuple type with the given list of type expressions and the given
---   annotation.
-tupleType :: [TypeExpr a] -> a -> TypeExpr a
-tupleType [te] _ = te
-tupleType tes  x = TCons x (tupleName (length tes), x) tes
+--   annotations.
+tupleType :: [TypeExpr a] -> a -> a -> TypeExpr a
+tupleType [te] _ _ = te
+tupleType tes  x y = TCons x (tupleName (length tes), y) tes
 
--- | Converts the given literal and the given annotation to a literal type.
-literalType :: Literal -> a -> TypeExpr a
+-- | Converts the given literal and the given annotations to a literal type.
+literalType :: Literal -> a -> a -> TypeExpr a
 literalType (Intc _)    = intType
 literalType (Floatc _)  = floatType
 literalType (Charc _)   = charType
@@ -166,6 +166,18 @@ hasTypeSig (Func _ _ _ _ (TypeSig _) _) = True
 -- | Returns the qualified name of the given function declaration.
 funcName :: FuncDecl a -> QName
 funcName (Func _ (qn, _) _ _ _ _) = qn
+
+-- | Returns the left type expression from the given function type expression.
+leftFuncType :: TypeExpr a -> TypeExpr a
+leftFuncType (FuncType _ te _) = te
+leftFuncType _
+  = error "The given type expression is not a function type!"
+
+-- | Returns the right type expression from the given function type expression.
+rightFuncType :: TypeExpr a -> TypeExpr a
+rightFuncType (FuncType _ _ te) = te
+rightFuncType _
+  = error "The given type expression is not a function type!"
 
 -- -----------------------------------------------------------------------------
 -- Functions for computation of function dependency graphs

@@ -27,8 +27,8 @@ import TypeInference.Unification (UnificationError (..), unify)
 -- Representation of type environments
 -- -----------------------------------------------------------------------------
 
--- | A type environment represented as a map from variables to type expressions
---   and parameterized over the type of annotations.
+-- | A type environment represented as a map from qualified names to type
+--   expressions and parameterized over the type of annotations.
 type TypeEnv a = DM.Map QName (TypeExpr a)
 
 -- -----------------------------------------------------------------------------
@@ -43,6 +43,18 @@ emptyTypeEnv = DM.empty
 --   if no such mapping exists.
 lookupType :: QName -> TypeEnv a -> Maybe (TypeExpr a)
 lookupType = DM.lookup
+
+-- | Extends a type environment with a new mapping from the given qualified name
+--   to the given type expression. An already existing mapping with the same
+--   qualified name will be thrown away.
+insertType :: QName -> TypeExpr a -> TypeEnv a -> TypeEnv a
+insertType = DM.insert
+
+-- | Returns a type environment that contains all the mappings from the given
+--   list. For multiple mappings with the same qualified name, the last
+--   corresponding mapping of the given list is taken.
+listToTypeEnv :: [(QName, TypeExpr a)] -> TypeEnv a
+listToTypeEnv = DM.fromList
 
 -- -----------------------------------------------------------------------------
 -- Representation of type inference states
@@ -156,14 +168,14 @@ insertVarType v te
 --   type inference state.
 insertFunType :: QName -> TypeExpr a -> TIMonad a ()
 insertFunType qn te
-  = do t <- freshVariant te
-       modify (\(tenv, n, tsenv, vsub) -> (tenv, n, DM.insert qn t tsenv, vsub))
+  = do te' <- freshVariant te
+       modify (\(x, n, tsenv, y) -> (x, n, insertType qn te' tsenv, y))
 
 -- | Extends the type signature environment with the given list of mappings from
 --   qualified names to type expressions in the type inference state.
 extendTypeEnv :: [(QName, TypeExpr a)] -> TIMonad a ()
-extendTypeEnv ftes
-  = modify (\(tenv, a, b, c) -> (DM.union tenv (DM.fromList ftes), a, b, c))
+extendTypeEnv ms
+  = modify (\(tenv, n, x, y) -> (DM.union (DM.fromList ms) tenv, n, x, y))
 
 -- | Returns a fresh variant (with renamed type variables) of the given type
 --   expression.
@@ -182,14 +194,14 @@ freshVariant te = snd <$> rename DM.empty te
                                        return (sub', TCons x qn tes')
 
 -- | Returns a type variant for the given qualified name.
-getTypeVariant :: QName -> TIMonad a (QName, TypeExpr a)
+getTypeVariant :: QName -> TIMonad a (TypeExpr a)
 getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                        case lookupType qn tenv of
-                         Nothing -> case DM.lookup qn tsenv of
+                         Nothing -> case lookupType qn tsenv of
                                       Nothing -> throwError err
-                                      Just te -> return (qn, te)
+                                      Just te -> return te
                          Just te -> do te' <- freshVariant te
-                                       return (qn, te')
+                                       return te'
   where
     err = TIError ("There is no type expression for "
                      ++ showQName defaultAHOptions qn
@@ -207,7 +219,7 @@ annProg (Prog mn is tds fds) = do fds' <- mapM annFunc fds
 -- | Annotates the given function declaration with fresh type variables.
 annFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
 annFunc (Func x y@(qn, _) a v _ rs) = do initVarTypes
-                                         (_, te) <- getTypeVariant qn
+                                         te <- getTypeVariant qn
                                          rs' <- annRules rs
                                          return (Func x y a v (TypeSig te) rs')
 
@@ -226,7 +238,7 @@ annRule (Rule x _ ps rhs lds) = do te <- nextTVar x
                                    lds' <- mapM annLocalDecl lds
                                    return (Rule x (TypeAnn te) ps' rhs' lds')
 
--- | Annotates the given rules right-hand side with fresh type variables.
+-- | Annotates the given right-hand side with fresh type variables.
 annRhs :: Rhs a -> TIMonad a (Rhs a)
 annRhs (SimpleRhs e)      = do e' <- annExpr e
                                return (SimpleRhs e')
@@ -251,8 +263,7 @@ annStatement (SLet x lds) = do lds' <- mapM annLocalDecl lds
 annPattern :: Pattern a -> TIMonad a (Pattern a)
 annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
                                             insertVarType v te
-                                            tae <- nextTVar x
-                                            return (PVar (TypeAnn tae) y)
+                                            return (PVar (TypeAnn te) y)
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
 annPattern (PComb x _ qn ps)           = do te <- nextTVar x
@@ -260,9 +271,8 @@ annPattern (PComb x _ qn ps)           = do te <- nextTVar x
                                             return (PComb x (TypeAnn te) qn ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
                                             insertVarType v te
-                                            tae <- nextTVar x
                                             p' <- annPattern p
-                                            return (PAs x (TypeAnn tae) vn p')
+                                            return (PAs x (TypeAnn te) vn p')
 annPattern (PTuple x _ ps)             = do te <- nextTVar x
                                             ps' <- mapM annPattern ps
                                             return (PTuple x (TypeAnn te) ps')
@@ -283,14 +293,14 @@ annExpr (Var _ x@(vn@(v, _), _))
     err = TIError ("There is no type variable for " ++ showVarName vn ++ "!")
 annExpr (Lit _ l@(_, x))          = do te <- nextTVar x
                                        return (Lit (TypeAnn te) l)
-annExpr (Symbol _ x@(qn, _))      = do (_, te) <- getTypeVariant qn
+annExpr (Symbol _ x@(qn, _))      = do te <- getTypeVariant qn
                                        return (Symbol (TypeAnn te) x)
 annExpr (Apply x _ e1 e2)         = do te <- nextTVar x
                                        e1' <- annExpr e1
                                        e2' <- annExpr e2
                                        return (Apply x (TypeAnn te) e1' e2')
 annExpr (InfixApply x _ e1 qn e2)
-  = do (_, te) <- getTypeVariant (fst qn)
+  = do te <- getTypeVariant (fst qn)
        e1' <- annExpr e1
        e2' <- annExpr e2
        return (InfixApply x (TypeAnn te) e1' qn e2')
@@ -313,10 +323,10 @@ annExpr (Case x _ e bes)          = do te <- nextTVar x
                                        e' <- annExpr e
                                        bes' <- mapM annBranchExpr bes
                                        return (Case x (TypeAnn te) e' bes')
-annExpr (Typed x ta e te)         = do tea <- nextTVar x
+annExpr (Typed x ta e te)         = do tae <- nextTVar x
                                        e' <- annExpr e
                                        te' <- freshVariant te
-                                       return (Typed x (TypeAnn tea) e' te')
+                                       return (Typed x (TypeAnn tae) e' te')
 annExpr (IfThenElse x _ e1 e2 e3)
   = do te <- nextTVar x
        e1' <- annExpr e1
@@ -337,61 +347,69 @@ annExpr (List x _ es)             = do te <- nextTVar x
 -- | Returns the type expression equations for the given rules declaration.
 eqsRules :: TypeExpr a -> Rules a -> TIMonad a (TypeExprEqs a)
 eqsRules te (Rules rs)                 = concat <$> mapM (eqsRule te) rs
-eqsRules te (External x (TypeAnn te')) = return [te =.= te']
-eqsRules te (External x NoTypeAnn)     = throwError err
+eqsRules te (External _ (TypeAnn tae)) = return [te =.= tae]
+eqsRules te (External _ NoTypeAnn)     = throwError err
   where
     err = TIError "External declaration is not annotated with a type variable!"
 
--- | Returns the type expression equations for the given rules right-hand side.
+-- | Returns the type expression equations for the given function rule.
+eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
+eqsRule te (Rule x (TypeAnn tae) ps rhs _)
+  = do let rhsts = catMaybes (rhsType rhs)
+           pts = catMaybes (map patternType ps)
+           eqs = map (\ty -> foldr1 (FuncType x) (pts ++ [ty])) rhsts
+       return ([te =.= tae] ++ map (tae =.=) eqs) ++= eqsRhs rhs
+
+-- | Returns a type expression equation for the given guard expression.
+eqsGuard :: Expr a -> TIMonad a (TypeExprEq a)
+eqsGuard e = return (boolType (exprAnn e) (exprAnn e) =.= fromJust (exprType e))
+
+-- | Returns the type expression equations for the given right-hand side.
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
-eqsRhs (GuardedRhs x eqs) = do eqs' <- mapM (eqsExpr . snd) eqs
-                               gs <- mapM (guardEq . fst) eqs
-                               return (concat eqs' ++ gs)
-
-guardEq :: Expr a -> TIMonad a (TypeExprEq a)
-guardEq e = return ((boolType (exprAnn e)) =.= (exprType' e))
+eqsRhs (GuardedRhs x eqs) = do eqs' <- concat <$> mapM (eqsExpr . snd) eqs
+                               geqs <- mapM (eqsGuard . fst) eqs
+                               return (eqs' ++ geqs)
 
 -- | Returns the type expression equations for the given branch expression.
 eqsBranch :: TypeExpr a -> Expr a -> BranchExpr a -> TIMonad a (TypeExprEqs a)
-eqsBranch te e (Branch x p e')
-  = return [te =.= exprType' e'] ++= eqsPattern (exprType' e) p ++= eqsExpr e'
+eqsBranch te e (Branch x p e') = return [te =.= fromJust (exprType e')]
+                                   ++= eqsPattern (fromJust (exprType e)) p
+                                   ++= eqsExpr e'
 
-exprType' :: Expr a -> TypeExpr a
-exprType' = fromJust . exprType
-
-getFirstFT :: TypeExpr a -> TypeExpr a
-getFirstFT (FuncType _ te _) = te
-
-getSecondFT :: TypeExpr a -> TypeExpr a
-getSecondFT (FuncType _ _ te) = te
-
+-- | Returns the type expression equations for the given pattern.
 eqsPattern :: TypeExpr a -> Pattern a -> TIMonad a (TypeExprEqs a)
-eqsPattern ty (PVar (TypeAnn te) x@(vn, _))
-  = return [ty =.= te]
-eqsPattern ty (PLit (TypeAnn te) l)
-  = return [ty =.= te, te =.= literalType (fst l) (snd l)]
-eqsPattern ty (PComb x (TypeAnn te) a@(qn, _) pats) = undefined
-eqsPattern ty (PAs x (TypeAnn te) vn p)             = undefined
-eqsPattern ty (PTuple x (TypeAnn te) pats)
-  = return [ty =.= tupleType (catMaybes (map patternType pats)) x]
-eqsPattern ty (PList x (TypeAnn te) pats)
-  = undefined
-
-eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
-eqsRule ty (Rule x (TypeAnn ty2) pats rhs _)
-  = do let rhsts = catMaybes (rhsType rhs)
-           pts = catMaybes (map patternType pats)
-           eqs = map (\te -> foldr1 (FuncType x) (pts ++ [te])) rhsts
-       return ([ty =.= ty2] ++ map (ty2 =.=) eqs) ++= eqsRhs rhs
+eqsPattern te (PVar (TypeAnn tae) _)       = return [te =.= tae]
+eqsPattern te (PLit (TypeAnn tae) (l, x))
+  = return [te =.= tae, tae =.= literalType l x x]
+--------------------------------------------------------------------------------
+eqsPattern te (PComb _ (TypeAnn tae) _ ps)
+  = return [te =.= tae] ++= eqsC tae ps
+  where
+    eqsC :: TypeExpr a -> [Pattern a] -> TIMonad a (TypeExprEqs a)
+    eqsC _ []      = return []
+    eqsC te (p:ps) = return [leftFuncType te =.= fromJust (patternType p)]
+                       ++= eqsC (rightFuncType te) ps
+eqsPattern te (PAs _ (TypeAnn tae) _ p)
+  = return [te =.= tae, tae =.= fromJust (patternType p)]
+eqsPattern te (PTuple x (TypeAnn tae) ps)
+  = return [te =.= tae, tae =.= tupleType (catMaybes (map patternType ps)) x x]
+eqsPattern te (PList x (TypeAnn tae) ps)
+  = return [te =.= tae, tae =.= listType (fromJust (patternType (head ps))) x x]
+      ++= eqsP (fromJust (patternType (head ps))) (tail ps)
+  where
+    eqsP :: TypeExpr a -> [Pattern a] -> TIMonad a (TypeExprEqs a)
+    eqsP te []     = return []
+    eqsP te (p:ps) = return [te =.= fromJust (patternType p)]
+                       ++= eqsP te ps
 
 eqsExpr :: Expr a -> TIMonad a (TypeExprEqs a)
 eqsExpr (Var _ x@(vn, _))                    = return []
-eqsExpr (Lit (TypeAnn ty) l) = return [ty =.= literalType (fst l) (snd l)] 
+eqsExpr (Lit (TypeAnn ty) l) = return [ty =.= literalType (fst l) (snd l) (snd l)] 
 eqsExpr (Symbol (TypeAnn ty) qn)             = return []
 eqsExpr (Apply _ (TypeAnn ty) e1 e2)
-  = return [getFirstFT (exprType' e1) =.= exprType' e2,
-            getSecondFT (exprType' e1) =.= ty]
+  = return [leftFuncType (fromJust (exprType e1)) =.= fromJust (exprType e2),
+            rightFuncType (fromJust (exprType e1)) =.= ty]
       ++= eqsExpr e1 ++= eqsExpr e2
 eqsExpr (InfixApply x ta e1 qn e2)           = undefined
 eqsExpr (Lambda _ (TypeAnn ty) pats e)       = undefined
@@ -401,10 +419,10 @@ eqsExpr (ListComp _ (TypeAnn ty) e sts)      = undefined
 eqsExpr (Case _ (TypeAnn ty) e bs)
   = eqsExpr e ++= (concat <$> mapM (eqsBranch ty e) bs)
 eqsExpr (Typed _ (TypeAnn ty) e te)
-  = return [ty =.= exprType' e, ty =.= te] ++= eqsExpr e
+  = return [ty =.= fromJust (exprType e), ty =.= te] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn ty) e1 e2 e3)
-  = return [exprType' e1 =.= boolType (exprAnn e1),
-            ty =.= exprType' e2, ty =.= exprType' e3]
+  = return [fromJust (exprType e1) =.= boolType (exprAnn e1) (exprAnn e1),
+            ty =.= fromJust (exprType e2), ty =.= fromJust (exprType e3)]
       ++= eqsExpr e1 ++= eqsExpr e2 ++= eqsExpr e3
 eqsExpr (Tuple _ (TypeAnn ty) es)            = concat <$> mapM eqsExpr es
 eqsExpr (List _ (TypeAnn ty) es)             = concat <$> mapM eqsExpr es
@@ -414,7 +432,7 @@ getTypeEnv :: Prog a -> TypeEnv a
 getTypeEnv p = extractKnownTypes [p]
 
 extractKnownTypes :: [Prog a] -> TypeEnv a
-extractKnownTypes ps = DM.fromList (concatMap extractProg ps)
+extractKnownTypes = listToTypeEnv . (concatMap extractProg)
   where
     extractProg :: Prog a -> [(QName, TypeExpr a)]
     extractProg (Prog _ _ td fd) = concatMap extractTypeDecl td
