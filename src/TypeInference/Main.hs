@@ -14,7 +14,7 @@ import Control.Monad.State (State, evalState, get, modify, put)
 import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust)
-import Goodies ((++=), both, bothM, mapAccumM)
+import Goodies ((++=), both, bothM, mapAccumM, one, two)
 import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
@@ -100,27 +100,30 @@ data TIError a = TIError String
 -- -----------------------------------------------------------------------------
 
 -- | Converts the given type expression into a term representation.
-fromTypeExpr :: TypeExpr a -> Term QName a
-fromTypeExpr (TVar ((v, _), x))    = TermVar x v
+fromTypeExpr :: TypeExpr a -> Term QName [a]
+fromTypeExpr (TVar ((v, _), x))    = TermVar [x] v
 fromTypeExpr (FuncType x t1 t2)
-  = TermCons x (preName "->") [fromTypeExpr t1, fromTypeExpr t2]
-fromTypeExpr (TCons x (qn, _) tes) = TermCons x qn (map fromTypeExpr tes)
+  = TermCons [x] (preName "->") [fromTypeExpr t1, fromTypeExpr t2]
+fromTypeExpr (TCons x (qn, y) tes) = TermCons [x, y] qn (map fromTypeExpr tes)
 
 -- | Converts the given term representation into a type expression.
-toTypeExpr :: Term QName a -> TypeExpr a
-toTypeExpr (TermVar x v)      = teVar v x
-toTypeExpr (TermCons x qn ts)
-  | snd qn == "->" = FuncType x (toTypeExpr (ts !! 0)) (toTypeExpr (ts !! 1))
-  | otherwise      = TCons x (qn, x) (map toTypeExpr ts)
+toTypeExpr :: Term QName [a] -> TypeExpr a
+toTypeExpr (TermVar [x] v)         = teVar v x
+toTypeExpr (TermCons (x:xs) qn ts)
+  | snd qn == "->" && two ts
+    = FuncType x (toTypeExpr (ts !! 0)) (toTypeExpr (ts !! 1))
+  | one xs = TCons x (qn, head xs) (map toTypeExpr ts)
+toTypeExpr _
+  = error "The given term can not be converted into a type expression!"
 
 -- | Converts the given list of type expression equations into a list of term
 --   equations.
-fromTypeExprEqs :: TypeExprEqs a -> TermEqs QName a
+fromTypeExprEqs :: TypeExprEqs a -> TermEqs QName [a]
 fromTypeExprEqs = map (both fromTypeExpr)
 
 -- | Converts the given list of term equations into a list of type expression
 --   equations.
-toTypeExprEqs :: TermEqs QName a -> TypeExprEqs a
+toTypeExprEqs :: TermEqs QName [a] -> TypeExprEqs a
 toTypeExprEqs = map (both toTypeExpr)
 
 -- | Solves the given list of type expression equations.
@@ -129,7 +132,7 @@ solve eqs = case unify (fromTypeExprEqs eqs) of
               Left e    -> throwError (toTIError e)
               Right sub -> return (DM.map toTypeExpr sub)
   where
-    toTIError :: UnificationError QName a -> TIError a
+    toTIError :: UnificationError QName [a] -> TIError a
     toTIError (Clash t1 t2)    = TIClash (toTypeExpr t1) (toTypeExpr t2)
     toTIError (OccurCheck v t) = TIOccurCheck (v, varToString v) (toTypeExpr t)
 
@@ -165,17 +168,17 @@ insertVarType v te
   = modify (\(tenv, n, tsenv, vsub) -> (tenv, n, tsenv, DM.insert v te vsub))
 
 -- | Inserts the given type expression for the given qualified name into the
---   type inference state.
+--   type signature environment of the type inference state.
 insertFunType :: QName -> TypeExpr a -> TIMonad a ()
 insertFunType qn te
   = do te' <- freshVariant te
        modify (\(x, n, tsenv, y) -> (x, n, insertType qn te' tsenv, y))
 
--- | Extends the type signature environment with the given list of mappings from
---   qualified names to type expressions in the type inference state.
+-- | Extends the type environment with the given list of mappings from qualified
+--   names to type expressions in the type inference state.
 extendTypeEnv :: [(QName, TypeExpr a)] -> TIMonad a ()
 extendTypeEnv ms
-  = modify (\(tenv, n, x, y) -> (DM.union (DM.fromList ms) tenv, n, x, y))
+  = modify (\(tenv, n, x, y) -> (DM.union (listToTypeEnv ms) tenv, n, x, y))
 
 -- | Returns a fresh variant (with renamed type variables) of the given type
 --   expression.
@@ -208,7 +211,7 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                      ++ "!")
 
 -- -----------------------------------------------------------------------------
--- Functions for type annotation of abstract haskell programs
+-- Functions for type annotation of abstract Haskell programs
 -- -----------------------------------------------------------------------------
 
 -- | Annotates the given program with fresh type variables.
@@ -266,9 +269,9 @@ annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
                                             return (PVar (TypeAnn te) y)
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
-annPattern (PComb x _ qn ps)           = do te <- nextTVar x
+annPattern (PComb x _ y@(qn, _) ps)    = do te <- getTypeVariant qn
                                             ps' <- mapM annPattern ps
-                                            return (PComb x (TypeAnn te) qn ps')
+                                            return (PComb x (TypeAnn te) y ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
                                             insertVarType v te
                                             p' <- annPattern p
@@ -344,40 +347,48 @@ annExpr (List x _ es)             = do te <- nextTVar x
 -- Functions for creating type expression equations
 -- -----------------------------------------------------------------------------
 
--- | Returns the type expression equations for the given rules declaration.
+-- | Returns the type expression equations for the given rules declaration and
+--   the given function type expression.
 eqsRules :: TypeExpr a -> Rules a -> TIMonad a (TypeExprEqs a)
 eqsRules te (Rules rs)                 = concat <$> mapM (eqsRule te) rs
 eqsRules te (External _ (TypeAnn tae)) = return [te =.= tae]
-eqsRules te (External _ NoTypeAnn)     = throwError err
+eqsRules _  (External _ NoTypeAnn)     = throwError err
   where
     err = TIError "External declaration is not annotated with a type variable!"
 
--- | Returns the type expression equations for the given function rule.
+-- | Returns the type expression equations for the given function rule and the
+--   given function type expression.
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
-  = do let rhsts = catMaybes (rhsType rhs)
-           pts = catMaybes (map patternType ps)
-           eqs = map (\ty -> foldr1 (FuncType x) (pts ++ [ty])) rhsts
-       return ([te =.= tae] ++ map (tae =.=) eqs) ++= eqsRhs rhs
+  = let rhstes = catMaybes (rhsType rhs)
+        ptes = catMaybes (map patternType ps)
+        eqs = map (\ty -> foldr1 (FuncType x) (ptes ++ [ty])) rhstes
+     in return ([te =.= tae] ++ map (tae =.=) eqs)
+          ++= (concat <$> mapM (uncurry eqsPattern) (zip ptes ps))
+          ++= eqsRhs rhs
 
 -- | Returns a type expression equation for the given guard expression.
 eqsGuard :: Expr a -> TIMonad a (TypeExprEq a)
-eqsGuard e = return (boolType (exprAnn e) (exprAnn e) =.= fromJust (exprType e))
+eqsGuard e = let x = exprAnn e
+              in return (boolType x x =.= fromJust (exprType e))
 
 -- | Returns the type expression equations for the given right-hand side.
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
-eqsRhs (GuardedRhs x eqs) = do eqs' <- concat <$> mapM (eqsExpr . snd) eqs
+eqsRhs (GuardedRhs _ eqs) = do eqs' <- concat <$> mapM (eqsExpr . snd) eqs
                                geqs <- mapM (eqsGuard . fst) eqs
                                return (eqs' ++ geqs)
 
--- | Returns the type expression equations for the given branch expression.
-eqsBranch :: TypeExpr a -> Expr a -> BranchExpr a -> TIMonad a (TypeExprEqs a)
-eqsBranch te e (Branch x p e') = return [te =.= fromJust (exprType e')]
-                                   ++= eqsPattern (fromJust (exprType e)) p
-                                   ++= eqsExpr e'
+-- | Returns the type expression equations for the given branch expression and
+--   the given case type expression and case expression type expression.
+eqsBranch :: TypeExpr a -> TypeExpr a -> BranchExpr a
+          -> TIMonad a (TypeExprEqs a)
+eqsBranch te' te (Branch _ p e) = return [te' =.= fromJust (exprType e)]
+                                    ++= eqsPattern te p
+                                    ++= eqsExpr e
 
--- | Returns the type expression equations for the given pattern.
+-- | Returns the type expression equations for the given pattern with the given
+--   type expression.
 eqsPattern :: TypeExpr a -> Pattern a -> TIMonad a (TypeExprEqs a)
 eqsPattern te (PVar (TypeAnn tae) _)       = return [te =.= tae]
 eqsPattern te (PLit (TypeAnn tae) (l, x))
@@ -417,7 +428,7 @@ eqsExpr (Let _ (TypeAnn ty) ls e)            = undefined
 eqsExpr (DoExpr _ (TypeAnn ty) sts)          = undefined
 eqsExpr (ListComp _ (TypeAnn ty) e sts)      = undefined
 eqsExpr (Case _ (TypeAnn ty) e bs)
-  = eqsExpr e ++= (concat <$> mapM (eqsBranch ty e) bs)
+  = eqsExpr e ++= (concat <$> mapM (eqsBranch ty (fromJust (exprType e))) bs)
 eqsExpr (Typed _ (TypeAnn ty) e te)
   = return [ty =.= fromJust (exprType e), ty =.= te] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn ty) e1 e2 e3)
@@ -453,7 +464,7 @@ extractKnownTypes = listToTypeEnv . (concatMap extractProg)
 inferFuncDecl :: Prog a -> QName -> Either (TIError a) (FuncDecl a)
 inferFuncDecl p = inferFunctionEnv (getTypeEnv p) p
 
-inferHSE :: Module a -> Either (TIError a) (Prog a)
+inferHSE :: Module a -> Either (TIError b) (Prog b)
 inferHSE = undefined
 
 inferProg :: Show a => Prog a -> Either (TIError a) (Prog a)
