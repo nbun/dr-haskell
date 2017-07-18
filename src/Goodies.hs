@@ -3,7 +3,7 @@
 -}
 
 module Goodies
-  ( (++=), both, bothM, mapAccumM, one, parensIf
+  ( (++=), both, bothM, mapAccumM, one, two, parensIf
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -43,6 +43,11 @@ mapAccumM f a t = swap <$> runStateT (mapM go t) a
 one :: [a] -> Bool
 one []     = False
 one (_:xs) = null xs
+
+-- | Checks whether the given list has exactly two elements.
+two :: [a] -> Bool
+two []     = False
+two (_:xs) = one xs
 
 -- | Encloses a string in parenthesis if the given condition is true.
 parensIf :: Bool -> String -> String
