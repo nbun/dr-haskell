@@ -7,7 +7,8 @@ module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
   , typeSigType, typeAnnType, rhsType, exprType, patternType, exprAnn, teVar
-  , (=.=), hasTypeSig, funcName, leftFuncType, rightFuncType, depGraph
+  , (=.=), hasTypeSig, funcName, leftFuncType, rightFuncType, returnType
+  , depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -178,6 +179,11 @@ rightFuncType :: TypeExpr a -> TypeExpr a
 rightFuncType (FuncType _ _ te) = te
 rightFuncType _
   = error "The given type expression is not a function type!"
+
+-- | Returns the result type expression of the given function type expression.
+returnType :: TypeExpr a -> TypeExpr a
+returnType (FuncType _ _ te) = returnType te
+returnType te                = te
 
 -- -----------------------------------------------------------------------------
 -- Functions for computation of function dependency graphs
