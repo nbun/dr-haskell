@@ -46,7 +46,7 @@ scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
                                 | otherwise      = dfs ns' marks' (n:stack')
           where
             (marks', stack') = dfs (defs n) (insert n marks) stack
-            defs n1 = filter (any (`elem` (fvs n1)) . bvs) ns
+            defs n1 = filter (any (`elem` fvs n1) . bvs) ns
 
     tsort' :: Eq b => [Node a b] -> [[Node a b]]
     tsort' ns = snd (dfs ns empty [])
@@ -57,4 +57,4 @@ scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
           | otherwise           = dfs ns' marks' ((n:(concat stack')):stack)
           where
             (marks', stack') = dfs (uses n) (insert n marks) []
-            uses n1 = filter (any (`elem` (bvs n1)) . fvs) ns
+            uses n1 = filter (any (`elem` bvs n1) . fvs) ns

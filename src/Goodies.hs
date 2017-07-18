@@ -49,6 +49,6 @@ two :: [a] -> Bool
 two []     = False
 two (_:xs) = one xs
 
--- | Encloses a string in parenthesis if the given condition is true.
+-- | Encloses a string in parentheses if the given condition is true.
 parensIf :: Bool -> String -> String
 parensIf c s = if c then "(" ++ s ++ ")" else s

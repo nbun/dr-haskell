@@ -75,4 +75,4 @@ showTermEq (l, r) = show l ++ " = " ++ show r
 
 -- | Transforms a list of term equations into a string representation.
 showTermEqs :: Show f => TermEqs f a -> String
-showTermEqs = unlines . (map showTermEq)
+showTermEqs = unlines . map showTermEq
