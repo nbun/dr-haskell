@@ -3,7 +3,7 @@
 -}
 
 module Goodies
-  ( (++=), both, bothM, mapAccumM, one, two, parensIf
+  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -26,6 +26,12 @@ both f (x, y) = (f x, f y)
 --   monadic actions in the sequence from left to right.
 bothM :: Monad m => (a -> m b) -> (a, a) -> m (b, b)
 bothM f (x, y) = (,) <$> f x <*> f y
+
+-- | Applies a monadic action to all elements of a list and evaluates the
+--   monadic actions in the sequence from left to right by concatenating the
+--   inner lists.
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = concat <$> mapM f xs
 
 -- | Applies a monadic action to each element of a structure, passing an
 --   accumulating parameter from left to right, and returning a final value of
