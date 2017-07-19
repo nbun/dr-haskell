@@ -101,7 +101,7 @@ levelTwo p = do
   check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
-  check $ checkAST cId cId cId checkForTypVar
+  --check $ checkAST cId cId cId checkForTypVar
 
 {- Level 3
 Implemented:
