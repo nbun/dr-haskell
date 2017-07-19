@@ -126,6 +126,11 @@ prettyErrorWithInfoSwitchAndLevel s level e@(InvalidTest l t) =
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
        ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
+prettyErrorWithInfoSwitchAndLevel s level e@(Pragma l name) =
+    let (filename, pos) = extractFilenameAndPosition l
+    in printFilenameAndPosWithSwitch s filename pos
+       ++ appendLevelTag level e
+       ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
 
 appendLevelTag :: Maybe Level -> Error SrcSpanInfo -> String
 appendLevelTag Nothing _ = ""
@@ -149,6 +154,8 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
               "Data type declarations are not allowed on " --level...
           appendLevelErrorTag' (DoUsed _) =
               "Usage of the do construct is forbidden on " --level...
+          appendLevelErrorTag' (Pragma _ _) =
+              "Usage of Pragma is forbidden on " --level...
           appendLevelErrorTag' _ = ""
           levelString :: Level -> String
           levelString Level1    = "Level 1"

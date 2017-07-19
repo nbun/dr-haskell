@@ -22,6 +22,7 @@ import           StaticAnalysis.StaticChecks.ModuleHeadUsed
 import           StaticAnalysis.StaticChecks.NoFunDef
 import           StaticAnalysis.StaticChecks.NoTypeDef
 import           StaticAnalysis.StaticChecks.OwnDataDecl
+import           StaticAnalysis.StaticChecks.Pragma
 import           StaticAnalysis.StaticChecks.Shadowing
 import           StaticAnalysis.StaticChecks.TypeVarApplication
 import           StaticAnalysis.StaticChecks.TypeVars
@@ -77,6 +78,7 @@ levelOne p = do
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
   check $ checkAST cId cId cId checkForTypVar
+  check $ checkASTv2 cId cId cId cId pragmaCheck
 
 {- Level 2
 Implemented:
@@ -93,7 +95,7 @@ levelTwo p = do
   check importUsed
   check moduleHeadUsed
   check noFunDef
-  check typeVarApplication
+  --check typeVarApplication
   check doUsed
   checkExt undef p
   checkExt duplicated p
@@ -102,6 +104,7 @@ levelTwo p = do
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
   --check $ checkAST cId cId cId checkForTypVar
+  check $ checkASTv2 cId cId cId cId pragmaCheck
 
 {- Level 3
 Implemented:
@@ -123,6 +126,7 @@ levelThree p = do
   checkExt duplicated p
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
+  check $ checkASTv2 cId cId cId cId pragmaCheck
 
 levelFull :: LevelT
 levelFull _ = return ()
