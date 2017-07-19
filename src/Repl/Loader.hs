@@ -97,7 +97,7 @@ determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
     extractLevel :: Comment -> Maybe Level
     extractLevel (Comment _ _ "# DRHASKELL LEVEL1 #")    = Just Level1
     extractLevel (Comment _ _ "# DRHASKELL LEVEL2 #")    = Just Level2
-    extractLevel (Comment _ _ "# DRHASKELL LEVEL3 #")    = Just LevelFull
+    extractLevel (Comment _ _ "# DRHASKELL LEVEL3 #")    = Just Level3
     extractLevel (Comment _ _ "# DRHASKELL LEVELFULL #") = Just LevelFull
     extractLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
     extractLevel _                                       = Nothing

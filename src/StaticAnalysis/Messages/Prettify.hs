@@ -154,7 +154,7 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
           levelString Level1    = "Level 1"
           levelString Level2    = "Level 2"
           levelString Level3    = "Level 3"
-          levelString LevelFull = "Level offen"
+          levelString LevelFull = "Level full"
 
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l
