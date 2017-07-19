@@ -7,8 +7,8 @@ module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
   , typeSigType, typeAnnType, rhsType, exprType, patternType, exprAnn, teVar
-  , (=.=), hasTypeSig, funcName, leftFuncType, rightFuncType, returnType
-  , depGraph
+  , (=.=), hasTypeSig, funcName, modName, leftFuncType, rightFuncType
+  , returnType, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -167,6 +167,10 @@ hasTypeSig (Func _ _ _ _ (TypeSig _) _) = True
 -- | Returns the qualified name of the given function declaration.
 funcName :: FuncDecl a -> QName
 funcName (Func _ (qn, _) _ _ _ _) = qn
+
+-- | Returns the module name of the given program.
+modName :: Prog a -> MName
+modName (Prog (mn, _) _ _ _) = mn
 
 -- | Returns the left type expression from the given function type expression.
 leftFuncType :: TypeExpr a -> TypeExpr a

@@ -14,7 +14,7 @@ import Control.Monad.State (State, evalState, get, modify, put)
 import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust)
-import Goodies ((++=), both, bothM, mapAccumM, one, two)
+import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
 import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
@@ -387,7 +387,7 @@ patternType' p                = patternType p
 -- | Returns the type expression equations for the given rules declaration and
 --   the given function type expression.
 eqsRules :: TypeExpr a -> Rules a -> TIMonad a (TypeExprEqs a)
-eqsRules te (Rules rs)                 = concat <$> mapM (eqsRule te) rs
+eqsRules te (Rules rs)                 = concatMapM (eqsRule te) rs
 eqsRules te (External _ (TypeAnn tae)) = return [te =.= tae]
 eqsRules _  _                          = return []
 
@@ -399,7 +399,7 @@ eqsRule te (Rule x (TypeAnn tae) ps rhs _)
         ptes = catMaybes (map patternType' ps)
         eqs = map (\ty -> foldr1 (FuncType x) (ptes ++ [ty])) rhstes
      in return ([te =.= tae] ++ map (tae =.=) eqs)
-          ++= (concat <$> mapM (uncurry eqsPattern) (zip ptes ps))
+          ++= (concatMapM (uncurry eqsPattern) (zip ptes ps))
           ++= eqsRhs rhs
 eqsRule _  _                               = return []
 
@@ -411,7 +411,7 @@ eqsGuard e = let x = exprAnn e
 -- | Returns the type expression equations for the given right-hand side.
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
-eqsRhs (GuardedRhs _ eqs) = do eqs' <- concat <$> mapM (eqsExpr . snd) eqs
+eqsRhs (GuardedRhs _ eqs) = do eqs' <- concatMapM (eqsExpr . snd) eqs
                                geqs <- mapM (eqsGuard . fst) eqs
                                return (eqs' ++ geqs)
 
@@ -433,19 +433,19 @@ eqsPattern te (PComb x (TypeAnn tae) _ ps)
   = let ptes = catMaybes (map patternType' ps)
      in return [te =.= returnType tae,
                 tae =.= foldr1 (FuncType x) (ptes ++ [returnType tae])]
-          ++= concat <$> mapM (uncurry eqsPattern) (zip ptes ps)
+          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PAs _ (TypeAnn tae) _ p)
   = let pt = fromJust (patternType' p)
      in return [te =.= tae, tae =.= pt] ++= eqsPattern pt p
 eqsPattern te (PTuple x (TypeAnn tae) ps)
   = let ptes = catMaybes (map patternType' ps)
      in return [te =.= tae, tae =.= tupleType ptes x x]
-          ++= concat <$> mapM (uncurry eqsPattern) (zip ptes ps)
+          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PList x (TypeAnn tae) ps)
   = let ptes = catMaybes (map patternType' ps)
      in return ([te =.= tae, tae =.= listType (head ptes) x x]
                   ++ map (head ptes =.=) (tail ptes))
-          ++= concat <$> mapM (uncurry eqsPattern) (zip ptes ps)
+          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern _  _                            = return []
 
 -- | Returns the type expression equations for the given expression.
@@ -468,14 +468,14 @@ eqsExpr (Lambda x (TypeAnn te) ps e)
   = let ptes = catMaybes (map patternType' ps)
         te' = fromJust (exprType' e)
      in return [te =.= foldr1 (FuncType x) (ptes ++ [te'])]
-          ++= (concat <$> mapM (uncurry eqsPattern) (zip ptes ps))
+          ++= (concatMapM (uncurry eqsPattern) (zip ptes ps))
           ++= eqsExpr e
 eqsExpr (DoExpr _ _ _)
   = throwError (TIError "do-expressions are not supported yet!")
 eqsExpr (ListComp _ _ _ _)
   = throwError (TIError "List comprehensions are not supported yet!")
 eqsExpr (Case _ (TypeAnn te) e bs)
-  = eqsExpr e ++= (concat <$> mapM (eqsBranch te (fromJust (exprType' e))) bs)
+  = eqsExpr e ++= (concatMapM (eqsBranch te (fromJust (exprType' e))) bs)
 eqsExpr (Typed _ (TypeAnn tae) e te)
   = return [tae =.= fromJust (exprType' e), tae =.= te] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
@@ -490,12 +490,12 @@ eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
 eqsExpr (Tuple x (TypeAnn te) es)
   = let etes = catMaybes (map exprType' es)
      in return [te =.= tupleType etes x x]
-          ++= concat <$> mapM eqsExpr es
+          ++= concatMapM eqsExpr es
 eqsExpr (List x (TypeAnn te) es)
   = let etes = catMaybes (map exprType' es)
      in return ([te =.= listType (head etes) x x]
                   ++ map (head etes =.=) (tail etes))
-          ++= concat <$> mapM eqsExpr es
+          ++= concatMapM eqsExpr es
 eqsExpr _                                    = return []
 
 -- -----------------------------------------------------------------------------
@@ -566,11 +566,10 @@ inferProg p = evalState (runExceptT (inferProg' p)) (initTIState (getTypeEnv p))
 -- | Infers the given program.
 inferProg' :: Prog a -> TIMonad a (Prog a)
 inferProg' p = let fdswts = getFuncsWTS p
-                in do fds <- inferNewFunctionsEnv (mName p) fdswts
+                in do fds <- inferNewFunctionsEnv (modName p) fdswts
                       p' <- inferProgEnv (getProgFDWTS p)
                       return (replaceFWTS p' fds)
   where
-    mName (Prog (mn, _) _ _ _) = mn
     getProgFDWTS :: Prog a -> Prog a
     getProgFDWTS (Prog a b c fd) = Prog a b c (filter hasTypeSig fd)
     replaceFWTS :: Prog a -> [FuncDecl a] -> Prog a
@@ -591,7 +590,7 @@ inferAProg (Prog mid is td fd)
 inferNewFunctionsEnv :: MName -> [FuncDecl a] -> TIMonad a [FuncDecl a]
 inferNewFunctionsEnv mid fs = infer (depGraph mid fs)
   where
-    infer fss = do fs' <- concat <$> mapM inferGroup fss
+    infer fss = do fs' <- concatMapM inferGroup fss
                    mapM (flip extract fs') fs
     inferGroup g
       = do xs <- annFuncGroup g
@@ -605,8 +604,8 @@ inferNewFunctionsEnv mid fs = infer (depGraph mid fs)
 
 inferFuncGroup :: [FuncDecl a] -> TIMonad a [FuncDecl a]
 inferFuncGroup fs
-  = do eqs <- concat <$> mapM (uncurry eqsRules)
-                              [(ty, rs) | Func _ _ _ _ (TypeSig ty) rs <- fs]
+  = do eqs <- concatMapM (uncurry eqsRules)
+                         [(ty, rs) | Func _ _ _ _ (TypeSig ty) rs <- fs]
        sub <- solve eqs
        afs <- mapM (return . normalize normFuncDecl . applyTESubstFD sub) fs
        return afs

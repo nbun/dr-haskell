@@ -32,13 +32,12 @@ type TESubst a = DM.Map Int (TypeExpr a)
 -- \8614 = RIGHTWARDS ARROW FROM BAR
 
 -- | Transforms a substitution into a string representation.
-showTESubst :: TESubst a -> String
-showTESubst sub = "{" ++ intercalate "," (map showMapping (teSubstToList sub))
-                      ++ "}"
+showTESubst :: AHOptions -> TESubst a -> String
+showTESubst opts sub
+  = "{" ++ intercalate "," (map showMapping (teSubstToList sub)) ++ "}"
   where
     showMapping :: (Int, TypeExpr a) -> String
-    showMapping (v, te) = varToString v ++ " \8614 "
-                                        ++ showTypeExpr defaultAHOptions te
+    showMapping (v, te) = varToString v ++ " \8614 " ++ showTypeExpr opts te
 
 -- -----------------------------------------------------------------------------
 -- Functions for substitutions on type expressions
