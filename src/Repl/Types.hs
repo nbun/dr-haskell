@@ -2,7 +2,7 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Repl.Types (
   ReplState(..),
-  filename, forceLevel, runTests, nonStrict, customPrelude,
+  filename, forceLevel, runTests, nonStrict, customPrelude, currentLevel,
   initialReplState,
   initialLintReplState,
   ReplInput,
@@ -12,6 +12,7 @@ module Repl.Types (
   liftInput,
   liftInterpreter,
   liftRepl,
+  printLevel,
 ) where
 
 import           Control.Lens                 hiding (Level)
@@ -27,7 +28,8 @@ data ReplState = ReplState {
   _forceLevel    :: Maybe Level,
   _runTests      :: Bool,
   _nonStrict     :: Bool,
-  _customPrelude :: Bool
+  _customPrelude :: Bool,
+  _currentLevel  :: Level
 }
   deriving (Show)
 
@@ -38,7 +40,8 @@ initialReplState = ReplState {
   _forceLevel    = Nothing,
   _runTests      = True,
   _nonStrict     = False,
-  _customPrelude = True
+  _customPrelude = True,
+  _currentLevel  = Level1
 }
 
 -- some sane defaults
@@ -48,7 +51,8 @@ initialLintReplState = ReplState {
   _forceLevel    = Nothing,
   _runTests      = False,
   _nonStrict     = False,
-  _customPrelude = False
+  _customPrelude = False,
+  _currentLevel  = Level1
 }
 
 makeLenses ''ReplState
@@ -117,3 +121,10 @@ instance LiftableInterpreter Repl where
 
 instance LiftableRepl Repl where
   liftRepl = id
+
+
+printLevel :: Level -> String
+printLevel Level1 = "L1"
+printLevel Level2 = "L2"
+printLevel Level3 = "L3"
+printLevel LevelFull = "LF"

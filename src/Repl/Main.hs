@@ -6,7 +6,9 @@ import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch          as MC
 import           Control.Monad.State
 import           Paths_drhaskell
+import           Data.Version (showVersion)
 import           System.FilePath
+import           Data.List
 
 import           Language.Haskell.Interpreter
 import           Repl.CmdOptions
@@ -21,8 +23,15 @@ Current Limitations:
 -}
 
 
-replRead :: ReplInput (Maybe String)
-replRead = getInputLine "Dr. Haskell> "
+replRead :: Repl (Maybe String)
+replRead = do
+  mods <- liftInterpreter getLoadedModules
+  let filtered = mods \\ ["MyPrelude", "Tests"]
+      prompt = if   null mods
+               then "Dr. Haskell"
+               else intercalate ", " filtered
+  level <- use currentLevel
+  liftInput $ getInputLine $ prompt ++ " ("++ printLevel level ++")> "
 
 replPrint :: Maybe String -> ReplInput ()
 replPrint Nothing  = return ()
@@ -30,7 +39,7 @@ replPrint (Just x) = outputStrLn x
 
 replLoop :: Repl ()
 replLoop = do
-  minput <- liftInput replRead
+  minput <- liftRepl replRead
   case minput of
        Nothing -> return ()
        Just x -> do
@@ -56,6 +65,7 @@ main = do
     unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
       liftInput $ replPrint (Just (unlines $ map printLoadMessage errors))
+    liftInput showBanner
     replLoop
   case res of
        Left err -> putStrLn $ "Error:" ++ show err
@@ -122,3 +132,12 @@ replEvalCommand cmd = if null cmd then invalid cmd else
         typeof =  liftInterpreter (typeOf $ args !! 1) >>=
                                   \res -> return (Just res, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
+
+--TODO: some better ascii art?
+showBanner :: ReplInput ()
+showBanner = outputStrLn $ unlines [
+  "",
+  "\\ \\      Dr. Haskell version " ++ showVersion version,
+  " \\ \\",
+  " /  \\    Type \":?\" for help.",
+  "/ /\\ \\"]

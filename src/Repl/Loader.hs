@@ -84,6 +84,7 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
                  in MC.handleAll handler' $ do
                       liftInterpreter $ loadModules [cfn]
                       liftInterpreter $ setTopLevelModules ["Main"]
+                      liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
                       testErrors <- if rt then runAllTests else return []
