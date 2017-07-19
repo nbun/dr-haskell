@@ -1,5 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 
+module TypeInference.HSE2AH where
+
 import Language.Haskell.Exts
 import Data.Functor
 import TypeInference.AbstractHaskell
