@@ -43,7 +43,9 @@ initInterpreter = do
   datadir <- liftIO getDataDir
   Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
-  setImports ["Prelude"]
+  setImportsQ [("Prelude", Nothing),
+               ("System.IO", Just "System.IO")] --needed for hFlush and stdout
+                                                --for proper putStrLn
 
 main :: IO ()
 main = do
@@ -82,7 +84,15 @@ replEvalExp q =
                       return Nothing) $ do
     t <- typeOf q
     if t == "IO ()"
-      then interpret q (as :: IO ()) >>= liftIO >> return Nothing
+      then do
+        --apparently the interpreter does not put the output through 'our'
+        --stdout, so we need to flush the buffer *within* the interpreter,
+        --which makes this really messy. Seems to work though.
+        action <- interpret
+                    ("("++q++")>>System.IO.hFlush System.IO.stdout")
+                    (as :: IO ())
+        liftIO action
+        return Nothing
       else Just <$> eval q
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
