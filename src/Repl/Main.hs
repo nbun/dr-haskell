@@ -77,15 +77,16 @@ replEval q = case q of
   _      -> liftInterpreter $ (,True) <$> replEvalExp q
 
 replHelp :: Maybe String -> Repl String
-replHelp input = return $ unlines $ hint : [
+replHelp input = return $ init $ unlines $ hint [
+  "Usage:",
   ":? - This help",
   ":l - load module",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
-  where hint = case input of
-                 Just  s -> "Unrecognized option '" ++ s ++ "'"
-                 Nothing -> ""
+  where hint xs = case input of
+                    Just  s -> ("Unrecognized option '" ++ s ++ "'") : xs
+                    Nothing -> xs
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
 replEvalExp q =
@@ -116,6 +117,9 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     "reload" -> reload
     "t"      -> typeof
     "type"   -> typeof
+    "?"      -> help
+    "h"      -> help
+    "help"   -> help
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
@@ -132,6 +136,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
         typeof =  liftInterpreter (typeOf $ args !! 1) >>=
                                   \res -> return (Just res, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
+        help = (,True) <$> Just <$> replHelp Nothing
 
 --TODO: some better ascii art?
 showBanner :: ReplInput ()
