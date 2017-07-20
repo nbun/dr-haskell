@@ -70,7 +70,7 @@ loadModule does the following:
 -}
 
 loadModule :: FilePath -> Repl [LoadMessage]
-loadModule fname = MC.handleAll handler $ loadModule' fname
+loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
   where
     -- handles IO errors thrown by parseModified
     handler e = return [DirectMessage (displayException e)]
@@ -110,6 +110,11 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
                       return $ es ++ map DirectMessage testErrors
             else
               return $ map (CheckError (Just level)) errors
+    --adjusts path for easier usage (appends .hs suffix)
+    adjustPath :: FilePath -> FilePath
+    adjustPath f = case (reverse f) of
+                        's':'h':'.':_ -> f
+                        _             -> f ++ ".hs"
 
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
