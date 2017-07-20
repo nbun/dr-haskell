@@ -127,8 +127,12 @@ replEvalCommand cmd = if null cmd then invalid cmd else
           return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
-          errors <- loadModule md
-          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+          if (null md)
+          then
+            return (Just "Ok, modules loaded: none.", True)
+          else do
+            errors <- loadModule md
+            return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         typeof =  liftInterpreter (typeOf $ args !! 1) >>=
                                   \res -> return (Just res, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
