@@ -6,6 +6,7 @@ module Repl.Loader (
   determineLevel,
   transformModule,
   loadModule,
+  loadInitialModules
 ) where
 
 import           Control.Lens                         hiding (Level)
@@ -31,6 +32,24 @@ data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
 printLoadMessage :: LoadMessage -> String
 printLoadMessage (CheckError l e)  = prettyErrorForLintWithLevel l e
 printLoadMessage (DirectMessage m) = m
+
+--System.IO is needed for hFlush and stdout
+--for proper putStrLn
+loadInitialModules :: Repl ()
+loadInitialModules = do
+    Just level <- use forceLevel `mplusM` return (Just Level1)
+    currentLevel .= level
+    liftInterpreter $ setImportsQ [("Prelude", Nothing),
+                                   ("System.IO", Just "System.IO")]
+    case level of
+         Level1 -> do
+          liftInterpreter $ loadModules ["StartupEnvironment"]
+          liftInterpreter $ setTopLevelModules ["StartupEnvironment"]
+         otherwise -> return ()
+
+  where
+    mplusM = liftM2 mplus
+
 
 --todo: better path handling
 

@@ -26,8 +26,8 @@ Current Limitations:
 replRead :: Repl (Maybe String)
 replRead = do
   mods <- liftInterpreter getLoadedModules
-  let filtered = mods \\ ["MyPrelude", "Tests"]
-      prompt = if   null mods
+  let filtered = mods \\ ["MyPrelude", "Tests", "StartupEnvironment"]
+      prompt = if   null filtered
                then "Dr. Haskell"
                else intercalate ", " filtered
   level <- use currentLevel
@@ -47,20 +47,18 @@ replLoop = do
          liftInput $ replPrint res
          when cont replLoop
 
-initInterpreter :: ReplInterpreter ()
+initInterpreter :: Repl ()
 initInterpreter = do
   datadir <- liftIO getDataDir
-  Language.Haskell.Interpreter.set
+  liftInterpreter $ Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
-  setImportsQ [("Prelude", Nothing),
-               ("System.IO", Just "System.IO")] --needed for hFlush and stdout
-                                                --for proper putStrLn
+  loadInitialModules
 
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
   res <- runRepl initialState $ do
-    liftInterpreter initInterpreter
+    initInterpreter
     fname <- use filename
     unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
@@ -124,8 +122,6 @@ replEvalCommand cmd = if null cmd then invalid cmd else
   where args = words cmd
         quit = return (Nothing, False)
         load = let fn = args !! 1 in do
-          previousForceLevel <- use forceLevel
-          liftRepl $ forceLevel .= previousForceLevel
           liftRepl $ modify (Control.Lens.set filename fn)
           errors <- loadModule fn
           return $ (,) (Just (unlines $ map printLoadMessage errors)) True
