@@ -12,7 +12,6 @@ import           Data.Functor
 import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
-
 import           Util.ModifyAst
 
 extractDataDecls :: Module a -> [Decl a]

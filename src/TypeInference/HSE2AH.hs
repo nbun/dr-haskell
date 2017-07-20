@@ -1,12 +1,13 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 
 module TypeInference.HSE2AH (hseToAH) where
 
-import Language.Haskell.Exts
-import Data.Functor
-import TypeInference.AbstractHaskell
-import Control.Monad.State.Lazy
-import Data.Map.Lazy
+import           Control.Monad.State.Lazy
+import           Data.Functor
+import           Data.Map.Lazy
+import           Language.Haskell.Exts
+import           TypeInference.AbstractHaskell
 
 -- | Main function to convert HSE modules to abstract Haskell programs.
 hseToAH :: Module a -> Prog a
@@ -200,7 +201,7 @@ transformVars a  [] z = z
 transformVars a (x:xs) y = transformVars a xs (y ++[(TypeInference.AbstractHaskell.Var NoTypeAnn (x, a ))] )
 
 filteringVNames :: [(Int,String)] -> [String]
-filteringVNames []             = []
+filteringVNames []         = []
 filteringVNames ((i,s):xs) = [s] ++ filteringVNames xs
 
 abstrReprStmts :: MonadState LambdaState m => String -> Statement a -> m (Statement a)
@@ -225,7 +226,7 @@ abstrReprBranchExpr name (Branch a pat expr) =
 
 --------------------------------------------------------------------------------------------------------------------
 data LambdaState  = LambdaState {locals :: Map String Int -- wie viele freie Variablen in einer Funktion
-                               , frees :: Map String [VarName] -- welche Variablen wurden zu welcher Funktion ergänzt
+                               , frees  :: Map String [VarName] -- welche Variablen wurden zu welcher Funktion ergänzt
                                }
 
 getCountOfFrees :: MonadState LambdaState m => String -> m Int
@@ -233,7 +234,7 @@ getCountOfFrees name = do
   lds <- get
   case Data.Map.Lazy.lookup name (locals lds) of
     Nothing -> return 0
-    Just x -> return x
+    Just x  -> return x
 
 addFreeVariablesInProg :: MonadState LambdaState m => Prog l -> m (Prog l)
 addFreeVariablesInProg (Prog n x y fundecls) =
@@ -603,7 +604,7 @@ transFormLocal (LocalFunc fd) = [fd]
 -------------------------------------------------------------------------------------------------------------------------------------------------------
 -- STATE ----------------------------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------
-data AHState = AHState { idx :: Int
+data AHState = AHState { idx  :: Int
                        , vmap :: Map String Int
                        }
 
@@ -1023,7 +1024,7 @@ parseLiteral (Char _ c _)     = Charc c
 parseLiteral (String _ str _) = Stringc str
 parseLiteral (Int _ i _)      = Intc $ fromInteger i
 parseLiteral (Frac _ r _)     = Floatc $ fromRational r
-parseLiteral _ = error "parseLiteral"
+parseLiteral _                = error "parseLiteral"
 
 parseTyp :: MonadState AHState m => MName -> Type a -> m (TypeExpr a)
 parseTyp _    (TyVar l name)          = do
@@ -1055,14 +1056,14 @@ parseImportList [] = []
 parseImportList ((ImportDecl l name _ _ _ _ _ _ ):xs) = [(parseModuleName name,l)] ++ parseImportList xs
 
 parseModuleHead :: Maybe (ModuleHead l) -> MName
-parseModuleHead Nothing                   = ""
+parseModuleHead Nothing                     = ""
 parseModuleHead (Just (ModuleHead l n _ _)) = parseModuleName n
 
 parseModuleName :: ModuleName l -> String
 parseModuleName (ModuleName l str) = str
 
 parseDecls :: [Decl l] -> [(Name l,(Type l))]
-parseDecls [] = []
+parseDecls []     = []
 parseDecls (x:xs) = parseOneDecl x ++ parseDecls xs
 
 parseOneDecl :: Decl l -> [(Name l,(Type l ))]
@@ -1078,7 +1079,7 @@ parseTypeSig typ name = [(name,typ)]
 
 parseTypeSignatur :: Module l -> [(Name l, Type l)]
 parseTypeSignatur (Module l mh mp impdec decls) = parseDecls decls
-parseTypeSignatur _ = []
+parseTypeSignatur _                             = []
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do
@@ -1086,11 +1087,11 @@ parseFile' f = do
         return ast
 
 parseMatchName :: Match l -> String
-parseMatchName (Match l name patterns rhs wbinds) = parsename name
+parseMatchName (Match l name patterns rhs wbinds)       = parsename name
 parseMatchName (InfixMatch l pat1 name pat2 rhs wbinds) = parsename name
 
 parsename :: Name l -> String
-parsename (Ident l name)  = name
+parsename (Ident l name)                        = name
 parsename (Language.Haskell.Exts.Symbol l name) = name
 
 parseQName :: Language.Haskell.Exts.QName l -> String

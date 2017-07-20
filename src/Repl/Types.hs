@@ -124,7 +124,7 @@ instance LiftableRepl Repl where
 
 
 printLevel :: Level -> String
-printLevel Level1 = "L1"
-printLevel Level2 = "L2"
-printLevel Level3 = "L3"
+printLevel Level1    = "L1"
+printLevel Level2    = "L2"
+printLevel Level3    = "L3"
 printLevel LevelFull = "LF"

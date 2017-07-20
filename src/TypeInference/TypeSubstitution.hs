@@ -11,11 +11,11 @@ module TypeInference.TypeSubstitution
   , composeTESubst
   ) where
 
-import Data.List (intercalate)
-import qualified Data.Map as DM
-import Data.Maybe (fromMaybe)
-import Goodies (both)
-import TypeInference.AbstractHaskell
+import           Data.List                     (intercalate)
+import qualified Data.Map                      as DM
+import           Data.Maybe                    (fromMaybe)
+import           Goodies                       (both)
+import           TypeInference.AbstractHaskell
 
 -- -----------------------------------------------------------------------------
 -- Representation of substitutions on type expressions

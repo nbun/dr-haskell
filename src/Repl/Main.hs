@@ -5,10 +5,10 @@ module Repl.Main (module Repl.Main) where
 import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch          as MC
 import           Control.Monad.State
-import           Paths_drhaskell
-import           Data.Version (showVersion)
-import           System.FilePath
 import           Data.List
+import           Data.Version                 (showVersion)
+import           Paths_drhaskell
+import           System.FilePath
 
 import           Language.Haskell.Interpreter
 import           Repl.CmdOptions
