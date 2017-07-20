@@ -113,8 +113,8 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     "load"   -> load
     "r"      -> reload
     "reload" -> reload
-    "t"      -> typeof
-    "type"   -> typeof
+    "t"      -> commandTypeof args
+    "type"   -> commandTypeof args
     "?"      -> help
     "h"      -> help
     "help"   -> help
@@ -133,10 +133,15 @@ replEvalCommand cmd = if null cmd then invalid cmd else
           else do
             errors <- loadModule md
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True
-        typeof =  liftInterpreter (typeOf $ args !! 1) >>=
-                                  \res -> return (Just res, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
         help = (,True) <$> Just <$> replHelp Nothing
+
+commandTypeof :: [String] -> Repl (Maybe String, Bool)
+commandTypeof [_]  = return (Just "Expression expected", True)
+commandTypeof args = MC.handleAll (\e -> do
+                         return (Just (displayException e), True)) $
+                       liftInterpreter (typeOf $ intercalate " " $ tail args) >>=
+                       \res -> return (Just res, True)
 
 --TODO: some better ascii art?
 showBanner :: ReplInput ()
