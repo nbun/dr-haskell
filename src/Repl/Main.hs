@@ -15,6 +15,7 @@ import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
 import           System.Console.Haskeline
+import           TypeInference.Main
 
 {-
 Current Limitations:

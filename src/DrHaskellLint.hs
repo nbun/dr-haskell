@@ -19,6 +19,7 @@ import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
 import           System.IO
+import           TypeInference.Main
 import           Util.ModifyAst
 
 -- | Entry point for the cli call
