@@ -70,11 +70,11 @@ getTypeEnv p = extractKnownTypes [p]
 
 -- | Returns the type environment extracted from the given list of programs.
 extractKnownTypes :: [Prog a] -> TypeEnv a
-extractKnownTypes = listToTypeEnv . (concatMap extractProg)
+extractKnownTypes = listToTypeEnv . concatMap extractProg
   where
     extractProg :: Prog a -> [(QName, TypeExpr a)]
-    extractProg (Prog _ _ td fd)
-      = concatMap extractTypeDecl td ++ catMaybes (map extractFuncDecl fd)
+    extractProg (Prog _ _ tds fds)
+      = concatMap extractTypeDecl tds ++ catMaybes (map extractFuncDecl fds)
 
     extractFuncDecl :: FuncDecl a -> Maybe (QName, TypeExpr a)
     extractFuncDecl (Func _ (qn, _) _ _ ts _) = do te <- typeSigType ts
@@ -239,9 +239,9 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                          Just te -> do te' <- freshVariant te
                                        return te'
   where
-    err = TIError ("There is no type expression for "
+    err = TIError ("There is no type expression for \""
                      ++ showQName defaultAHOptions qn
-                     ++ "!")
+                     ++ "\"!")
 
 -- -----------------------------------------------------------------------------
 -- Functions for type annotation of abstract Haskell programs
@@ -258,6 +258,14 @@ annFunc (Func x y@(qn, _) a v _ rs) = do initVarTypes
                                          te <- getTypeVariant qn
                                          rs' <- annRules rs
                                          return (Func x y a v (TypeSig te) rs')
+
+-- | Annotates the given group of function declarations with fresh type
+--   variables.
+annFuncGroup :: [FuncDecl a] -> TIMonad a [FuncDecl a]
+annFuncGroup fds
+  = do initSigEnv
+       mapM (\fd -> insertFunType (funcName fd) (funcDeclType fd)) fds
+       mapM annFunc fds
 
 -- | Annotates the given rules declaration with fresh type variables.
 annRules :: Rules a -> TIMonad a (Rules a)
@@ -326,7 +334,8 @@ annExpr (Var _ x@(vn@(v, _), _))
   = lookupVarType v
       >>= maybe (throwError err) (\te -> return (Var (TypeAnn te) x))
   where
-    err = TIError ("There is no type variable for " ++ showVarName vn ++ "!")
+    err = TIError ("There is no type variable for \"" ++ showVarName vn
+                                                      ++ "\"!")
 annExpr (Lit _ l@(_, x))          = do te <- nextTVar x
                                        return (Lit (TypeAnn te) l)
 annExpr (Symbol _ x@(qn, _))      = do te <- getTypeVariant qn
@@ -377,7 +386,7 @@ annExpr (List x _ es)             = do te <- nextTVar x
                                        return (List x (TypeAnn te) es')
 
 -- -----------------------------------------------------------------------------
--- Functions for creating type expression equations
+-- Functions for creation of type expression equations
 -- -----------------------------------------------------------------------------
 
 -- | Returns the annotated type from the given expression or 'Nothing' if no
@@ -405,9 +414,9 @@ eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
   = let rhstes = catMaybes (rhsType rhs)
         ptes = catMaybes (map patternType' ps)
-        eqs = map (\ty -> foldr1 (FuncType x) (ptes ++ [ty])) rhstes
+        eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
      in return ([te =.= tae] ++ map (tae =.=) eqs)
-          ++= (concatMapM (uncurry eqsPattern) (zip ptes ps))
+          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsRhs rhs
 eqsRule _  _                               = return []
 
@@ -439,12 +448,12 @@ eqsPattern te (PLit (TypeAnn tae) (l, x))
   = return [te =.= tae, tae =.= literalType l x x]
 eqsPattern te (PComb x (TypeAnn tae) _ ps)
   = let ptes = catMaybes (map patternType' ps)
-     in return [te =.= returnType tae,
-                tae =.= foldr1 (FuncType x) (ptes ++ [returnType tae])]
+        rtae = returnType tae
+     in return [te =.= rtae, tae =.= foldr (FuncType x) rtae ptes]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PAs _ (TypeAnn tae) _ p)
-  = let pt = fromJust (patternType' p)
-     in return [te =.= tae, tae =.= pt] ++= eqsPattern pt p
+  = let pte = fromJust (patternType' p)
+     in return [te =.= tae, tae =.= pte] ++= eqsPattern pte p
 eqsPattern te (PTuple x (TypeAnn tae) ps)
   = let ptes = catMaybes (map patternType' ps)
      in return [te =.= tae, tae =.= tupleType ptes x x]
@@ -475,15 +484,15 @@ eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
 eqsExpr (Lambda x (TypeAnn te) ps e)
   = let ptes = catMaybes (map patternType' ps)
         te' = fromJust (exprType' e)
-     in return [te =.= foldr1 (FuncType x) (ptes ++ [te'])]
-          ++= (concatMapM (uncurry eqsPattern) (zip ptes ps))
+     in return [te =.= foldr (FuncType x) te' ptes]
+          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsExpr e
 eqsExpr (DoExpr _ _ _)
   = throwError (TIError "do-expressions are not supported yet!")
 eqsExpr (ListComp _ _ _ _)
   = throwError (TIError "List comprehensions are not supported yet!")
 eqsExpr (Case _ (TypeAnn te) e bs)
-  = eqsExpr e ++= (concatMapM (eqsBranch te (fromJust (exprType' e))) bs)
+  = eqsExpr e ++= concatMapM (eqsBranch te (fromJust (exprType' e))) bs
 eqsExpr (Typed _ (TypeAnn tae) e te)
   = return [tae =.= fromJust (exprType' e), tae =.= te] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
@@ -510,20 +519,27 @@ eqsExpr _                                    = return []
 -- Functions for type inference of abstract Haskell programs
 -- -----------------------------------------------------------------------------
 
+-- | Returns the type expression of a typed function declaration or a type
+--   variable if the function declaration is untyped.
+funcDeclType :: FuncDecl a -> TypeExpr a
+funcDeclType (Func x (qn, _) _ _ Untyped _)      = teVar 0 x
+funcDeclType (Func _ (qn, _) _ _ (TypeSig te) _) = te
+
 -- | Infers the given function declaration with the given program. The function
---   declaration may not be included in the given program.
+--   declaration may not be contained in the given program.
 inferFuncDecl :: Prog a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
 inferFuncDecl p = inferFuncDeclEnv (getTypeEnv p)
 
 -- | Infers the given function declaration with the given type environment.
 inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
 inferFuncDeclEnv tenv fd
-  = evalState (runExceptT (addFD fd >> annFunc fd >>= inferFunc))
-              (initTIState tenv)
+  | DM.member (funcName fd) tenv = Left (TIError err)
+  | otherwise
+    = evalState (runExceptT (insertFunType (funcName fd) (funcDeclType fd)
+                               >> annFunc fd >>= inferFunc))
+                (initTIState tenv)
   where
-    addFD :: FuncDecl a -> TIMonad a ()
-    addFD (Func x (qn, _) _ _ Untyped _)      = insertFunType qn (teVar 0 x)
-    addFD (Func _ (qn, _) _ _ (TypeSig te) _) = insertFunType qn te
+    err = "Function already defined in the given program!"
 
 -- | Infers the given already annotated function declaration.
 inferFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
@@ -532,88 +548,63 @@ inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
        sub <- solve eqs
        return (normalize normFuncDecl (applyTESubstFD sub fd))
 
--- | Annotates the given group of function declarations with fresh type
---   variables.
-annFuncGroup :: [FuncDecl a] -> TIMonad a [FuncDecl a]
-annFuncGroup fds = do initSigEnv
-                      mapM addFD fds
-                      mapM annFunc fds
-  where
-    addFD :: FuncDecl a -> TIMonad a ()
-    addFD (Func x (qn, _) _ _ Untyped _)      = insertFunType qn (teVar 0 x)
-    addFD (Func _ (qn, _) _ _ (TypeSig te) _) = insertFunType qn te
-
 -- | Infers the given expression with the given program.
 inferExpr :: Prog a -> Expr a -> Either (TIError a) (Expr a)
 inferExpr p = inferExprEnv (getTypeEnv p)
 
 -- | Infers the given expression with the given type environment.
 inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
-inferExprEnv tenv e
-  = evalState (runExceptT (annExpr e >>= inferAExpr)) (initTIState tenv)
+inferExprEnv tenv e = evalState (runExceptT (inferExpr' e)) (initTIState tenv)
 
--- | Infers the given already annotated expression.
-inferAExpr :: Expr a -> TIMonad a (Expr a)
-inferAExpr e = do eqs <- eqsExpr e
+-- | Infers the given expression.
+inferExpr' :: Expr a -> TIMonad a (Expr a)
+inferExpr' e = do e' <- annExpr e
+                  eqs <- eqsExpr e'
                   sub <- solve eqs
-                  return (normalize normExpr (applyTESubstE sub e))
+                  return (normalize normExpr (applyTESubstE sub e'))
 
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation.
 inferHSE :: Module a -> Either (TIError a) (Prog a)
 inferHSE = inferProg . hseToAH
 
--- | Returns the list of function declarations without type signatures.
-getFuncsWTS :: Prog a -> [FuncDecl a]
-getFuncsWTS (Prog _ _ _ fds) = filter (not . hasTypeSig) fds
-
 -- | Infers the given program.
 inferProg :: Prog a -> Either (TIError a) (Prog a)
-inferProg p = evalState (runExceptT (inferProg' p)) (initTIState (getTypeEnv p))
+inferProg p = inferProgEnv (getTypeEnv p) p
+
+-- | Infers the given program with the given type environment.
+inferProgEnv :: TypeEnv a -> Prog a -> Either (TIError a) (Prog a)
+inferProgEnv tenv p = evalState (runExceptT (inferProg' p)) (initTIState tenv)
 
 -- | Infers the given program.
 inferProg' :: Prog a -> TIMonad a (Prog a)
-inferProg' p = let fdswts = getFuncsWTS p
-                in do fds <- inferNewFunctionsEnv (modName p) fdswts
-                      p' <- inferProgEnv (getProgFDWTS p)
-                      return (replaceFWTS p' fds)
+inferProg' (Prog mn is tds fds)
+  = let ntfds = filter (not . hasTypeSig) fds
+     in do ntfds' <- inferNotTypedFuncs (fst mn) ntfds
+           p' <- inferProg'' (Prog mn is tds (filter hasTypeSig fds))
+           return (addNTFuncs p' ntfds')
   where
-    getProgFDWTS :: Prog a -> Prog a
-    getProgFDWTS (Prog a b c fd) = Prog a b c (filter hasTypeSig fd)
-    replaceFWTS :: Prog a -> [FuncDecl a] -> Prog a
-    replaceFWTS p@(Prog a b c fds) fds' = Prog a b c [change fd | fd <- fds]
-      where
-        change fd = case find ((== funcName fd) . funcName) fds' of
-                      Nothing -> fd
-                      Just f  -> f
+    addNTFuncs :: Prog a -> [FuncDecl a] -> Prog a
+    addNTFuncs (Prog mn is tds fds) fds' = Prog mn is tds (fds ++ fds')
 
-inferProgEnv :: Prog a -> TIMonad a (Prog a)
-inferProgEnv p
-  = annProg p >>= inferAProg
+-- | Infers the given program with only typed function declarations.
+inferProg'' :: Prog a -> TIMonad a (Prog a)
+inferProg'' p = do Prog mn is tds fds <- annProg p
+                   fds' <- mapM inferFunc fds
+                   return (Prog mn is tds fds')
 
-inferAProg :: Prog a -> TIMonad a (Prog a)
-inferAProg (Prog mid is td fd)
-  = (\fd' -> Prog mid is td fd') <$> mapM inferFunc fd
+-- | Infers the given list of untyped function declarations within the module
+--   with the given name.
+inferNotTypedFuncs :: MName -> [FuncDecl a] -> TIMonad a [FuncDecl a]
+inferNotTypedFuncs mn fds = concatMapM inferFuncGroup (depGraph mn fds)
 
-inferNewFunctionsEnv :: MName -> [FuncDecl a] -> TIMonad a [FuncDecl a]
-inferNewFunctionsEnv mid fs = infer (depGraph mid fs)
-  where
-    infer fss = do fs' <- concatMapM inferGroup fss
-                   mapM (flip extract fs') fs
-    inferGroup g
-      = do xs <- annFuncGroup g
-           afs <- inferFuncGroup xs
-           extendTypeEnv [(qn, ty) | Func _ (qn, _) _ _ (TypeSig ty) _ <- afs]
-           return afs
-    extract :: FuncDecl a -> [FuncDecl a] -> TIMonad a (FuncDecl a)
-    extract f afs = case find ((== funcName f) . funcName) afs of
-                      Just af -> return af
-                      Nothing -> throwError (TIError "Internal error: extract")
-
+-- | Infers the given group of untyped function declarations.
 inferFuncGroup :: [FuncDecl a] -> TIMonad a [FuncDecl a]
-inferFuncGroup fs
-  = do eqs <- concatMapM (uncurry eqsRules)
-                         [(ty, rs) | Func _ _ _ _ (TypeSig ty) rs <- fs]
+inferFuncGroup fds
+  = do fds' <- annFuncGroup fds
+       eqs <- concatMapM (uncurry eqsRules)
+                         [(te, rs) | Func _ _ _ _ (TypeSig te) rs <- fds']
        sub <- solve eqs
-       afs <- mapM (return . normalize normFuncDecl . applyTESubstFD sub) fs
-       return afs
+       nfds <- mapM (return . normalize normFuncDecl . applyTESubstFD sub) fds'
+       extendTypeEnv [(qn, te) | Func _ (qn, _) _ _ (TypeSig te) _ <- nfds]
+       return nfds
