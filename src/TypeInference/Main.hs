@@ -18,6 +18,7 @@ import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
 import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
+import TypeInference.HSE2AH (hseToAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
@@ -552,8 +553,8 @@ inferAExpr e = do eqs <- eqsExpr e
 
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation.
-inferHSE :: Module a -> Either (TIError b) (Prog b)
-inferHSE = undefined
+inferHSE :: Module a -> Either (TIError a) (Prog a)
+inferHSE = inferProg . hseToAH
 
 -- | Returns the list of function declarations without type signatures.
 getFuncsWTS :: Prog a -> [FuncDecl a]

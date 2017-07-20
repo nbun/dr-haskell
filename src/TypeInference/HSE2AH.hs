@@ -1,12 +1,17 @@
 {-# LANGUAGE FlexibleContexts #-}
 
-module TypeInference.HSE2AH where
+module TypeInference.HSE2AH (hseToAH) where
 
 import Language.Haskell.Exts
 import Data.Functor
 import TypeInference.AbstractHaskell
 import Control.Monad.State.Lazy
 import Data.Map.Lazy
+
+-- | Main function to convert HSE modules to abstract Haskell programs.
+hseToAH :: Module a -> Prog a
+hseToAH = undefined
+
 
 
 ------------------------------------------------------------------------------------------------------------------
