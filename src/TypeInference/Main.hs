@@ -412,7 +412,7 @@ eqsRules _  _                          = return []
 --   given function type expression.
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
-  = let rhstes = catMaybes (rhsType rhs)
+  = let rhstes = catMaybes (rhsTypes rhs)
         ptes = catMaybes (map patternType' ps)
         eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
      in return ([te =.= tae] ++ map (tae =.=) eqs)
@@ -546,7 +546,9 @@ inferFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
 inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
   = do eqs <- eqsRules te rs
        sub <- solve eqs
-       return (normalize normFuncDecl (applyTESubstFD sub fd))
+       let fd' = normalize normFuncDecl (applyTESubstFD sub fd)
+       checkTooGeneral fd'
+       return fd'
 
 -- | Infers the given expression with the given program.
 inferExpr :: Prog a -> Expr a -> Either (TIError a) (Expr a)
@@ -608,3 +610,32 @@ inferFuncGroup fds
        nfds <- mapM (return . normalize normFuncDecl . applyTESubstFD sub) fds'
        extendTypeEnv [(qn, te) | Func _ (qn, _) _ _ (TypeSig te) _ <- nfds]
        return nfds
+
+-- | Returns the part of the type expressions where the first type expression is
+--   a too general variant of the second type expression or 'Nothing' if no such
+--   part exists.
+typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
+typeTooGeneral x@(TVar _)         y@(FuncType _ _ _)   = Just (x, y)
+typeTooGeneral x@(TVar _)         y@(TCons _ _ _)      = Just (x, y)
+typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
+  = typeTooGeneral' [(t1, t1'), (t2, t2')]
+typeTooGeneral (TCons _ _ tes)    (TCons _ _ tes')
+  = typeTooGeneral' (zip tes tes')
+typeTooGeneral _                  _                    = Nothing
+
+-- | Iterates 'typeTooGeneral' over a list of type expression pairs.
+typeTooGeneral' :: [(TypeExpr a, TypeExpr a)] -> Maybe (TypeExpr a, TypeExpr a)
+typeTooGeneral' []          = Nothing
+typeTooGeneral' ((x, y):xs)
+  = maybe (typeTooGeneral' xs) Just (typeTooGeneral x y)
+
+-- | Checks whether the given function declaration has a too general type
+--   signature compared to the infered type.
+checkTooGeneral :: FuncDecl a -> TIMonad a ()
+checkTooGeneral (Func _ (qn, _) _ _ _ rs)
+  = do (tenv, _, _, _) <- get
+       case lookupType qn tenv of
+         Nothing -> return ()
+         Just te -> maybe (return ())
+                          (\(x, y) -> throwError (TITooGeneral x y))
+                          (typeTooGeneral te (head (catMaybes (rulesTypes rs))))

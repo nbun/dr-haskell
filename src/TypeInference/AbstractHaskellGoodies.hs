@@ -6,9 +6,9 @@
 module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
-  , typeSigType, typeAnnType, rhsType, exprType, patternType, exprAnn, teVar
-  , (=.=), hasTypeSig, funcName, modName, leftFuncType, rightFuncType
-  , returnType, depGraph
+  , typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes, exprType
+  , patternType, exprAnn, teVar, (=.=), hasTypeSig, funcName, modName
+  , leftFuncType, rightFuncType, returnType, depGraph
   ) where
 
 import           TypeInference.AbstractHaskell
@@ -101,10 +101,20 @@ typeAnnType :: TypeAnn a -> Maybe (TypeExpr a)
 typeAnnType NoTypeAnn    = Nothing
 typeAnnType (TypeAnn te) = Just te
 
+-- | Returns the list of annotated types from the given rules declaration.
+rulesTypes :: Rules a -> [Maybe (TypeExpr a)]
+rulesTypes (Rules rs)      = map ruleType rs
+rulesTypes (External _ ta) = [typeAnnType ta]
+
+-- | Returns the annotated type from the given function rule or 'Nothing' if no
+--   type is annotated.
+ruleType :: Rule a -> Maybe (TypeExpr a)
+ruleType (Rule _ ta _ _ _) = typeAnnType ta
+
 -- | Returns the list of type expressions from the given right-hand side.
-rhsType :: Rhs a -> [Maybe (TypeExpr a)]
-rhsType (SimpleRhs e)      = [exprType e]
-rhsType (GuardedRhs _ eqs) = map (exprType . snd) eqs
+rhsTypes :: Rhs a -> [Maybe (TypeExpr a)]
+rhsTypes (SimpleRhs e)      = [exprType e]
+rhsTypes (GuardedRhs _ eqs) = map (exprType . snd) eqs
 
 -- | Returns the annotated type from the given expression or 'Nothing' if no
 --   type is annotated.
