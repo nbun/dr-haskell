@@ -141,8 +141,10 @@ commandTypeof :: [String] -> Repl (Maybe String, Bool)
 commandTypeof [_]  = return (Just "Expression expected", True)
 commandTypeof args = MC.handleAll (\e -> do
                          return (Just (displayException e), True)) $
-                       liftInterpreter (typeOf $ intercalate " " $ tail args) >>=
-                       \res -> return (Just res, True)
+                       liftInterpreter (typeOf expression) >>=
+                       \res -> return (Just (expression ++ " :: " ++res), True)
+  where
+    expression = intercalate " " $ tail args
 
 --TODO: some better ascii art?
 showBanner :: ReplInput ()
