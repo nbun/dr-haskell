@@ -9,27 +9,20 @@ module TypeInference.Main
   , inferProg, inferFuncDecl, inferExpr, inferHSE
   ) where
 
-import           Control.Monad.Except                 (ExceptT, runExceptT,
-                                                       throwError)
-import           Control.Monad.State                  (State, evalState, get,
-                                                       modify, put)
-import           Data.List                            (find)
-import qualified Data.Map                             as DM
-import           Data.Maybe                           (catMaybes, fromJust)
-import           Goodies                              (both, bothM, concatMapM,
-                                                       mapAccumM, one, two,
-                                                       (++=))
-import           Language.Haskell.Exts                (Module)
-import           TypeInference.AbstractHaskell
-import           TypeInference.AbstractHaskellGoodies
-import           TypeInference.HSE2AH                 (hseToAH)
-import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
-import           TypeInference.Term                   (Term (..), TermEqs)
-import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
-                                                       applyTESubstFD)
-import           TypeInference.Unification            (UnificationError (..),
-                                                       unify)
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.State (State, evalState, get, modify, put)
+import Data.List (find)
+import qualified Data.Map as DM
+import Data.Maybe (catMaybes, fromJust)
+import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
+import Language.Haskell.Exts (Module)
+import TypeInference.AbstractHaskell
+import TypeInference.AbstractHaskellGoodies
+import TypeInference.HSE2AH (hseToAH)
+import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
+import TypeInference.Term (Term (..), TermEqs)
+import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
+import TypeInference.Unification (UnificationError (..), unify)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type environments

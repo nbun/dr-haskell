@@ -6,9 +6,9 @@ module Goodies
   ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf
   ) where
 
-import           Control.Monad.State (get, put, runStateT)
-import           Control.Monad.Trans (lift)
-import           Data.Tuple          (swap)
+import Control.Monad.State (get, put, runStateT)
+import Control.Monad.Trans (lift)
+import Data.Tuple (swap)
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions
