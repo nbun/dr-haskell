@@ -13,7 +13,6 @@ import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust)
 import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
-import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)

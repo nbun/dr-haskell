@@ -13,7 +13,7 @@ module TypeInference.AbstractHaskell
   ) where
 
 import Data.List (intercalate)
-import Goodies (one, parensIf)
+import Goodies (one, parensIf, tupled)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -245,9 +245,3 @@ isTupleCons (_, c:cs) = c == '(' && isTupleCons' cs
     isTupleCons' ""           = False
     isTupleCons' [x]          = x == ')'
     isTupleCons' (x:xs@(_:_)) = x == ',' && isTupleCons' xs
-
--- | Returns a string representation of a tuple with the given list of
---   components.
-tupled :: [String] -> String
-tupled []     = "()"
-tupled (x:xs) = "(" ++ x ++ concatMap (", " ++) xs ++ ")"
