@@ -145,9 +145,10 @@ commandTypeof args = MC.handleAll (\e -> do
                        \res -> return (Just (expression ++ " :: " ++ fixType res), True)
   where
     expression = intercalate " " $ tail args
-    fixType "Prelude.Num a => a" = "Int"
-    fixType "GHC.Num.Num a => a" = "Int"
-    fixType x                    = x
+    fixType "Prelude.Num a => a"         = "Int"
+    fixType "GHC.Num.Num a => a"         = "Int"
+    fixType "GHC.Real.Fractional a => a" = "Float"
+    fixType x                            = x
 
 --TODO: some better ascii art?
 showBanner :: ReplInput ()
