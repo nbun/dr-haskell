@@ -1,12 +1,10 @@
 {-|
-  This is the main library for type inference of abstract Haskell programs. It
-  can also be used to infer Haskell programs with the
-  'Language.Haskell.Exts.Syntax' representation.
+  This is the main library for type inference of abstract Haskell programs.
 -}
 
 module TypeInference.Main
   ( TIError (..)
-  , inferProg, inferFuncDecl, inferExpr, inferHSE
+  , inferProg, inferFuncDecl, inferExpr
   ) where
 
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
@@ -18,7 +16,6 @@ import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
 import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH (hseToAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
@@ -57,13 +54,9 @@ insertType = DM.insert
 listToTypeEnv :: [(QName, TypeExpr a)] -> TypeEnv a
 listToTypeEnv = DM.fromList
 
--- | Returns the type environment for the given program.
-getTypeEnv :: Prog a -> TypeEnv a
-getTypeEnv p = extractKnownTypes [p]
-
 -- | Returns the type environment extracted from the given list of programs.
-extractKnownTypes :: [Prog a] -> TypeEnv a
-extractKnownTypes = listToTypeEnv . concatMap extractProg
+getTypeEnv :: [Prog a] -> TypeEnv a
+getTypeEnv = listToTypeEnv . concatMap extractProg
   where
     extractProg :: Prog a -> [(QName, TypeExpr a)]
     extractProg (Prog _ _ tds fds)
@@ -518,10 +511,10 @@ funcDeclType :: FuncDecl a -> TypeExpr a
 funcDeclType (Func x (qn, _) _ _ Untyped _)      = teVar 0 x
 funcDeclType (Func _ (qn, _) _ _ (TypeSig te) _) = te
 
--- | Infers the given function declaration with the given program. The function
---   declaration may not be contained in the given program.
-inferFuncDecl :: Prog a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
-inferFuncDecl p = inferFuncDeclEnv (getTypeEnv p)
+-- | Infers the given function declaration with the given list of programs. The
+--   function declaration may not be contained in the given programs.
+inferFuncDecl :: [Prog a] -> FuncDecl a -> Either (TIError a) (FuncDecl a)
+inferFuncDecl ps = inferFuncDeclEnv (getTypeEnv ps)
 
 -- | Infers the given function declaration with the given type environment.
 inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
@@ -543,9 +536,9 @@ inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
        checkTooGeneral fd'
        return fd'
 
--- | Infers the given expression with the given program.
-inferExpr :: Prog a -> Expr a -> Either (TIError a) (Expr a)
-inferExpr p = inferExprEnv (getTypeEnv p)
+-- | Infers the given expression with the given list of programs.
+inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
+inferExpr ps = inferExprEnv (getTypeEnv ps)
 
 -- | Infers the given expression with the given type environment.
 inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
@@ -558,14 +551,9 @@ inferExpr' e = do e' <- annExpr e
                   sub <- solve eqs
                   return (normalize normExpr (applyTESubstE sub e'))
 
--- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
---   representation.
-inferHSE :: Module a -> Either (TIError a) (Prog a)
-inferHSE = inferProg . hseToAH
-
--- | Infers the given program.
-inferProg :: Prog a -> Either (TIError a) (Prog a)
-inferProg p = inferProgEnv (getTypeEnv p) p
+-- | Infers the given program with the given list of programs.
+inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
+inferProg ps p = inferProgEnv (getTypeEnv (p:ps)) p
 
 -- | Infers the given program with the given type environment.
 inferProgEnv :: TypeEnv a -> Prog a -> Either (TIError a) (Prog a)
