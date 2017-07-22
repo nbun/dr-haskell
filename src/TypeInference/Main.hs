@@ -1,10 +1,12 @@
 {-|
-  This is the main library for type inference of abstract Haskell programs.
+  This is the main library for type inference of abstract Haskell programs. It
+  can also be used to infer Haskell programs with the
+  'Language.Haskell.Exts.Syntax' representation.
 -}
 
 module TypeInference.Main
   ( TIError (..)
-  , inferProg, inferFuncDecl, inferExpr
+  , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
 import Control.Monad.Except (ExceptT, runExceptT, throwError)
@@ -13,8 +15,10 @@ import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust)
 import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
+import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
+import TypeInference.HSE2AH (hseToAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
@@ -549,6 +553,11 @@ inferExpr' e = do e' <- annExpr e
                   eqs <- eqsExpr e'
                   sub <- solve eqs
                   return (normalize normExpr (applyTESubstE sub e'))
+
+-- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
+--   representation using the given list of programs.
+inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
+inferHSE ps = (inferProg ps) . hseToAH
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
