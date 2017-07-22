@@ -142,9 +142,12 @@ commandTypeof [_]  = return (Just "Expression expected", True)
 commandTypeof args = MC.handleAll (\e -> do
                          return (Just (displayException e), True)) $
                        liftInterpreter (typeOf expression) >>=
-                       \res -> return (Just (expression ++ " :: " ++res), True)
+                       \res -> return (Just (expression ++ " :: " ++ fixType res), True)
   where
     expression = intercalate " " $ tail args
+    fixType "Prelude.Num a => a" = "Int"
+    fixType "GHC.Num.Num a => a" = "Int"
+    fixType x                    = x
 
 --TODO: some better ascii art?
 showBanner :: ReplInput ()
