@@ -242,6 +242,6 @@ isTupleCons (_, "")   = False
 isTupleCons (_, c:cs) = c == '(' && isTupleCons' cs
   where
     isTupleCons' :: String -> Bool
-    isTupleCons' ""           = False
-    isTupleCons' [x]          = x == ')'
-    isTupleCons' (x:xs@(_:_)) = x == ',' && isTupleCons' xs
+    isTupleCons' ""     = False
+    isTupleCons' [x]    = x == ')'
+    isTupleCons' (x:xs) = x == ',' && isTupleCons' xs
