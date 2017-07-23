@@ -1,4 +1,9 @@
+
 {-# LANGUAGE FlexibleContexts #-}
+
+module TypeInference.ASTtoAH
+  (lambdaLifting) where
+
 
 import Language.Haskell.Exts
 import Data.Functor
@@ -6,32 +11,15 @@ import TypeInference.AbstractHaskell
 import Control.Monad.State.Lazy
 import Data.Map.Lazy
 
+-- Reparieren : In lokalen Definitionen werden Variablen auch noch neu nummeriert.
+-- FunktionsDefinion auf der linken Seite auch neunen Namen geben
+-- Public/Privat nachschlagen
 
-------------------------------------------------------------------------------------------------------------------
--- TESTPROGRAMM --------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------
-
---f x y = h 5
--- where
---   h z = x
-
-
-testp = Prog (("TestName"), "string") [] [] [f]
-
-f = Func "string" (("TestName","f"), "string") 2 Public Untyped (Rules r)
-
-r = [TypeInference.AbstractHaskell.Rule "string" NoTypeAnn [TypeInference.AbstractHaskell.PVar NoTypeAnn ((0,"x"), "string"),TypeInference.AbstractHaskell.PVar NoTypeAnn ((1,"y"),"string")] (SimpleRhs $ Apply "string" NoTypeAnn (TypeInference.AbstractHaskell.Var TypeInference.AbstractHaskell.NoTypeAnn ((2,"h"),"string")) (TypeInference.AbstractHaskell.Lit NoTypeAnn (Intc 5,"string"))) [LocalFunc t]]
-
-t = Func "string"(("TestName","h"), "string") 1 Private Untyped (Rules s)
-
-s = [TypeInference.AbstractHaskell.Rule "string" NoTypeAnn [TypeInference.AbstractHaskell.PVar NoTypeAnn ((3,"z"), "string")] (SimpleRhs (TypeInference.AbstractHaskell.Var NoTypeAnn ((0,"x") ,"string"))) []]
-
-dst = (SimpleRhs $ Apply "string" NoTypeAnn (TypeInference.AbstractHaskell.Var TypeInference.AbstractHaskell.NoTypeAnn ((2,"h"),"string")) (TypeInference.AbstractHaskell.Lit NoTypeAnn (Intc 5,"string")))
--------------------------------------------------------------------------------------------------------------------------------------------------------
--- LAMBDA LIFTING FÜR LOKALE DEKLARATIONEN ------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------
-lambdaLifting :: Prog l -> Prog l
-lambdaLifting prog =  evalState (lambdaProg prog) initialStateLambda
+--------------------------------------------------------------------------------
+-- LAMBDA LIFTING FÜR LOKALE DEKLARATIONEN -------------------------------------
+--------------------------------------------------------------------------------
+lambdaLifting :: Module l -> Prog l
+lambdaLifting modu =  evalState (lambdaProg (astToAH modu)) initialStateLambda
 
 initialStateLambda = LambdaState empty empty
 
@@ -586,6 +574,7 @@ transFormLocalExprBranches :: [FuncDecl l] -> BranchExpr l -> [FuncDecl l]
 transFormLocalExprBranches list (Branch a pat expr) =
   list ++ transFormLocalExpr list expr
 
+-- Muss hier nochmal nach public und private gukcen
 transFormLocal :: LocalDecl l -> [FuncDecl l]
 transFormLocal (LocalFunc fd) = [fd]
 --transFormLocal (LocalPat l pat expr lcs) = undefined
@@ -735,16 +724,25 @@ parseFunDecls modu ts (FunBind l mas@(m:matches)) =
    do
      let fn = parseMatchName m
      put $ AHState {idx = 0 , vmap = empty}
-     btd <- buildType l modu (searchForType fn ts)
-     put $ AHState {idx = 0, vmap = empty}
-     rl <- mapM (parseRules modu ts) mas
-     return $ Func l ((modu,fn),l) (parseArity mas) Public btd (Rules rl)
+     case (searchForType fn ts) of
+       Nothing -> do
+                    put $ AHState {idx = 0, vmap = empty}
+                    rl <- mapM (parseRules modu ts) mas
+                    return $ Func l ((modu,fn),l) (parseArity mas) Public Untyped (Rules rl)
+       Just z -> do
+                   btd <- buildType l modu z
+                   put $ AHState {idx = 0, vmap = empty}
+                   rl <- mapM (parseRules modu ts) mas
+                   return $ Func l ((modu,fn),l) (parseArity mas) Public btd (Rules rl)
 parseFunDecls modu ts (PatBind l pat rhs mbinds) =
   do
     let pn = parseNameOutOfPattern pat
     rl <- parseRulesOutOfPats modu ts pat rhs
-    btd <- buildType l modu (searchForType pn ts)
-    return $ Func l ((modu,pn),l) 0 Public btd rl
+    case (searchForType pn ts) of
+      Nothing -> return $ Func l ((modu,pn),l) 0 Public Untyped rl
+      Just z -> do
+                  btd <- buildType l modu z
+                  return $ Func l ((modu,pn),l) 0 Public btd rl
 parseFunDecls modulename typsignatures _ = return $ Func undefined ((modulename,""), undefined) 0 Public Untyped (Rules [])
 
 parseRulesOutOfPats :: MonadState AHState m => MName -> [(Name a, Type a)] -> Pat a -> Language.Haskell.Exts.Rhs a -> m (Rules a)
@@ -766,17 +764,20 @@ parseNameOutOfPattern (PAsPat l name pat)                         =
   parsename name
 
 parseRules :: MonadState AHState m => MName -> [(Name a, Type a)] -> Match a -> m (TypeInference.AbstractHaskell.Rule a)
-parseRules str t (Match l _ pats rhs _)         = do
-                                                    r <- parseRule str t pats rhs
-                                                    return r
-parseRules _ t (InfixMatch _ pat1 _ pats rhs _) = error "parseRules"
+parseRules str t (Match l _ pats rhs wbinds)         = do
+                                                         r@(TypeInference.AbstractHaskell.Rule l tya p rh loc) <- parseRule str t pats rhs
+                                                         case wbinds of
+                                                           Nothing -> return $ TypeInference.AbstractHaskell.Rule l tya p rh (loc)
+                                                           Just y -> do
+                                                                        locs <- (parseBinds str t) y
+                                                                        return $ TypeInference.AbstractHaskell.Rule l tya p rh (loc ++ locs)
+
 
 parseRule :: MonadState AHState m => MName -> [(Name a, Type a)] -> [Pat a] -> Language.Haskell.Exts.Rhs a -> m (TypeInference.AbstractHaskell.Rule a)
 parseRule str t pats (UnGuardedRhs l expr)  = do
                                                 patt <- mapM (parsePatterns str) pats
                                                 ep <- parseExpr str t expr
-                                                bnd <- parseLocal str t expr
-                                                return $ TypeInference.AbstractHaskell.Rule l NoTypeAnn patt (SimpleRhs ep) bnd
+                                                return $ TypeInference.AbstractHaskell.Rule l NoTypeAnn patt (SimpleRhs ep) []
 parseRule str t pats (GuardedRhss l gurhss) =
   do
     patt <- mapM (parsePatterns str) pats
@@ -1091,9 +1092,9 @@ parseQName (Qual l mdn name) = parsename name
 parseQName (UnQual l name)   = parsename name
 parseQName _                 = ""
 
-searchForType :: String -> [(Name l, Type l)] -> Type l
-searchForType _ [] = error "noType"
-searchForType name ((n , t):nts) | name == (parsename n) = t
+searchForType :: String -> [(Name l, Type l)] -> Maybe (Type l)
+searchForType _ [] = Nothing
+searchForType name ((n , t):nts) | name == (parsename n) =  Just t
                                  | otherwise = searchForType name nts
 
 buildType :: MonadState AHState m => a -> MName -> Type a -> m (TypeSig a)
