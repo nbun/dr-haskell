@@ -11,7 +11,7 @@ import           TypeInference.AbstractHaskell
 
 -- | Main function to convert HSE modules to abstract Haskell programs.
 hseToAH :: Module a -> Prog a
-hseToAH = undefined
+hseToAH modu =  evalState (lambdaProg (astToAH modu)) initialStateLambda
 
 -- Reparieren : In lokalen Definitionen werden Variablen auch noch neu nummeriert.
 -- FunktionsDefinion auf der linken Seite auch neunen Namen geben
