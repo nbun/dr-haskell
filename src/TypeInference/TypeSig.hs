@@ -1,3 +1,6 @@
+module TypeInference.TypeSig
+  (parseTypeSig, parseTypeSignatur) where
+
 import           Data.Functor
 import           Language.Haskell.Exts
 
@@ -34,9 +37,9 @@ parseTypeSignaturSN (Module l mh mp impdec decls) = parseDeclsSN decls
 parseTypeSignaturSN _                             = []
 
 parseDeclsSN :: [Decl l] -> [(String, Type l)]
---parseDeclsSN []     = []
---parseDeclsSN (x:xs) = parseOneDeclSN x ++ parseDeclsSN xs
-parseDeclsSN = foldr ((++) . parseOneDeclSN)
+parseDeclsSN []     = []
+parseDeclsSN (x:xs) = parseOneDeclSN x ++ parseDeclsSN xs
+--parseDeclsSN = foldr ((++) . parseOneDeclSN)
 
 parseOneDeclSN :: Decl l -> [(String, Type l)]
 parseOneDeclSN (TypeSig l names t) = concatMap (parseTypeSigSN t) names
@@ -55,9 +58,9 @@ parseTypeSignaturSNT (Module l mh mp impdec decls) = parseDeclsSNT decls
 parseTypeSignaturSNT _                             = []
 
 parseDeclsSNT :: [Decl l] -> [(String,String)]
---parseDeclsSNT []     = []
---parseDeclsSNT (x:xs) = parseOneDeclSNT x ++ parseDeclsSNT xs
-parseDeclsSNT = foldr ((++) . parseOneDeclSNT)
+parseDeclsSNT []     = []
+parseDeclsSNT (x:xs) = parseOneDeclSNT x ++ parseDeclsSNT xs
+--parseDeclsSNT = foldr ((++) . parseOneDeclSNT)
 
 parseOneDeclSNT :: Decl l -> [(String, String)]
 parseOneDeclSNT (TypeSig l names t) = concatMap (parseTypeSigSNT t) names

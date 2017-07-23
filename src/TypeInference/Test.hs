@@ -9,3 +9,9 @@ t = Func "string"(("TestName","h"), "string") 1 Private Untyped (Rules s)
 s = [TypeInference.AbstractHaskell.Rule "string" NoTypeAnn [TypeInference.AbstractHaskell.PVar NoTypeAnn ((3,"z"), "string")] (SimpleRhs (TypeInference.AbstractHaskell.Var NoTypeAnn ((0,"x") ,"string"))) []]
 
 dst = (SimpleRhs $ Apply "string" NoTypeAnn (TypeInference.AbstractHaskell.Var TypeInference.AbstractHaskell.NoTypeAnn ((2,"h"),"string")) (TypeInference.AbstractHaskell.Lit NoTypeAnn (Intc 5,"string")))
+
+
+parseFile' :: FilePath -> IO (Module SrcSpanInfo)
+parseFile' f = do
+        (ParseOk ast) <- parseFile f
+        return ast
