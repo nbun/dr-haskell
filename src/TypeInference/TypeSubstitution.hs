@@ -77,12 +77,12 @@ applyTESubst sub (FuncType x t1 t2)
 
 -- | Applies a substitution to the given type signature.
 applyTESubstTS :: TESubst a -> TypeSig a -> TypeSig a
-applyTESubstTS sub Untyped      = Untyped
+applyTESubstTS _   Untyped      = Untyped
 applyTESubstTS sub (TypeSig te) = TypeSig (applyTESubst sub te)
 
 -- | Applies a substitution to the given type annotation.
 applyTESubstTA :: TESubst a -> TypeAnn a -> TypeAnn a
-applyTESubstTA sub NoTypeAnn    = NoTypeAnn
+applyTESubstTA _   NoTypeAnn    = NoTypeAnn
 applyTESubstTA sub (TypeAnn te) = TypeAnn (applyTESubst sub te)
 
 -- | Applies a substitution to the given function declaration.

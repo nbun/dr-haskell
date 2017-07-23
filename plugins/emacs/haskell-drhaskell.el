@@ -92,6 +92,14 @@ Maps the followind commands in the haskell keymap.
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
   (local-set-key "\C-c\C-b" 'haskell-drhaskell-show-drhaskell-buffer))
 
+(defun turn-on-haskell-drhaskell-linter ()
+  (interactive)
+  (setq-default flycheck-haskell-hlint-executable "drhaskell-lint")
+  (setq-default flycheck-hlint-args (list "--hlint=l1"))
+  (setq-default flycheck-disabled-checkers '(haskell-ghc))
+  (flycheck-clear)
+  )
+
 (defun turn-off-haskell-drhaskell ()
   (interactive)
   "Turn off Haskell interaction mode with a Drhaskell interpreter within a buffer."
@@ -163,7 +171,7 @@ Prompts for a list of args if called with an argument."
   (message "Starting `drhaskell-process' %s" haskell-drhaskell-program-name)
   (if arg
       (setq haskell-drhaskell-program-args
-            (read-minibuffer "List of args for Drhaskell:"
+            (Read-minibuffer "List of args for Drhaskell:"
                              (prin1-to-string haskell-drhaskell-program-args))))
   (setq haskell-drhaskell-process-buffer
         (apply 'make-comint

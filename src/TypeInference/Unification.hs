@@ -9,12 +9,11 @@ module TypeInference.Unification
   , unify, unifiable
   ) where
 
-import           Data.Either                (isRight)
-import           Data.List                  (mapAccumL)
-import qualified Data.Map                   as DM
-import           TypeInference.Substitution (Subst, emptySubst, extendSubst)
-import           TypeInference.Term         (Term (..), TermEq, TermEqs, VarIdx,
-                                             showVarIdx)
+import Data.Either (isRight)
+import Data.List (mapAccumL)
+import qualified Data.Map as DM
+import TypeInference.Substitution (Subst, emptySubst, extendSubst)
+import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
 
 -- -----------------------------------------------------------------------------
 -- Representation of unification errors
@@ -130,9 +129,9 @@ eqsToSubst :: RefTable f a -> REqs f a -> Subst f a
 eqsToSubst _  []           = emptySubst
 eqsToSubst rt ((l, r):eqs)
   = case l of
-      Ref _           -> eqsToSubst rt ((deref rt l, r):eqs)
-      RTermVar _ v    -> extendSubst v (rTermToTerm rt r) (eqsToSubst rt eqs)
-      RTermCons{}     ->
+      Ref _        -> eqsToSubst rt ((deref rt l, r):eqs)
+      RTermVar _ v -> extendSubst v (rTermToTerm rt r) (eqsToSubst rt eqs)
+      _            ->
         case r of
           Ref _        -> eqsToSubst rt ((l, deref rt r):eqs)
           RTermVar _ v -> extendSubst v (rTermToTerm rt l) (eqsToSubst rt eqs)
@@ -185,11 +184,12 @@ elim rt sub v t eqs
     = Left (OccurCheck v (rTermToTerm rt t))
   | otherwise
     = case t of
-        Ref _           -> error "elim"
-        RTermVar a v'   -> let rt' = DM.insert v (Ref v') rt
-                            in unify' rt' ((RTermVar a v, Ref v'):sub) eqs
-        RTermCons{}
-          -> unify' (DM.insert v t rt) ((RTermVar undefined v, t):sub) eqs
+        Ref _         -> error "elim"
+        RTermVar a v' -> let rt' = DM.insert v (Ref v') rt
+                          in unify' rt' ((RTermVar a v, Ref v'):sub) eqs
+        _             -> unify' (DM.insert v t rt)
+                                ((RTermVar undefined v, t):sub)
+                                eqs
 
 -- | Checks whether the first term occurs as a subterm of the second term.
 dependsOn :: Eq f => RefTable f a -> RTerm f a -> RTerm f a -> Bool
@@ -197,4 +197,4 @@ dependsOn rt l r = l /= r && dependsOn' r
   where
     dependsOn' t@(Ref _)          = deref rt t == l
     dependsOn' t@(RTermVar _ _)   = t == l
-    dependsOn' (RTermCons _ _ ts) = or (map dependsOn' ts)
+    dependsOn' (RTermCons _ _ ts) = any dependsOn' ts
