@@ -12,8 +12,7 @@ module TypeInference.AbstractHaskell
   , showTypeSig, showTypeAnn, showLiteral
   ) where
 
-import           Data.List (intercalate)
-import           Goodies   (one, parensIf, tupled)
+import Goodies (one, parensIf, tupled)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
