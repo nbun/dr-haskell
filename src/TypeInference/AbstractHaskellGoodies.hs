@@ -7,8 +7,8 @@ module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, intType, floatType
   , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
   , typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes, exprType
-  , patternType, exprAnn, teVar, (=.=), hasTypeSig, funcName, modName
-  , leftFuncType, rightFuncType, returnType, depGraph
+  , patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig, funcName
+  , modName, leftFuncType, rightFuncType, returnType, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -144,6 +144,12 @@ patternType (PAs _ ta _ _)   = typeAnnType ta
 patternType (PTuple _ ta _)  = typeAnnType ta
 patternType (PList _ ta _)   = typeAnnType ta
 
+-- | Returns the annotation from the given type expression.
+typeExprAnn :: TypeExpr a -> a
+typeExprAnn (TVar (_, x))    = x
+typeExprAnn (FuncType x _ _) = x
+typeExprAnn (TCons x _ _)    = x
+
 -- | Returns the annotation from the given expression.
 exprAnn :: Expr a -> a
 exprAnn (Var _ (_, x))         = x
@@ -212,8 +218,8 @@ depGraph mn = scc (pure . funcName) use
     use (Func _ _ _ _ _ rs) = calledRS rs
 
     calledRS :: Rules a -> [QName]
-    calledRS (Rules rs)     = concatMap calledR rs
-    calledRS (External _ _) = []
+    calledRS (Rules rs) = concatMap calledR rs
+    calledRS _          = []
 
     calledR :: Rule a -> [QName]
     calledR (Rule _ _ _ rhs lds) = calledRhs rhs ++ concatMap calledLD lds
