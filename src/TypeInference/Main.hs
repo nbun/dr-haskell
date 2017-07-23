@@ -9,27 +9,21 @@ module TypeInference.Main
   , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
-import           Control.Monad.Except                 (ExceptT, runExceptT,
-                                                       throwError)
-import           Control.Monad.State                  (State, evalState, get,
-                                                       modify, put)
-import           Data.List                            (find)
-import qualified Data.Map                             as DM
-import           Data.Maybe                           (catMaybes, fromJust)
-import           Goodies                              (both, bothM, concatMapM,
-                                                       mapAccumM, one, two,
-                                                       (++=))
-import           Language.Haskell.Exts                (Module)
-import           TypeInference.AbstractHaskell
-import           TypeInference.AbstractHaskellGoodies
-import           TypeInference.HSE2AH                 (hseToAH)
-import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
-import           TypeInference.Term                   (Term (..), TermEqs)
-import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
-                                                       applyTESubstFD)
-import           TypeInference.Unification            (UnificationError (..),
-                                                       unify)
+import Control.Applicative ((<|>))
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.State (State, evalState, get, modify, put)
+import Data.List (find)
+import qualified Data.Map as DM
+import Data.Maybe (catMaybes, fromJust, mapMaybe)
+import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
+import Language.Haskell.Exts (Module)
+import TypeInference.AbstractHaskell
+import TypeInference.AbstractHaskellGoodies
+import TypeInference.HSE2AH (hseToAH)
+import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
+import TypeInference.Term (Term (..), TermEqs)
+import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
+import TypeInference.Unification (UnificationError (..), unify)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type environments
@@ -70,7 +64,7 @@ getTypeEnv = listToTypeEnv . concatMap extractProg
   where
     extractProg :: Prog a -> [(QName, TypeExpr a)]
     extractProg (Prog _ _ tds fds)
-      = concatMap extractTypeDecl tds ++ catMaybes (map extractFuncDecl fds)
+      = concatMap extractTypeDecl tds ++ mapMaybe extractFuncDecl fds
 
     extractFuncDecl :: FuncDecl a -> Maybe (QName, TypeExpr a)
     extractFuncDecl (Func _ (qn, _) _ _ ts _) = do te <- typeSigType ts
@@ -259,7 +253,7 @@ annFunc (Func x y@(qn, _) a v _ rs) = do initVarTypes
 annFuncGroup :: [FuncDecl a] -> TIMonad a [FuncDecl a]
 annFuncGroup fds
   = do initSigEnv
-       mapM (\fd -> insertFunType (funcName fd) (funcDeclType fd)) fds
+       mapM_ (\fd -> insertFunType (funcName fd) (funcDeclType fd)) fds
        mapM annFunc fds
 
 -- | Annotates the given rules declaration with fresh type variables.
@@ -387,13 +381,13 @@ annExpr (List x _ es)             = do te <- nextTVar x
 -- | Returns the annotated type from the given expression or 'Nothing' if no
 --   type is annotated.
 exprType' :: Expr a -> Maybe (TypeExpr a)
-exprType' (InfixApply _ ta _ _ _) = typeAnnType ta >>= (return . returnType)
+exprType' (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
 exprType' e                       = exprType e
 
 -- | Returns the annotated type from the given pattern or 'Nothing' if no type
 --   is annotated.
 patternType' :: Pattern a -> Maybe (TypeExpr a)
-patternType' (PComb _ ta _ _) = typeAnnType ta >>= (return . returnType)
+patternType' (PComb _ ta _ _) = fmap returnType (typeAnnType ta)
 patternType' p                = patternType p
 
 -- | Returns the type expression equations for the given rules declaration and
@@ -408,9 +402,9 @@ eqsRules _  _                          = return []
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
   = let rhstes = catMaybes (rhsTypes rhs)
-        ptes = catMaybes (map patternType' ps)
+        ptes = mapMaybe patternType' ps
         eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
-     in return ([te =.= tae] ++ map (tae =.=) eqs)
+     in return ((te =.= tae) : map (tae =.=) eqs)
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsRhs rhs
 eqsRule _  _                               = return []
@@ -442,7 +436,7 @@ eqsPattern te (PVar (TypeAnn tae) _)       = return [te =.= tae]
 eqsPattern te (PLit (TypeAnn tae) (l, x))
   = return [te =.= tae, tae =.= literalType l x x]
 eqsPattern te (PComb x (TypeAnn tae) _ ps)
-  = let ptes = catMaybes (map patternType' ps)
+  = let ptes = mapMaybe patternType' ps
         rtae = returnType tae
      in return [te =.= rtae, tae =.= foldr (FuncType x) rtae ptes]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
@@ -450,11 +444,11 @@ eqsPattern te (PAs _ (TypeAnn tae) _ p)
   = let pte = fromJust (patternType' p)
      in return [te =.= tae, tae =.= pte] ++= eqsPattern pte p
 eqsPattern te (PTuple x (TypeAnn tae) ps)
-  = let ptes = catMaybes (map patternType' ps)
+  = let ptes = mapMaybe patternType' ps
      in return [te =.= tae, tae =.= tupleType ptes x x]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PList x (TypeAnn tae) ps)
-  = let ptes = catMaybes (map patternType' ps)
+  = let ptes = mapMaybe patternType' ps
      in return ([te =.= tae, tae =.= listType (head ptes) x x]
                   ++ map (head ptes =.=) (tail ptes))
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
@@ -477,7 +471,7 @@ eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
           ++= eqsExpr e1
           ++= eqsExpr e2
 eqsExpr (Lambda x (TypeAnn te) ps e)
-  = let ptes = catMaybes (map patternType' ps)
+  = let ptes = mapMaybe patternType' ps
         te' = fromJust (exprType' e)
      in return [te =.= foldr (FuncType x) te' ptes]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
@@ -500,13 +494,13 @@ eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
           ++= eqsExpr e2
           ++= eqsExpr e3
 eqsExpr (Tuple x (TypeAnn te) es)
-  = let etes = catMaybes (map exprType' es)
+  = let etes = mapMaybe exprType' es
      in return [te =.= tupleType etes x x]
           ++= concatMapM eqsExpr es
 eqsExpr (List x (TypeAnn te) es)
-  = let etes = catMaybes (map exprType' es)
-     in return ([te =.= listType (head etes) x x]
-                  ++ map (head etes =.=) (tail etes))
+  = let etes = mapMaybe exprType' es
+     in return ((te =.= listType (head etes) x x)
+                  : map (head etes =.=) (tail etes))
           ++= concatMapM eqsExpr es
 eqsExpr _                                    = return []
 
@@ -621,8 +615,7 @@ typeTooGeneral _                  _                    = Nothing
 -- | Iterates 'typeTooGeneral' over a list of type expression pairs.
 typeTooGeneral' :: [(TypeExpr a, TypeExpr a)] -> Maybe (TypeExpr a, TypeExpr a)
 typeTooGeneral' []          = Nothing
-typeTooGeneral' ((x, y):xs)
-  = maybe (typeTooGeneral' xs) Just (typeTooGeneral x y)
+typeTooGeneral' ((x, y):xs) = typeTooGeneral x y <|> typeTooGeneral' xs
 
 -- | Checks whether the given function declaration has a too general type
 --   signature compared to the infered type.
