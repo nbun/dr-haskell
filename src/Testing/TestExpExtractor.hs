@@ -64,7 +64,7 @@ annotateTest l t e = case e of
 checkTest :: Exp a -> Bool
 checkTest a = case a of
                    InfixApp _ e q _ -> isDollar q && checkTest' e
-                   App      _ e   _ -> checkTest' e
+                   App      _ e   _ -> checkTest' e || findTestFunc e
                    _                -> False
   where
     checkTest' (App _ e _)        = findTestFunc e

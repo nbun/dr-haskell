@@ -5,6 +5,8 @@ module Repl.Main (module Repl.Main) where
 import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch          as MC
 import           Control.Monad.State
+import           Data.List
+import           Data.Version                 (showVersion)
 import           Paths_drhaskell
 import           System.FilePath
 
@@ -13,6 +15,7 @@ import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
 import           System.Console.Haskeline
+import           TypeInference.Main
 
 {-
 Current Limitations:
@@ -21,8 +24,15 @@ Current Limitations:
 -}
 
 
-replRead :: ReplInput (Maybe String)
-replRead = getInputLine "Dr. Haskell> "
+replRead :: Repl (Maybe String)
+replRead = do
+  mods <- liftInterpreter getLoadedModules
+  let filtered = mods \\ ["MyPrelude", "Tests", "StartupEnvironment"]
+      prompt = if   null filtered
+               then "Dr. Haskell"
+               else intercalate ", " filtered
+  level <- use currentLevel
+  liftInput $ getInputLine $ prompt ++ " ("++ printLevel level ++")> "
 
 replPrint :: Maybe String -> ReplInput ()
 replPrint Nothing  = return ()
@@ -30,7 +40,7 @@ replPrint (Just x) = outputStrLn x
 
 replLoop :: Repl ()
 replLoop = do
-  minput <- liftInput replRead
+  minput <- liftRepl replRead
   case minput of
        Nothing -> return ()
        Just x -> do
@@ -38,22 +48,23 @@ replLoop = do
          liftInput $ replPrint res
          when cont replLoop
 
-initInterpreter :: ReplInterpreter ()
+initInterpreter :: Repl ()
 initInterpreter = do
   datadir <- liftIO getDataDir
-  Language.Haskell.Interpreter.set
+  liftInterpreter $ Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
-  setImports ["Prelude"]
+  loadInitialModules
 
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
   res <- runRepl initialState $ do
-    liftInterpreter initInterpreter
+    initInterpreter
     fname <- use filename
     unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
       liftInput $ replPrint (Just (unlines $ map printLoadMessage errors))
+    liftInput showBanner
     replLoop
   case res of
        Left err -> putStrLn $ "Error:" ++ show err
@@ -65,15 +76,16 @@ replEval q = case q of
   _      -> liftInterpreter $ (,True) <$> replEvalExp q
 
 replHelp :: Maybe String -> Repl String
-replHelp input = return $ unlines $ hint : [
+replHelp input = return $ init $ unlines $ hint [
+  "Usage:",
   ":? - This help",
   ":l - load module",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
-  where hint = case input of
-                 Just  s -> "Unrecognized option '" ++ s ++ "'"
-                 Nothing -> ""
+  where hint xs = case input of
+                    Just  s -> ("Unrecognized option '" ++ s ++ "'") : xs
+                    Nothing -> xs
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
 replEvalExp q =
@@ -82,7 +94,15 @@ replEvalExp q =
                       return Nothing) $ do
     t <- typeOf q
     if t == "IO ()"
-      then interpret q (as :: IO ()) >>= liftIO >> return Nothing
+      then do
+        --apparently the interpreter does not put the output through 'our'
+        --stdout, so we need to flush the buffer *within* the interpreter,
+        --which makes this really messy. Seems to work though.
+        action <- interpret
+                    ("("++q++")>>System.IO.hFlush System.IO.stdout")
+                    (as :: IO ())
+        liftIO action
+        return Nothing
       else Just <$> eval q
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
@@ -94,21 +114,47 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     "load"   -> load
     "r"      -> reload
     "reload" -> reload
-    "t"      -> typeof
-    "type"   -> typeof
+    "t"      -> commandTypeof args
+    "type"   -> commandTypeof args
+    "?"      -> help
+    "h"      -> help
+    "help"   -> help
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
         load = let fn = args !! 1 in do
-          previousForceLevel <- use forceLevel
-          liftRepl $ forceLevel .= previousForceLevel
           liftRepl $ modify (Control.Lens.set filename fn)
           errors <- loadModule fn
           return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
-          errors <- loadModule md
-          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
-        typeof =  liftInterpreter (typeOf $ args !! 1) >>=
-                                  \res -> return (Just res, True)
+          if null md
+          then
+            return (Just "Ok, modules loaded: none.", True)
+          else do
+            errors <- loadModule md
+            return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
+        help = (,True) . Just <$> replHelp Nothing
+
+commandTypeof :: [String] -> Repl (Maybe String, Bool)
+commandTypeof [_]  = return (Just "Expression expected", True)
+commandTypeof args = MC.handleAll (\e ->
+                          return (Just (displayException e), True)) $
+                       liftInterpreter (typeOf expression) >>=
+                       \res -> return (Just (expression ++ " :: " ++ fixType res), True)
+  where
+    expression = unwords $ tail args
+    fixType "Prelude.Num a => a"         = "Int"
+    fixType "GHC.Num.Num a => a"         = "Int"
+    fixType "GHC.Real.Fractional a => a" = "Float"
+    fixType x                            = x
+
+--TODO: some better ascii art?
+showBanner :: ReplInput ()
+showBanner = outputStrLn $ unlines [
+  "",
+  "\\ \\      Dr. Haskell version " ++ showVersion version,
+  " \\ \\",
+  " /  \\    Type \":?\" for help.",
+  "/ /\\ \\"]

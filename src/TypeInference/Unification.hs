@@ -9,11 +9,12 @@ module TypeInference.Unification
   , unify, unifiable
   ) where
 
-import Data.Either (isRight)
-import Data.List (mapAccumL)
-import qualified Data.Map as DM
-import TypeInference.Substitution (Subst, emptySubst, extendSubst)
-import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
+import           Data.Either                (isRight)
+import           Data.List                  (mapAccumL)
+import qualified Data.Map                   as DM
+import           TypeInference.Substitution (Subst, emptySubst, extendSubst)
+import           TypeInference.Term         (Term (..), TermEq, TermEqs, VarIdx,
+                                             showVarIdx)
 
 -- -----------------------------------------------------------------------------
 -- Representation of unification errors
@@ -131,7 +132,7 @@ eqsToSubst rt ((l, r):eqs)
   = case l of
       Ref _           -> eqsToSubst rt ((deref rt l, r):eqs)
       RTermVar _ v    -> extendSubst v (rTermToTerm rt r) (eqsToSubst rt eqs)
-      RTermCons _ _ _ ->
+      RTermCons{}     ->
         case r of
           Ref _        -> eqsToSubst rt ((l, deref rt r):eqs)
           RTermVar _ v -> extendSubst v (rTermToTerm rt l) (eqsToSubst rt eqs)
@@ -148,14 +149,12 @@ rTermToTerm rt (RTermCons a c ts) = TermCons a c (map (rTermToTerm rt) ts)
 --   same value for 'RTermVar' and 'RTermCons'. The given reference table is
 --   used for reference lookups.
 deref :: RefTable f a -> RTerm f a -> RTerm f a
-deref rt (Ref i)             = case DM.lookup i rt of
-                                 Nothing -> error ("deref: " ++ show i)
-                                 Just t  -> case t of
-                                              Ref _           -> deref rt t
-                                              RTermVar _ _    -> t
-                                              RTermCons _ _ _ -> t
-deref _  t@(RTermVar _ _)    = t
-deref _  t@(RTermCons _ _ _) = t
+deref rt (Ref i) = case DM.lookup i rt of
+                     Nothing -> error ("deref: " ++ showVarIdx i)
+                     Just t  -> case t of
+                                  Ref _ -> deref rt t
+                                  _     -> t
+deref _  t       = t
 
 -- -----------------------------------------------------------------------------
 -- Unification algorithm
@@ -167,8 +166,8 @@ unify' :: Eq f => RefTable f a -> REqs f a -> REqs f a
 unify' rt sub []              = Right (rt, sub)
 unify' rt sub (eq@(l, r):eqs)
   = case eq of
-      (RTermVar _ v, RTermCons _ _ _)           -> elim rt sub v r eqs
-      (RTermCons _ _ _, RTermVar _ v)           -> elim rt sub v l eqs
+      (RTermVar _ v, RTermCons{})               -> elim rt sub v r eqs
+      (RTermCons{}, RTermVar _ v)               -> elim rt sub v l eqs
       (RTermVar _ v, RTermVar _ v') | v == v'   -> unify' rt sub eqs
                                     | otherwise -> elim rt sub v r eqs
       (RTermCons _ c1 ts1, RTermCons _ c2 ts2)
@@ -189,7 +188,7 @@ elim rt sub v t eqs
         Ref _           -> error "elim"
         RTermVar a v'   -> let rt' = DM.insert v (Ref v') rt
                             in unify' rt' ((RTermVar a v, Ref v'):sub) eqs
-        RTermCons _ _ _
+        RTermCons{}
           -> unify' (DM.insert v t rt) ((RTermVar undefined v, t):sub) eqs
 
 -- | Checks whether the first term occurs as a subterm of the second term.

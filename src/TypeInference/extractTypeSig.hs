@@ -8,15 +8,16 @@ parseTypeSignatur :: Module l -> [(Name l, Type l)]
 parseTypeSignatur (Module l mh mp impdec decls) = parseDecls decls
 parseTypeSignatur _                             = []
 
-parseDecls :: [Decl l] -> [(Name l,(Type l))]
-parseDecls []     = []
-parseDecls (x:xs) = parseOneDecl x ++ parseDecls xs
+parseDecls :: [Decl l] -> [(Name l,Type l)]
+--parseDecls []     = []
+--parseDecls (x:xs) = parseOneDecl x ++ parseDecls xs
+parseDecls = foldr ((++) . parseOneDecl) []
 
-parseOneDecl :: Decl l -> [(Name l,(Type l ))]
+parseOneDecl :: Decl l -> [(Name l,Type l)]
 parseOneDecl (TypeSig l names t) = concatMap (parseTypeSig t) names
 parseOneDecl _                   = []
 
-parseTypeSig :: Type l -> Name l ->[(Name l,(Type l ))]
+parseTypeSig :: Type l -> Name l ->[(Name l,Type l)]
 parseTypeSig typ name = [(name,typ)]
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
@@ -32,15 +33,16 @@ parseTypeSignaturSN :: Module l -> [(String, Type l)]
 parseTypeSignaturSN (Module l mh mp impdec decls) = parseDeclsSN decls
 parseTypeSignaturSN _                             = []
 
-parseDeclsSN :: [Decl l] -> [(String,(Type l))]
-parseDeclsSN []     = []
-parseDeclsSN (x:xs) = parseOneDeclSN x ++ parseDeclsSN xs
+parseDeclsSN :: [Decl l] -> [(String, Type l)]
+--parseDeclsSN []     = []
+--parseDeclsSN (x:xs) = parseOneDeclSN x ++ parseDeclsSN xs
+parseDeclsSN = foldr ((++) . parseOneDeclSN)
 
-parseOneDeclSN :: Decl l -> [(String,(Type l ))]
+parseOneDeclSN :: Decl l -> [(String, Type l)]
 parseOneDeclSN (TypeSig l names t) = concatMap (parseTypeSigSN t) names
 parseOneDeclSN _                   = []
 
-parseTypeSigSN :: Type l -> Name l ->[(String,(Type l ))]
+parseTypeSigSN :: Type l -> Name l ->[(String, Type l)]
 parseTypeSigSN typ (Ident l name)  = [(name,typ)]
 parseTypeSigSN typ (Symbol l name) = [(name,typ)]
 
@@ -53,8 +55,9 @@ parseTypeSignaturSNT (Module l mh mp impdec decls) = parseDeclsSNT decls
 parseTypeSignaturSNT _                             = []
 
 parseDeclsSNT :: [Decl l] -> [(String,String)]
-parseDeclsSNT []     = []
-parseDeclsSNT (x:xs) = parseOneDeclSNT x ++ parseDeclsSNT xs
+--parseDeclsSNT []     = []
+--parseDeclsSNT (x:xs) = parseOneDeclSNT x ++ parseDeclsSNT xs
+parseDeclsSNT = foldr ((++) . parseOneDeclSNT)
 
 parseOneDeclSNT :: Decl l -> [(String, String)]
 parseOneDeclSNT (TypeSig l names t) = concatMap (parseTypeSigSNT t) names

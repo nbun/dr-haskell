@@ -9,9 +9,11 @@ module TypeInference.AbstractHaskell
   , Expr (..), Statement (..), Pattern (..), BranchExpr (..), Literal (..)
   , AHOptions (..)
   , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
+  , showTypeSig, showTypeAnn, showLiteral
   ) where
 
-import Data.List (intercalate)
+import           Data.List (intercalate)
+import           Goodies   (one, parensIf, tupled)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -168,7 +170,7 @@ data Literal = Intc Int
 
 -- | Transforms a variable into a string representation.
 varToString :: Int -> String
-varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
+varToString v | v >= 0    = if q == 0 then [c] else c : show q
               | otherwise = error err
   where
     (q, r) = divMod v 26
@@ -179,7 +181,7 @@ varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
 data AHOptions = AHOptions { currentModule :: MName
                            , unqModules    :: [MName] }
 
--- | The default pretty-printing options.
+-- | The default pretty-printing options for abstract Haskell data types.
 defaultAHOptions :: AHOptions
 defaultAHOptions = AHOptions { currentModule = ""
                              , unqModules    = [] }
@@ -187,7 +189,7 @@ defaultAHOptions = AHOptions { currentModule = ""
 -- | Transforms a qualified name into a string representation.
 showQName :: AHOptions -> QName -> String
 showQName opts (mn, n) | mn == currentModule opts  = n
-                       | elem mn (unqModules opts) = n
+                       | mn `elem` unqModules opts = n
                        | otherwise                 = mn ++ "." ++ n
 
 -- | Transforms a variable name into a string representation.
@@ -203,31 +205,37 @@ showTypeExpr opts = showTypeExpr' 0
     showTypeExpr' p (FuncType _ t1 t2)
       = parensIf (p > 0) (showTypeExpr' 1 t1 ++ " -> " ++ showTypeExpr opts t2)
     showTypeExpr' p (TCons _ (qn, _) tes)
-      | isListCons qn && one tes
+      | snd qn == "[]" && one tes
         = "[" ++ showTypeExpr opts (head tes) ++ "]"
       | isTupleCons qn
         = tupled (map (showTypeExpr opts) tes)
       | otherwise
         = parensIf
             (p > 1 && not (null tes))
-            (intercalate " " ((showQName opts qn):(map (showTypeExpr' 2) tes)))
+            (unwords (showQName opts qn : map (showTypeExpr' 2) tes))
+
+-- | Transforms a type signature for the function with the given qualified name
+--   into a string representation.
+showTypeSig :: AHOptions -> QName -> TypeSig a -> String
+showTypeSig _    _  Untyped      = ""
+showTypeSig opts qn (TypeSig te) = showQName opts qn ++ " :: "
+                                                     ++ showTypeExpr opts te
+
+-- | Transforms a type annotation into a string representation.
+showTypeAnn :: AHOptions -> TypeAnn a -> String
+showTypeAnn _    NoTypeAnn    = ""
+showTypeAnn opts (TypeAnn te) = showTypeExpr opts te
+
+-- | Transforms a literal into a string representation.
+showLiteral :: Literal -> String
+showLiteral (Intc i)    = show i
+showLiteral (Floatc f)  = show f
+showLiteral (Charc c)   = show c
+showLiteral (Stringc s) = show s
 
 -- -----------------------------------------------------------------------------
--- Definition of helper functions
+-- Definition of auxiliary functions
 -- -----------------------------------------------------------------------------
-
--- | Encloses a string in parenthesis if the given condition is true.
-parensIf :: Bool -> String -> String
-parensIf b s = if b then "(" ++ s ++ ")" else s
-
--- | Checks whether the given list has exactly one element.
-one :: [a] -> Bool
-one []     = False
-one (_:xs) = null xs
-
--- | Checks whether the given qualified name is the list type constructor.
-isListCons :: QName -> Bool
-isListCons (_, n) = n == "[]"
 
 -- | Checks whether the given qualified name is the tuple type constructor.
 isTupleCons :: QName -> Bool
@@ -238,9 +246,3 @@ isTupleCons (_, c:cs) = c == '(' && isTupleCons' cs
     isTupleCons' ""           = False
     isTupleCons' [x]          = x == ')'
     isTupleCons' (x:xs@(_:_)) = x == ',' && isTupleCons' xs
-
--- | Returns a string representation of a tuple with the given list of
---   components.
-tupled :: [String] -> String
-tupled []     = "()"
-tupled (x:xs) = "(" ++ x ++ concatMap (", " ++) xs ++ ")"

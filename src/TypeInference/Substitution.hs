@@ -11,6 +11,7 @@ module TypeInference.Substitution
 import Data.List (intercalate)
 import qualified Data.Map as DM
 import Data.Maybe (fromMaybe)
+import Goodies (both)
 import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
 
 -- -----------------------------------------------------------------------------
@@ -90,11 +91,3 @@ restrictSubst sub vs
 --   shadow those in the second.
 composeSubst :: Subst f a -> Subst f a -> Subst f a
 composeSubst phi sigma = DM.union phi (DM.map (applySubst phi) sigma)
-
--- -----------------------------------------------------------------------------
--- Definition of helper functions
--- -----------------------------------------------------------------------------
-
--- | Applies a function to both components of a tuple.
-both :: (a -> b) -> (a, a) -> (b, b)
-both f (x, y) = (f x, f y)

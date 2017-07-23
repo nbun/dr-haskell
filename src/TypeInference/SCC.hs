@@ -4,7 +4,8 @@
 
 module TypeInference.SCC (scc) where
 
-import Data.Set (Set (..), empty, insert, member)
+import           Data.Function (on)
+import           Data.Set      (Set (..), empty, insert, member)
 
 -- -----------------------------------------------------------------------------
 -- Representation of internal data structures
@@ -19,10 +20,10 @@ data Node a b = Node { key  :: Int
                      , node :: a   }
 
 instance Eq (Node a b) where
-  n1 == n2 = key n1 == key n2
+  (==) = on (==) key
 
 instance Ord (Node a b) where
-  n1 <= n2 = key n1 <= key n2
+  (<=) = on (<=) key
 
 -- -----------------------------------------------------------------------------
 -- Functions for computation of strongly connected components
@@ -45,7 +46,7 @@ scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
                                 | otherwise      = dfs ns' marks' (n:stack')
           where
             (marks', stack') = dfs (defs n) (insert n marks) stack
-            defs n1 = filter (any (`elem` (fvs n1)) . bvs) ns
+            defs n1 = filter (any (`elem` fvs n1) . bvs) ns
 
     tsort' :: Eq b => [Node a b] -> [[Node a b]]
     tsort' ns = snd (dfs ns empty [])
@@ -53,7 +54,7 @@ scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
         dfs []      marks stack = (marks, stack)
         dfs (n:ns') marks stack
           | member n marks      = dfs ns' marks stack
-          | otherwise           = dfs ns' marks' ((n:(concat stack')):stack)
+          | otherwise           = dfs ns' marks' ((n : concat stack'):stack)
           where
             (marks', stack') = dfs (uses n) (insert n marks) []
-            uses n1 = filter (any (`elem` (bvs n1)) . fvs) ns
+            uses n1 = filter (any (`elem` bvs n1) . fvs) ns

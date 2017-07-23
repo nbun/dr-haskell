@@ -6,12 +6,14 @@ module Repl.Loader (
   determineLevel,
   transformModule,
   loadModule,
+  loadInitialModules
 ) where
 
 import           Control.Lens                         hiding (Level)
 import           Control.Monad.Catch                  as MC
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
+import           Data.Maybe
 import           Language.Haskell.Interpreter
 import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
@@ -32,6 +34,24 @@ printLoadMessage :: LoadMessage -> String
 printLoadMessage (CheckError l e)  = prettyErrorForLintWithLevel l e
 printLoadMessage (DirectMessage m) = m
 
+--System.IO is needed for hFlush and stdout
+--for proper putStrLn
+loadInitialModules :: Repl ()
+loadInitialModules = do
+    Just level <- use forceLevel `mplusM` return (Just Level1)
+    currentLevel .= level
+    liftInterpreter $ setImportsQ [("Prelude", Nothing),
+                                   ("System.IO", Just "System.IO")]
+    case level of
+         Level1 -> do
+          liftInterpreter $ loadModules ["StartupEnvironment"]
+          liftInterpreter $ setTopLevelModules ["StartupEnvironment"]
+         _ -> return ()
+
+  where
+    mplusM = liftM2 mplus
+
+
 --todo: better path handling
 
 {-
@@ -51,7 +71,7 @@ loadModule does the following:
 -}
 
 loadModule :: FilePath -> Repl [LoadMessage]
-loadModule fname = MC.handleAll handler $ loadModule' fname
+loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
   where
     -- handles IO errors thrown by parseModified
     handler e = return [DirectMessage (displayException e)]
@@ -70,37 +90,64 @@ loadModule fname = MC.handleAll handler $ loadModule' fname
 
           Just level <- foldr (liftM2 mplus) (return $ Just Level1)
                         [use forceLevel, return $ determineLevel modLoad]
+          fl <- use forceLevel
+          let levelSelectErrors = if checkLevelValid modLoad || isJust fl
+                                  then []
+                                  else [DirectMessage
+                                        ("No valid level selection "++
+                                         "found. Using Level 1")]
 
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
           (transModule, transErrors) <- transformModuleS duplDecls modLoad
           liftIO $ writeFile cfn $ printModified transModule
 
-          let errors = checkErrors' ++ transErrors
+          let errors = map (CheckError (Just level))
+                           (checkErrors' ++ transErrors)
           if null errors || nonstrict
-            then let es   = map (CheckError (Just level)) errors
-                     dm e = DirectMessage $ displayException e
-                     handler' e = return $ es ++ [dm e]
+            then let dm e = DirectMessage $ displayException e
+                     handler' e = return $ levelSelectErrors ++
+                                           errors ++
+                                           [dm e]
                  in MC.handleAll handler' $ do
                       liftInterpreter $ loadModules [cfn]
-                      liftInterpreter $ setTopLevelModules ["Main"]
+                      mods <- liftInterpreter getLoadedModules
+                      liftInterpreter $ setTopLevelModules mods
+                      liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
                       testErrors <- if rt then runAllTests else return []
-                      return $ es ++ map DirectMessage testErrors
+                      return $ levelSelectErrors ++
+                               errors ++
+                               map DirectMessage testErrors
             else
-              return $ map (CheckError (Just level)) errors
+              return $ levelSelectErrors ++ errors
+    --adjusts path for easier usage (appends .hs suffix)
+    adjustPath :: FilePath -> FilePath
+    adjustPath f = case reverse f of
+                        's':'h':'.':_ -> f
+                        _             -> f ++ ".hs"
+
+checkLevelValid :: ModifiedModule -> Bool
+checkLevelValid m = case filter isJust $
+                         map commentToLevel $
+                         modifiedComments m of
+                    [_] -> True
+                    _   -> False
+
 
 determineLevel :: ModifiedModule -> Maybe Level
-determineLevel = foldr (mplus . extractLevel) Nothing . modifiedComments
-  where
-    extractLevel :: Comment -> Maybe Level
-    extractLevel (Comment _ _ "# DRHASKELL LEVEL1 #")    = Just Level1
-    extractLevel (Comment _ _ "# DRHASKELL LEVEL2 #")    = Just Level2
-    extractLevel (Comment _ _ "# DRHASKELL LEVEL3 #")    = Just LevelFull
-    extractLevel (Comment _ _ "# DRHASKELL LEVELFULL #") = Just LevelFull
-    extractLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
-    extractLevel _                                       = Nothing
+determineLevel m = mfilter (const $ checkLevelValid m) $
+                   foldr (mplus . commentToLevel) Nothing $ modifiedComments m
+
+
+commentToLevel :: Comment -> Maybe Level
+commentToLevel (Comment _ _ "# DRHASKELL LEVEL1 #")    = Just Level1
+commentToLevel (Comment _ _ "# DRHASKELL LEVEL2 #")    = Just Level2
+commentToLevel (Comment _ _ "# DRHASKELL LEVEL3 #")    = Just Level3
+commentToLevel (Comment _ _ "# DRHASKELL LEVELFULL #") = Just LevelFull
+commentToLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
+commentToLevel _                                       = Nothing
 
 runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\e -> return [displayException e]) $

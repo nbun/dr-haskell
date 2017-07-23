@@ -41,6 +41,8 @@ data Error l = NoFunDef (Name l) [Name l]
              --     position, error as from haskell-src-exts
              | InvalidTest l String
              --     position, string representation of the test
+             | Pragma l String
+             --      pos pragmaname
   deriving (Show, Typeable, Ord, Eq)
 
 instance (Show l, Typeable l) => Exception (Error l)

@@ -11,7 +11,9 @@ module TypeInference.Normalization
 
 import Control.Monad.State (State, evalState, get, put)
 import qualified Data.Map as DM
+import Goodies (bothM)
 import TypeInference.AbstractHaskell
+import TypeInference.AbstractHaskellGoodies (teVar)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type variable normalizations
@@ -37,8 +39,8 @@ normTypeExpr (TVar ((v, _), x))
   = do (n, sub) <- get
        case DM.lookup v sub of
          Nothing -> do put (n + 1, DM.insert v n sub)
-                       return (TVar ((n, varToString n), x))
-         Just i  -> return (TVar ((i, varToString i), x))
+                       return (teVar n x)
+         Just i  -> return (teVar i x)
 normTypeExpr (FuncType x t1 t2) = do t1' <- normTypeExpr t1
                                      t2' <- normTypeExpr t2
                                      return (FuncType x t1' t2')
@@ -82,14 +84,8 @@ normRule (Rule x ta ps rhs lds) = do ta' <- normTypeAnn ta
 normRhs :: Normalization (Rhs a)
 normRhs (SimpleRhs e)      = do e' <- normExpr e
                                 return (SimpleRhs e')
-normRhs (GuardedRhs x eqs) = do eqs' <- mapM normExprPair eqs
+normRhs (GuardedRhs x eqs) = do eqs' <- mapM (bothM normExpr) eqs
                                 return (GuardedRhs x eqs')
-
--- | The normalization function for expression pairs.
-normExprPair :: Normalization (Expr a, Expr a)
-normExprPair (e1, e2) = do e1' <- normExpr e1
-                           e2' <- normExpr e2
-                           return (e1', e2')
 
 -- | The normalization function for local declarations.
 normLocalDecl :: Normalization (LocalDecl a)

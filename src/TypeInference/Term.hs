@@ -11,7 +11,8 @@ module TypeInference.Term
   , showVarIdx, showTermEq, showTermEqs
   ) where
 
-import Data.List (intercalate)
+import           Data.List (intercalate)
+import           Goodies   (parensIf)
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations
@@ -42,7 +43,7 @@ type TermEqs f a = [TermEq f a]
 
 -- | Transforms a variable into a string representation.
 showVarIdx :: VarIdx -> String
-showVarIdx v | v >= 0    = if q == 0 then [c] else c:(show q)
+showVarIdx v | v >= 0    = if q == 0 then [c] else c : show q
              | otherwise = error err
   where
     (q, r) = divMod v 26
@@ -74,12 +75,4 @@ showTermEq (l, r) = show l ++ " = " ++ show r
 
 -- | Transforms a list of term equations into a string representation.
 showTermEqs :: Show f => TermEqs f a -> String
-showTermEqs = unlines . (map showTermEq)
-
--- -----------------------------------------------------------------------------
--- Definition of helper functions
--- -----------------------------------------------------------------------------
-
--- | Encloses a string in parenthesis if the given condition is true.
-parensIf :: Bool -> String -> String
-parensIf b s = if b then "(" ++ s ++ ")" else s
+showTermEqs = unlines . map showTermEq
