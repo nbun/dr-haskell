@@ -1,17 +1,36 @@
-testp = Prog (("TestName"), "string") [] [] [f]
+f :: Int -> Int -> Int
+f x y = x
 
-f = Func "string" (("TestName","f"), "string") 2 Public Untyped (Rules r)
+-- Abhängigkeit nach oben funktioniner hier bei f und g noch nicht
+g :: Int -> Int -> Int
+g z y = f z y
+--------------------------------------------------------------------------------
 
-r = [TypeInference.AbstractHaskell.Rule "string" NoTypeAnn [TypeInference.AbstractHaskell.PVar NoTypeAnn ((0,"x"), "string"),TypeInference.AbstractHaskell.PVar NoTypeAnn ((1,"y"),"string")] (SimpleRhs $ Apply "string" NoTypeAnn (TypeInference.AbstractHaskell.Var TypeInference.AbstractHaskell.NoTypeAnn ((2,"h"),"string")) (TypeInference.AbstractHaskell.Lit NoTypeAnn (Intc 5,"string"))) [LocalFunc t]]
-
-t = Func "string"(("TestName","h"), "string") 1 Private Untyped (Rules s)
-
-s = [TypeInference.AbstractHaskell.Rule "string" NoTypeAnn [TypeInference.AbstractHaskell.PVar NoTypeAnn ((3,"z"), "string")] (SimpleRhs (TypeInference.AbstractHaskell.Var NoTypeAnn ((0,"x") ,"string"))) []]
-
-dst = (SimpleRhs $ Apply "string" NoTypeAnn (TypeInference.AbstractHaskell.Var TypeInference.AbstractHaskell.NoTypeAnn ((2,"h"),"string")) (TypeInference.AbstractHaskell.Lit NoTypeAnn (Intc 5,"string")))
+-- Wenn lokale Funktionen keinen Typen haben gibt es bei der
+-- Inferenz einen Fehler
 
 
-parseFile' :: FilePath -> IO (Module SrcSpanInfo)
-parseFile' f = do
-        (ParseOk ast) <- parseFile f
-        return ast
+--f :: Int -> a -> Int
+--f x y = h 5
+--  where -
+--     h z = x
+
+-------------------------------------------------------------------------------
+
+-- Noch keine Typeangaben für Funktionen aus der Prelude
+-- f :: Int -> Int -> Int
+-- f x y = x + y
+
+-------------------------------------------------------------------------------
+-- Leeres Program funktioniert
+-------------------------------------------------------------------------------
+
+--Funktioniert
+
+--h :: a -> a -> a
+--h x y = x
+
+-------------------------------------------------------------------------------
+--h :: a -> a
+--h x  = x
+-------------------------------------------------------------------------------

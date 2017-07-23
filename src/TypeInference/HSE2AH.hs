@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypeInference.HSE2AH (hseToAH) where
+module TypeInference.HSE2AH (hseToAH,parseFile') where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor
@@ -10,15 +10,13 @@ import           Language.Haskell.Exts          as HSE
 import           TypeInference.AbstractHaskell  as AH
 import           TypeInference.TypeSig
 
--- Reparieren : In lokalen Definitionen werden Variablen auch noch neu nummeriert.
--- FunktionsDefinion auf der linken Seite auch neunen Namen geben
--- Public/Privat nachschlagen
--- Namen erweitern im zweiten argument
--- lokale Funktionen typen umbennenn
--- lokale Funktionen typsignaturen mit übernehmen
--- addFreeVariablesAsParametersForPattern     -- hier fehlt noch was ... bei den rules?
 
--------------------------------------------------------------------------------
+parseFile' :: FilePath -> IO (Module SrcSpanInfo)
+parseFile' f = do
+          (ParseOk ast) <- parseFile f
+          return ast
+
+-----------------------------------------------------------
 -- MAIN FUNCTION --------------------------------------------------------------
 -------------------------------------------------------------------------------
 
@@ -460,6 +458,7 @@ addFreeVariablesAsParametersForFuncDecl (Func a name arity _ t rules) =
    return $ LocalFunc $ Func a name newArity Public t newRules
 
  -- | Adds the found free variables out of local definitions in a pattern
+
 addFreeVariablesAsParametersForPattern :: LocalDecl a -> [LocalDecl a]
 addFreeVariablesAsParametersForPattern x@(LocalPat l pat expr locals) = do
   let ev  =  extractFreeVariablesExpr expr
@@ -700,13 +699,13 @@ transFormLocalExprBranches :: [FuncDecl l] -> BranchExpr l -> [FuncDecl l]
 transFormLocalExprBranches list (Branch a pat expr) =
   list ++ transFormLocalExpr list expr
 
--- TODO  Für LocalPat mit expr und nicht mi rhs
 -- | Lifts all local declarations to toplevel
 transFormLocal :: LocalDecl l -> [FuncDecl l]
 transFormLocal (LocalFunc (Func a b c Private d e)) = [(Func a b c Public d e)]
---transFormLocal (LocalPat l pat expr lcs) = undefined
---  [Func l (("",""),l) undefined Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] rhs []])]
---  ++ (concatMap transFormLocal lcs)
+transFormLocal (LocalPat l pat expr lcs) =
+  [Func l (("",""),l) undefined Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
+  ++ (concatMap transFormLocal lcs)
+transFormLocal _ = []
 
 -------------------------------------------------------------------------------
 -- STATE FOR VARIABLEINDEX ----------------------------------------------------
@@ -847,7 +846,6 @@ parseTypeName mn (DHApp l dh _)     = parseTypeName mn dh
 
 type TypeS l = [(Name l,  Type l)]
 
--- TODO für loklae so öändern das state nicht zurückgesetetz wird
 -- | Parses a function declaration
 parseFunDecls ::
   MonadState AHState m => MName -> TypeS l -> Decl l -> m (FuncDecl l)
@@ -951,41 +949,79 @@ parseStmtsToExpr ::
 parseStmtsToExpr str t (Qualifier l expr) =
   parseExpr str t expr
 
--- TODO !!
+
+-- | Parses functions and pattern bindings
 parseFuncPatDecls ::
   MonadState AHState m => String -> TypeS a -> [Decl a] -> m [LocalDecl a]
-parseFuncPatDecls _ _ []                                      = return []
-parseFuncPatDecls str t ((s@(FunBind l matches)):xs)          = do
-                                                                  fd <- parseFunDecls str t s
-                                                                  return [LocalFunc fd]
-parseFuncPatDecls str t (PatBind l pat rhs@(UnGuardedRhs a expr) (Just wbind) : xs) =
+parseFuncPatDecls _ _ []                                      =
+  return []
+parseFuncPatDecls str t ((FunBind l matches@(m:ms)):xs)       =
+  do
+    let fn = parseMatchName  m
+    case (searchForType fn t) of
+      Nothing -> do
+                   rl <- mapM (parseRules str t) matches
+                   let r = Rules rl
+                   let fname = ((str,fn),l)
+                   let ar = parseArity matches
+                   return $ [LocalFunc $ Func l fname ar Public Untyped r]
+      Just z -> do
+                  btd <- buildType l str z
+                  rl <- mapM (parseRules str t) matches
+                  let r = Rules rl
+                  let fname = ((str,fn),l)
+                  let ar = parseArity matches
+                  return $ [LocalFunc $ Func l fname ar Public btd r]
+parseFuncPatDecls str t
+  (PatBind l pat rhs@(UnGuardedRhs a expr) (Just wbind) : xs) =
    do
     rh <- parseExprOutOfRhs str t rhs
     patt <- parsePatterns str pat
     bnd <- parseBinds str t wbind
     return [LocalPat l patt rh bnd]
---parseFuncPatDecls str t ((PatBind l pat rhs@(GuardedRhss a gds) (Just wbind)):xs) |length gds <= 1 =
---   do
---     rh <- parseExprOutOfGrd str t (head gds)
---     patt <- parsePatterns str pat
---     bnd <- parseBinds str t wbind
---     return $ [LocalPat l patt rh bnd]
---                                                                                  |otherwise      =
---   do
---     let name = parseNameOutOfPattern pat
---     rh <- parseExprOutOfGrd str t (head gds)
---     patt <- parsePatterns str pat
---     bnd <- parseBinds str t wbind
---     rules <- mapM (parseRulesOutOfGuarded str t) gds
---     rulesR <- makeRules rules
---     return $ [LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules rulesR)]
-parseFuncPatDecls _  _  _                                     =  return []
+parseFuncPatDecls str t
+  ((PatBind l pat rhs@(GuardedRhss a gds) (Just b)):xs) |length gds <= 1 =
+   do
+     rh <- parseExprOutOfGrd str t (head gds)
+     patt <- parsePatterns str pat
+     bnd <- parseBinds str t b
+     return $ [LocalPat l patt rh bnd]
+                                                        |otherwise      =
+   do
+     let name = parseNameOutOfPattern pat
+     rh <- parseExprOutOfGrd str t (head gds)
+     patt <- parsePatterns str pat
+     bnd <- parseBinds str t b
+     rules <- mapM (parseRulesOutOfGuarded str t) gds
+     let rulesR = makeRules rules
+     let n = newRule l patt rulesR bnd
+     return $ [LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])]
+parseFuncPatDecls _  _  _                                     =
+  return []
 
---parseRulesOutOfGuarded ::MonadState AHState m => MName -> TypeS a -> HSE.GuardedRhs l -> m [(Expr l, Expr l)]
+-- | Builds a new Rule
+newRule :: a -> Pattern a -> AH.Rhs a -> [LocalDecl a] -> AH.Rule a
+newRule l pat rhs b = AH.Rule l NoTypeAnn [pat] rhs b
+
+-- | Makes one right hand side out of a list of right hand sides
+makeRules :: [AH.Rhs a] -> AH.Rhs a
+makeRules xs = let r =  makeRules' xs
+                  in SimpleRhs $ AH.List undefined NoTypeAnn r
+
+-- | transforms tupel into a list
+toExprList :: [(t, t)] -> [t]
+toExprList  [] =[]
+toExprList ((a,b):xs) = a: b: toExprList xs
+
+makeRules' :: [AH.Rhs t] -> [Expr t]
+makeRules' ((AH.GuardedRhs a es):xs) = (toExprList es) ++ makeRules' xs
+
+parseRulesOutOfGuarded
+  :: MonadState AHState m => MName -> TypeS a -> GuardedRhs a -> m (AH.Rhs a)
 parseRulesOutOfGuarded str t (HSE.GuardedRhs l stmts expr) = do
   tups <- mapM (parseTupels str t expr) stmts
   return $ AH.GuardedRhs l tups
---  parseTupels str t stmts expr
+
 
 -- | Parses a tupel
 parseTupels ::
@@ -1272,7 +1308,7 @@ parseOneDecl _ = []
 -- HELPING FUNCTIONS ----------------------------------------------------------
 -------------------------------------------------------------------------------
 
--- | Parses a match name 
+-- | Parses a match name
 parseMatchName :: Match l -> String
 parseMatchName (Match l name patterns rhs wbinds)       = parsename name
 parseMatchName (InfixMatch l pat1 name pat2 rhs wbinds) = parsename name
