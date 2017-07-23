@@ -12,8 +12,8 @@ module TypeInference.AbstractHaskell
   , showTypeSig, showTypeAnn, showLiteral
   ) where
 
-import Data.List (intercalate)
-import Goodies (one, parensIf, tupled)
+import           Data.List (intercalate)
+import           Goodies   (one, parensIf, tupled)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -170,7 +170,7 @@ data Literal = Intc Int
 
 -- | Transforms a variable into a string representation.
 varToString :: Int -> String
-varToString v | v >= 0    = if q == 0 then [c] else c:(show q)
+varToString v | v >= 0    = if q == 0 then [c] else c : show q
               | otherwise = error err
   where
     (q, r) = divMod v 26
@@ -189,7 +189,7 @@ defaultAHOptions = AHOptions { currentModule = ""
 -- | Transforms a qualified name into a string representation.
 showQName :: AHOptions -> QName -> String
 showQName opts (mn, n) | mn == currentModule opts  = n
-                       | elem mn (unqModules opts) = n
+                       | mn `elem` unqModules opts = n
                        | otherwise                 = mn ++ "." ++ n
 
 -- | Transforms a variable name into a string representation.
@@ -212,7 +212,7 @@ showTypeExpr opts = showTypeExpr' 0
       | otherwise
         = parensIf
             (p > 1 && not (null tes))
-            (intercalate " " ((showQName opts qn):(map (showTypeExpr' 2) tes)))
+            (unwords (showQName opts qn : map (showTypeExpr' 2) tes))
 
 -- | Transforms a type signature for the function with the given qualified name
 --   into a string representation.

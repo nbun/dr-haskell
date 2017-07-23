@@ -4,8 +4,8 @@
 
 module TypeInference.SCC (scc) where
 
-import Data.Function (on)
-import Data.Set (Set (..), empty, insert, member)
+import           Data.Function (on)
+import           Data.Set      (Set (..), empty, insert, member)
 
 -- -----------------------------------------------------------------------------
 -- Representation of internal data structures
@@ -54,7 +54,7 @@ scc bvs' fvs' = map (map node) . tsort' . tsort . zipWith wrap [0..]
         dfs []      marks stack = (marks, stack)
         dfs (n:ns') marks stack
           | member n marks      = dfs ns' marks stack
-          | otherwise           = dfs ns' marks' ((n:(concat stack')):stack)
+          | otherwise           = dfs ns' marks' ((n : concat stack'):stack)
           where
             (marks', stack') = dfs (uses n) (insert n marks) []
             uses n1 = filter (any (`elem` bvs n1) . fvs) ns

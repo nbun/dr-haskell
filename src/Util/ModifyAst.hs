@@ -187,7 +187,7 @@ addImport d m =
                         (pushAfter 0 (elemPos-pushPos) annDecl')
   in recordModification
        (pushPos,len)
-       m{modifiedModule=(Module l'' h' ps' (is'++[annDecl']) ds')}
+       m{modifiedModule = Module l'' h' ps' (is'++[annDecl']) ds'}
 
 appendDecl :: Decl l -> ModifiedModule -> ModifiedModule
 appendDecl d m =
@@ -201,7 +201,7 @@ appendDecl d m =
     Just l' = pushAfter elemPos len $ Just l
   in recordModification
        (pushPos,len)
-       m{modifiedModule=(Module l' h ps is (ds++[annDecl']))}
+       m{modifiedModule = Module l' h ps is (ds++[annDecl'])}
 
 prependDecl :: Decl l -> ModifiedModule -> ModifiedModule
 prependDecl d m =
@@ -215,7 +215,7 @@ prependDecl d m =
     (Module l' h' ps' is' ds') = pushAfter (elemPos+1) len ast
   in recordModification
        (pushPos,len)
-       m{modifiedModule=(Module l' h' ps' is' (annDecl' : ds'))}
+       m{modifiedModule = Module l' h' ps' is' (annDecl' : ds')}
 
 -- This is a huuuge hack as it doesn't modify the AST, but instead prints,
 -- modifies the textual representation and then parses again. It works well
@@ -252,9 +252,9 @@ addDerivingToAllData d (ModifiedModule mods (Module l h ps is ds) cs) = let
       commentModders = foldl (.) id $ map fixComment $
                                           catMaybes (map snd modDs)
     in
-      (ModifiedModule mods
-                      (Module l h ps is (map fst modDs))
-                      (map commentModders cs))
+      ModifiedModule mods
+                     (Module l h ps is (map fst modDs))
+                     (map commentModders cs)
   where
     -- add offsets to comments in the applicable lines
     fixComment (l,n) (Comment ml (SrcSpan f sl sc el ec) t) =

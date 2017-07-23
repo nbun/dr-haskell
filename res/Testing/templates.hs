@@ -5,7 +5,7 @@ runAllTests = do
       ztests = Prelude.zip [1..] tests
       (++) = (Prelude.++)
       show = Prelude.show
-  (Prelude.mapM (\ (n, r) -> do
+  Prelude.mapM (\ (n, r) -> do
            res <- r
            Prelude.return Prelude.$ "Test " ++
              show n ++ ": " ++
@@ -13,4 +13,4 @@ runAllTests = do
                  Success l -> "(Line " ++ show l ++ ") passed"
                  Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
                                      ++ pexp ++ "\n" ++ o)
-    ztests) :: Prelude.IO [Prelude.String]
+    ztests :: Prelude.IO [Prelude.String]

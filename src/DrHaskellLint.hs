@@ -39,7 +39,7 @@ main = do
 run :: Integer -> String -> LinterOutput -> IO ()
 run level file format = do
     hlintIdeas <- pushToHlint file -- run hlint
-    hlintHints <- return (hLintToLint file hlintIdeas) -- convert hlint to lint
+    let hlintHints = hLintToLint file hlintIdeas -- convert hlint to lint
     let lvl = case level of -- determine levelcode
                     1 -> Level1
                     2 -> Level2

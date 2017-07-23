@@ -46,7 +46,7 @@ loadInitialModules = do
          Level1 -> do
           liftInterpreter $ loadModules ["StartupEnvironment"]
           liftInterpreter $ setTopLevelModules ["StartupEnvironment"]
-         otherwise -> return ()
+         _ -> return ()
 
   where
     mplusM = liftM2 mplus
@@ -124,7 +124,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
               return $ levelSelectErrors ++ errors
     --adjusts path for easier usage (appends .hs suffix)
     adjustPath :: FilePath -> FilePath
-    adjustPath f = case (reverse f) of
+    adjustPath f = case reverse f of
                         's':'h':'.':_ -> f
                         _             -> f ++ ".hs"
 

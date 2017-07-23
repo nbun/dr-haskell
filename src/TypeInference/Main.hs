@@ -9,20 +9,27 @@ module TypeInference.Main
   , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
-import Control.Monad.Except (ExceptT, runExceptT, throwError)
-import Control.Monad.State (State, evalState, get, modify, put)
-import Data.List (find)
-import qualified Data.Map as DM
-import Data.Maybe (catMaybes, fromJust)
-import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
-import Language.Haskell.Exts (Module)
-import TypeInference.AbstractHaskell
-import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH (hseToAH)
-import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
-import TypeInference.Term (Term (..), TermEqs)
-import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
-import TypeInference.Unification (UnificationError (..), unify)
+import           Control.Monad.Except                 (ExceptT, runExceptT,
+                                                       throwError)
+import           Control.Monad.State                  (State, evalState, get,
+                                                       modify, put)
+import           Data.List                            (find)
+import qualified Data.Map                             as DM
+import           Data.Maybe                           (catMaybes, fromJust)
+import           Goodies                              (both, bothM, concatMapM,
+                                                       mapAccumM, one, two,
+                                                       (++=))
+import           Language.Haskell.Exts                (Module)
+import           TypeInference.AbstractHaskell
+import           TypeInference.AbstractHaskellGoodies
+import           TypeInference.HSE2AH                 (hseToAH)
+import           TypeInference.Normalization          (normExpr, normFuncDecl,
+                                                       normalize)
+import           TypeInference.Term                   (Term (..), TermEqs)
+import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
+                                                       applyTESubstFD)
+import           TypeInference.Unification            (UnificationError (..),
+                                                       unify)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type environments
@@ -133,7 +140,7 @@ toTypeExpr :: Term QName [a] -> TypeExpr a
 toTypeExpr (TermVar [x] v)         = teVar v x
 toTypeExpr (TermCons (x:xs) qn ts)
   | snd qn == "->" && two ts
-    = FuncType x (toTypeExpr (ts !! 0)) (toTypeExpr (ts !! 1))
+    = FuncType x (toTypeExpr (head ts)) (toTypeExpr (ts !! 1))
   | one xs = TCons x (qn, head xs) (map toTypeExpr ts)
 toTypeExpr _
   = error "The given term can not be converted into a type expression!"
@@ -225,8 +232,7 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                          Nothing -> case lookupType qn tsenv of
                                       Nothing -> throwError err
                                       Just te -> return te
-                         Just te -> do te' <- freshVariant te
-                                       return te'
+                         Just te -> freshVariant te
   where
     err = TIError ("There is no type expression for \""
                      ++ showQName defaultAHOptions qn
@@ -476,9 +482,9 @@ eqsExpr (Lambda x (TypeAnn te) ps e)
      in return [te =.= foldr (FuncType x) te' ptes]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsExpr e
-eqsExpr (DoExpr _ _ _)
+eqsExpr DoExpr{}
   = throwError (TIError "do-expressions are not supported yet!")
-eqsExpr (ListComp _ _ _ _)
+eqsExpr ListComp{}
   = throwError (TIError "List comprehensions are not supported yet!")
 eqsExpr (Case _ (TypeAnn te) e bs)
   = eqsExpr e ++= concatMapM (eqsBranch te (fromJust (exprType' e))) bs
@@ -557,7 +563,7 @@ inferExpr' e = do e' <- annExpr e
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
-inferHSE ps = (inferProg ps) . hseToAH
+inferHSE ps = inferProg ps . hseToAH
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
@@ -604,8 +610,8 @@ inferFuncGroup fds
 --   a too general variant of the second type expression or 'Nothing' if no such
 --   part exists.
 typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
-typeTooGeneral x@(TVar _)         y@(FuncType _ _ _)   = Just (x, y)
-typeTooGeneral x@(TVar _)         y@(TCons _ _ _)      = Just (x, y)
+typeTooGeneral x@(TVar _)         y@FuncType{}         = Just (x, y)
+typeTooGeneral x@(TVar _)         y@TCons{}            = Just (x, y)
 typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
   = typeTooGeneral' [(t1, t1'), (t2, t2')]
 typeTooGeneral (TCons _ _ tes)    (TCons _ _ tes')

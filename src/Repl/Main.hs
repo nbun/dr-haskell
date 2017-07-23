@@ -128,23 +128,23 @@ replEvalCommand cmd = if null cmd then invalid cmd else
           return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
-          if (null md)
+          if null md
           then
             return (Just "Ok, modules loaded: none.", True)
           else do
             errors <- loadModule md
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
-        help = (,True) <$> Just <$> replHelp Nothing
+        help = (,True) . Just <$> replHelp Nothing
 
 commandTypeof :: [String] -> Repl (Maybe String, Bool)
 commandTypeof [_]  = return (Just "Expression expected", True)
-commandTypeof args = MC.handleAll (\e -> do
-                         return (Just (displayException e), True)) $
+commandTypeof args = MC.handleAll (\e ->
+                          return (Just (displayException e), True)) $
                        liftInterpreter (typeOf expression) >>=
                        \res -> return (Just (expression ++ " :: " ++ fixType res), True)
   where
-    expression = intercalate " " $ tail args
+    expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType "GHC.Num.Num a => a"         = "Int"
     fixType "GHC.Real.Fractional a => a" = "Float"
