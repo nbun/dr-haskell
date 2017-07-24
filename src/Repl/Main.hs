@@ -148,8 +148,10 @@ commandTypeof args = MC.handleAll (\e ->
   where
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
+    fixType         "Num a => a"         = "Int"
     fixType "GHC.Num.Num a => a"         = "Int"
     fixType "GHC.Real.Fractional a => a" = "Float"
+    fixType          "Fractional a => a" = "Float"
     fixType x                            = x
 
 --TODO: some better ascii art?
