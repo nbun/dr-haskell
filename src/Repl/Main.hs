@@ -122,10 +122,12 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
-        load = let fn = args !! 1 in do
-          liftRepl $ modify (Control.Lens.set filename fn)
-          errors <- loadModule fn
-          return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+        load = case args of
+          [_] -> return (Just "No File specified", True)
+          _   -> let fn = args !! 1 in do
+            liftRepl $ modify (Control.Lens.set filename fn)
+            errors <- loadModule fn
+            return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
           if null md
@@ -133,7 +135,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
             return (Just "Ok, modules loaded: none.", True)
           else do
             errors <- loadModule md
-            return $ (,) (Just (unlines $ map printLoadMessage errors)) True
+            return $ ((Just (unlines $ map printLoadMessage errors)), True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
         help = (,True) . Just <$> replHelp Nothing
 
