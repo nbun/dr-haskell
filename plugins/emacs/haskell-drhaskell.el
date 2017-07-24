@@ -90,10 +90,17 @@ Maps the followind commands in the haskell keymap.
   (local-set-key "\C-c\C-s" 'haskell-drhaskell-start-process)
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
-  (local-set-key "\C-c\C-b" 'haskell-drhaskell-show-drhaskell-buffer))
+  (local-set-key "\C-c\C-b" 'haskell-drhaskell-show-drhaskell-buffer)
+  (local-set-ket "\C-c\M-l" 'turn-on-haskell-drhaskell-linter)
+  (local-set-key "\C-c\M-1" '(lambda () (interactive) (haskell-drhaskell-set-level 1)))
+  (local-set-key "\C-c\M-2" '(lambda () (interactive) (haskell-drhaskell-set-level 2)))
+  (local-set-key "\C-c\M-3" '(lambda () (interactive) (haskell-drhaskell-set-level 3)))
+  (local-set-key "\C-c\M-4" '(lambda () (interactive) (haskell-drhaskell-set-level 4)))
+  )
 
 (defun turn-on-haskell-drhaskell-linter ()
   (interactive)
+  "Turn on DrHaskell linter"
   (setq-default flycheck-haskell-hlint-executable "drhaskell-lint")
   (setq-default flycheck-hlint-args (list "--hlint=l1"))
   (setq-default flycheck-disabled-checkers '(haskell-ghc))
@@ -106,7 +113,19 @@ Maps the followind commands in the haskell keymap.
   (local-unset-key  "\C-c\C-s")
   (local-unset-key  "\C-c\C-l")
   (local-unset-key  "\C-c\C-r")
-  (local-unset-key  "\C-c\C-b"))
+  (local-unset-key  "\C-c\C-b")
+  (local-unset-key  "\C-c\M-1")
+  (local-unset-key  "\C-c\M-2")
+  (local-unset-key  "\C-c\M-3")
+  (local-unset-key  "\C-c\M-4")
+  )
+
+(defun haskell-drhaskell-set-level (level)
+  "Set DrHaskell level"
+  (interactive)
+  (setq-default flycheck-hlint-args (list (concat "--hlint=l" (int-to-string level))))
+  (flycheck-clear)
+  )
 
 (define-derived-mode haskell-drhaskell-mode comint-mode "Haskell Drhaskell"
 ;; called by haskell-drhaskell-start-process,
