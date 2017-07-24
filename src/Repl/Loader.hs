@@ -145,6 +145,7 @@ commentToLevel :: Comment -> Maybe Level
 commentToLevel (Comment _ _ "# DRHASKELL LEVEL1 #")    = Just Level1
 commentToLevel (Comment _ _ "# DRHASKELL LEVEL2 #")    = Just Level2
 commentToLevel (Comment _ _ "# DRHASKELL LEVEL3 #")    = Just Level3
+commentToLevel (Comment _ _ "# DRHASKELL LEVEL4 #")    = Just LevelFull
 commentToLevel (Comment _ _ "# DRHASKELL LEVELFULL #") = Just LevelFull
 commentToLevel (Comment _ _ "# DRHASKELL FULL #")      = Just LevelFull
 commentToLevel _                                       = Nothing

@@ -38,6 +38,8 @@ readLevel :: String -> ReplState -> ReplState
 readLevel "1"    = forceLevel .~ Just Level1
 readLevel "2"    = forceLevel .~ Just Level2
 readLevel "3"    = forceLevel .~ Just Level3
+readLevel "4"    = forceLevel .~ Just LevelFull
 readLevel "full" = forceLevel .~ Just LevelFull
+readLevel "FULL" = forceLevel .~ Just LevelFull
 readLevel _      = error "invalid level" --TODO: improve this...
 
