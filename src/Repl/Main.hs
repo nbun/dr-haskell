@@ -126,8 +126,9 @@ replEvalCommand cmd = if null cmd then invalid cmd else
   where args = words cmd
         quit = return (Nothing, False)
         load = case args of
-          [_] -> return (Just "No File specified", True)
-          _   -> let fn = args !! 1 in do
+          [_]       -> return (Just "No File specified", True)
+          (_:_:_:_) -> return (Just "Cannot load multiple files.", True)
+          [_,fn]    -> do
             liftRepl $ modify (Control.Lens.set filename fn)
             errors <- loadModule fn
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True

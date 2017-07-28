@@ -32,7 +32,9 @@ options = [
          "Use a standard Haskell Prelude instead of DrHaskell's"]
 
 readFilename :: String -> ReplState -> ReplState
-readFilename = L.set filename
+readFilename fn state = case state ^. filename of
+                             "" -> L.set filename fn state
+                             _  -> error "Cannot load multiple files."
 
 readLevel :: String -> ReplState -> ReplState
 readLevel "1"    = forceLevel .~ Just Level1
