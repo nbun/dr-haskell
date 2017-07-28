@@ -2,9 +2,11 @@
 {-# LANGUAGE TemplateHaskell   #-}
 module Repl.Types (
   ReplState(..),
-  filename, forceLevel, runTests, nonStrict, customPrelude, currentLevel,
+  filename, forceLevel, runTests, nonStrict,
+  customPrelude, currentLevel, promptModule,
   initialReplState,
   initialLintReplState,
+
   ReplInput,
   ReplInterpreter,
   Repl,
@@ -29,7 +31,8 @@ data ReplState = ReplState {
   _runTests      :: Bool,
   _nonStrict     :: Bool,
   _customPrelude :: Bool,
-  _currentLevel  :: Level
+  _currentLevel  :: Level,
+  _promptModule  :: String
 }
   deriving (Show)
 
@@ -41,7 +44,8 @@ initialReplState = ReplState {
   _runTests      = True,
   _nonStrict     = False,
   _customPrelude = True,
-  _currentLevel  = Level1
+  _currentLevel  = Level1,
+  _promptModule  = "DrHaskell"
 }
 
 -- some sane defaults
@@ -52,7 +56,8 @@ initialLintReplState = ReplState {
   _runTests      = False,
   _nonStrict     = False,
   _customPrelude = False,
-  _currentLevel  = Level1
+  _currentLevel  = Level1,
+  _promptModule  = "DrHaskell"
 }
 
 makeLenses ''ReplState

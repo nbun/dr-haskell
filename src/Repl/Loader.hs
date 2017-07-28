@@ -116,6 +116,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                       liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
+                      liftRepl $ promptModule .= determineModuleName transModule fname
                       testErrors <- if rt then runAllTests else return []
                       return $ levelSelectErrors ++
                                errors ++
@@ -139,6 +140,11 @@ checkLevelValid m = case filter isJust $
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel m = mfilter (const $ checkLevelValid m) $
                    foldr (mplus . commentToLevel) Nothing $ modifiedComments m
+
+determineModuleName :: ModifiedModule -> FilePath -> String
+determineModuleName m fp = case modifiedModule m of
+  (Module _ (Just (ModuleHead _ (ModuleName _ s) _ _)) _ _ _) -> s
+  _ -> takeFileName fp
 
 
 commentToLevel :: Comment -> Maybe Level

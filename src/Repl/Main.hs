@@ -27,12 +27,8 @@ Current Limitations:
 
 replRead :: Repl (Maybe String)
 replRead = do
-  mods <- liftInterpreter getLoadedModules
-  let filtered = mods \\ ["MyPrelude", "Tests", "StartupEnvironment"]
-      prompt = if   null filtered
-               then "Dr. Haskell"
-               else intercalate ", " filtered
-  level <- use currentLevel
+  level  <- use currentLevel
+  prompt <- use promptModule
   liftInput $ getInputLine $ prompt ++ " ("++ printLevel level ++")> "
 
 replPrint :: Maybe String -> ReplInput ()
