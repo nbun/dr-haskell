@@ -10,7 +10,7 @@ runAllTests = do
            Prelude.return Prelude.$ "Test " ++
              show n ++ ": " ++
                case res of
-                 Success l -> "(Line " ++ show l ++ ") passed"
-                 Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
+                 Tests.Success l -> "(Line " ++ show l ++ ") passed"
+                 Tests.Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
                                      ++ pexp ++ "\n" ++ o)
     ztests :: Prelude.IO [Prelude.String]

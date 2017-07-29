@@ -1,6 +1,12 @@
-module Tests (checkExpect, quickCheck, TestResult (..)) where
+module Tests (
+  checkExpect, quickCheck, TestResult (..),
+  Arb.Arbitrary, Arb.arbitrary,
+  Gen.oneof
+  ) where
 
 import qualified Test.QuickCheck as QC
+import qualified Test.QuickCheck.Arbitrary as Arb
+import qualified Test.QuickCheck.Gen as Gen
 
 data TestResult = Failure Int String String | Success Int
 

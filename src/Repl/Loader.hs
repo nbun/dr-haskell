@@ -25,6 +25,7 @@ import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.TestExpExtractor             as Tee
+import qualified Testing.ArbitGen                     as AG
 import           Util.ModifyAst
 
 data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
@@ -220,7 +221,7 @@ addMyPrelude hideDefs = addImport ImportDecl
 transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule hide s m = do
-  (m', es) <- liftIO $ Tee.transformModule m
+  (m', es) <- liftIO $ Tee.transformModule $ AG.generateArbitraryInModule m
   if s ^. customPrelude
   then return
     (addMyPrelude
