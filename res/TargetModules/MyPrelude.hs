@@ -83,10 +83,6 @@ module MyPrelude (
 import qualified Prelude
 
 --------------------------------------------------------------------------------
--- | Data types
-data Maybe a = Just a | Nothing
-
---------------------------------------------------------------------------------
 -- | Comparison operators
 eqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
 eqInt = (Prelude.==)
@@ -188,7 +184,7 @@ sum = Prelude.sum
 all :: (a -> Prelude.Bool) -> [a] -> Prelude.Bool
 all = Prelude.all
 
-lookup :: (a -> a -> Prelude.Bool) -> a -> [(a, b)] -> Maybe b
-lookup _  _ []                              = Nothing
-lookup eq x ((a, b):xs) | eq x a            = Just b
+lookup :: (a -> a -> Prelude.Bool) -> a -> [(a, b)] -> Prelude.Maybe b
+lookup _  _ []                              = Prelude.Nothing
+lookup eq x ((a, b):xs) | eq x a            = Prelude.Just b
                         | Prelude.otherwise = lookup eq x xs
