@@ -197,7 +197,7 @@ Prompts for a list of args if called with an argument."
   (message "Starting `drhaskell-process' %s" haskell-drhaskell-program-name)
   (if arg
       (setq haskell-drhaskell-program-args
-            (Read-minibuffer "List of args for Drhaskell:"
+            (read-minibuffer "List of args for Drhaskell:"
                              (prin1-to-string haskell-drhaskell-program-args))))
   (setq haskell-drhaskell-process-buffer
         (apply 'make-comint
