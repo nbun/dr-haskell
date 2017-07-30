@@ -6,7 +6,7 @@
 
 module TypeInference.Main
   ( TIError (..)
-  , inferExpr, inferFuncDecl, inferHSE, inferProg
+  , inferExpr, inferFuncDecl, inferHSE, inferProg, getTEFromFile
   ) where
 
 import Control.Applicative ((<|>))
@@ -16,10 +16,11 @@ import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust, mapMaybe)
 import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
-import Language.Haskell.Exts (Module)
+import Language.Haskell.Exts (Module, ParseResult (..), SrcSpanInfo, parseFile)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH --(hseToAH)
+import TypeInference.HSE2AH (hseToAH)
+import TypeInference.HSEConversion (hseToNLAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
@@ -78,6 +79,12 @@ getTypeEnv = listToTypeEnv . concatMap extractProg
     extractConsDecl :: TypeExpr a -> ConsDecl a -> (QName, TypeExpr a)
     extractConsDecl te (Cons x (qn, _) _ _ tes)
       = (qn, foldr (FuncType x) te tes)
+
+-- | Reads in the given file and returns the type environment given by the
+--   corresponding Haskell module.
+getTEFromFile :: FilePath -> IO (TypeEnv SrcSpanInfo)
+getTEFromFile fp = do (ParseOk m) <- parseFile fp
+                      return (getTypeEnv [hseToNLAH m])
 
 -- -----------------------------------------------------------------------------
 -- Representation of type inference states
