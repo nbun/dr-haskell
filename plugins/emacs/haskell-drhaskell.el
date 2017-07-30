@@ -214,7 +214,7 @@ Prompts for a list of args if called with an argument."
   (setq shell-dirtrackp         t)
   (add-hook 'comint-input-filter-functions 'shell-directory-tracker nil 'local)
                                 ; ? or  module name in Drhaskell 1.4
-  (setq comint-prompt-regexp  "^\? \\|^[A-Z][_a-zA-Z0-9\.\s]*> ")
+  (setq comint-prompt-regexp "^.*?(.*?)> ")
     ;; comint's history syntax conflicts with Drhaskell syntax, eg. !!
   (setq comint-input-autoexpand nil)
   (run-hooks 'haskell-drhaskell-hook)
