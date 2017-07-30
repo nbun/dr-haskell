@@ -19,7 +19,7 @@ import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
 import Language.Haskell.Exts (Module)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH (hseToAH)
+import TypeInference.HSE2AH --(hseToAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
