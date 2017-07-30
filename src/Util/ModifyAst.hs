@@ -11,6 +11,7 @@ module Util.ModifyAst (
   printModified,
 ) where
 
+import           Data.Char
 import           Data.Maybe
 import           Language.Haskell.Exts
 
@@ -40,7 +41,9 @@ data ModifiedModule = ModifiedModule {
 
 parseModified :: FilePath -> IO (ParseResult ModifiedModule)
 parseModified fn = do
-  pr <- parseFileWithComments (defaultParseMode { parseFilename = fn }) fn
+  fileRaw <- readFile fn
+  let file = reverse $ dropWhile isSpace $ reverse fileRaw
+      pr = parseFileContentsWithComments (defaultParseMode { parseFilename = fn }) file
   case pr of
     ParseOk (m,c)   -> return $ ParseOk $ ModifiedModule [] m c
     ParseFailed l e -> return $ ParseFailed l e
