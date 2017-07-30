@@ -49,8 +49,6 @@ astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
 astToAbstractHaskell modu@(Module l modh mp imps declas) =
   do
     getFunctionNames modu
-    ahs <- get
-    let  fNames = fctNames ahs
     let mn = parseModuleHead modh
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
@@ -329,7 +327,6 @@ parseRulesOutOfGuarded str t (HSE.GuardedRhs l stmts expr) = do
   tups <- mapM (parseTupels str t expr) stmts
   return $ AH.GuardedRhs l tups
 
-
 -- | Parses a tupel
 parseTupels ::
  MonadState AHState m => MName ->
@@ -375,10 +372,15 @@ parseLocal _ _ _                      = return []
 
 -- | parses an expr
 parseExpr :: MonadState AHState m => MName -> TypeS a -> Exp a -> m (Expr a)
-parseExpr _  _ (HSE.Var l qn)                    =
+parseExpr mn  _ (HSE.Var l qn)                    =
   do
-    y <- getidx (parseQName qn)
-    return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
+    ahs <- get
+    let name = parseQName qn
+    case elem name (fctNames ahs) of
+      True ->  return $ AH.Symbol NoTypeAnn ((mn, parseQName qn), l)
+      False -> do
+                 y <- getidx (parseQName qn)
+                 return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
   return $ AH.Symbol NoTypeAnn  ((mn,parseQName qn), l)
 parseExpr _  _ (HSE.Lit l lit)                   =
