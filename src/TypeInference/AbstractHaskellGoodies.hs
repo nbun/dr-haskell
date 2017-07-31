@@ -26,7 +26,7 @@ preName n = ("Prelude", n)
 --   number of components.
 tupleName :: Int -> QName
 tupleName n | n == 0    = preName "()"
-            | n > 1     = preName ("(" ++ replicate (n - 1) ',' ++ ")")
+            | n > 1     = preName ('(' : replicate (n - 1) ',' ++ ")")
             | otherwise = error err
   where
     err = "The arity of a tuple type constructor can not be one or negative!"
