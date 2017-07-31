@@ -5,10 +5,10 @@
 
 module TypeInference.AbstractHaskellGoodies
   ( preName, tupleName, baseType, boolType, charType, stringType, intType
-  , floatType, listType, ioType, maybeType, eitherType, tupleType, literalType
-  , typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes, exprType
-  , patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig, funcName
-  , modName, leftFuncType, rightFuncType, returnType, depGraph
+  , floatType, orderingType, listType, ioType, maybeType, eitherType, tupleType
+  , literalType, typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes
+  , exprType, patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig
+  , funcName, modName, leftFuncType, rightFuncType, returnType, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -55,6 +55,10 @@ intType = baseType (preName "Int")
 -- | Returns the 'Float' type with the given annotations.
 floatType :: a -> a -> TypeExpr a
 floatType = baseType (preName "Float")
+
+-- | Returns the 'Ordering' type with the given annotations.
+orderingType :: a -> a -> TypeExpr a
+orderingType = baseType (preName "Ordering")
 
 -- | Returns a list type with the given type expression and the given
 --   annotations.
