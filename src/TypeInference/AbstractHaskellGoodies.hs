@@ -4,8 +4,8 @@
 -}
 
 module TypeInference.AbstractHaskellGoodies
-  ( preName, tupleName, baseType, boolType, charType, intType, floatType
-  , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
+  ( preName, tupleName, baseType, boolType, charType, stringType, intType
+  , floatType, listType, ioType, maybeType, eitherType, tupleType, literalType
   , typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes, exprType
   , patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig, funcName
   , modName, leftFuncType, rightFuncType, returnType, depGraph
@@ -44,6 +44,10 @@ boolType = baseType (preName "Bool")
 charType :: a -> a -> TypeExpr a
 charType = baseType (preName "Char")
 
+-- | Returns the 'String' type with the given annotations.
+stringType :: a -> a -> TypeExpr a
+stringType = baseType (preName "String")
+
 -- | Returns the 'Int' type with the given annotations.
 intType :: a -> a -> TypeExpr a
 intType = baseType (preName "Int")
@@ -72,10 +76,6 @@ maybeType te x y = TCons x (preName "Maybe", y) [te]
 eitherType :: TypeExpr a -> TypeExpr a -> a -> a -> TypeExpr a
 eitherType te1 te2 x y = TCons x (preName "Either", y) [te1, te2]
 
--- | Returns the 'String' type with the given annotations.
-stringType :: a -> a -> TypeExpr a
-stringType x y = listType (charType x y) x y
-
 -- | Returns a tuple type with the given list of type expressions and the given
 --   annotations.
 tupleType :: [TypeExpr a] -> a -> a -> TypeExpr a
@@ -84,10 +84,10 @@ tupleType tes  x y = TCons x (tupleName (length tes), y) tes
 
 -- | Converts the given literal and the given annotations to a literal type.
 literalType :: Literal -> a -> a -> TypeExpr a
-literalType (Intc _)    = intType
-literalType (Floatc _)  = floatType
-literalType (Charc _)   = charType
-literalType (Stringc _) = stringType
+literalType (Intc _)    x y = intType x y
+literalType (Floatc _)  x y = floatType x y
+literalType (Charc _)   x y = charType x y
+literalType (Stringc _) x y = listType (charType x y) x y
 
 -- | Returns the type expression from the given type signature or 'Nothing' if
 --   no such type expression exists.
