@@ -1,4 +1,5 @@
 FROM ubuntu:16.04
+# docker build . -t drhaskell:latest
 
 # only for testing. later git pull and build from there
 # COPY . /tmp/drhaskell-build
