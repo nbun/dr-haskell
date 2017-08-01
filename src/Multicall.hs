@@ -1,9 +1,9 @@
 module Multicall where
 
-import System.Environment
+import           System.Environment
 
-import qualified Repl.Main as Repl (main)
-import qualified DrHaskellLint as Lint (main)
+import qualified DrHaskellLint      as Lint (main)
+import qualified Repl.Main          as Repl (main)
 
 main :: IO ()
 main = do

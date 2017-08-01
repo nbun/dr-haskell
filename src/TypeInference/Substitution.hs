@@ -8,11 +8,12 @@ module TypeInference.Substitution
   , applySubst, applySubstEq, applySubstEqs, restrictSubst, composeSubst
   ) where
 
-import Data.List (intercalate)
-import qualified Data.Map as DM
-import Data.Maybe (fromMaybe)
-import Goodies (both)
-import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
+import           Data.List          (intercalate)
+import qualified Data.Map           as DM
+import           Data.Maybe         (fromMaybe)
+import           Goodies            (both)
+import           TypeInference.Term (Term (..), TermEq, TermEqs, VarIdx,
+                                     showVarIdx)
 
 -- -----------------------------------------------------------------------------
 -- Representation of substitutions on first-order terms

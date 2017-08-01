@@ -2,11 +2,11 @@
 
 module TypeInference.HSEConversion (hseToNLAH,parseNamePattern) where
 
-import           Language.Haskell.Exts as HSE
-import           TypeInference.AbstractHaskell  as AH
 import           Control.Monad.State.Lazy
+import           Data.Map.Lazy                 as DML
+import           Language.Haskell.Exts         as HSE
+import           TypeInference.AbstractHaskell as AH
 import           TypeInference.TypeSig
-import           Data.Map.Lazy                  as DML
 
 -------------------------------------------------------------------------------
 -- STATE FOR VARIABLEINDEX ----------------------------------------------------
@@ -15,8 +15,8 @@ import           Data.Map.Lazy                  as DML
 -- | State for variableindex
 --   idx is the next free index
 --   vmap contains all already seen variables and their index
-data AHState = AHState { idx  :: Int
-                       , vmap :: Map String Int
+data AHState = AHState { idx      :: Int
+                       , vmap     :: Map String Int
                        , fctNames :: [String]
                        }
 
@@ -315,7 +315,7 @@ makeRules xs = let r =  makeRules' xs
 
 -- | transforms tupel into a list
 toExprList :: [(t, t)] -> [t]
-toExprList  [] =[]
+toExprList  []        =[]
 toExprList ((a,b):xs) = a: b: toExprList xs
 
 makeRules' :: [AH.Rhs t] -> [Expr t]
@@ -367,8 +367,8 @@ parseRigthHands str t (GuardedRhss l grhs) =
 -- | parses a Local declaration out of an expr
 parseLocal ::
   MonadState AHState m => String -> TypeS a -> Exp a -> m [LocalDecl a]
-parseLocal str t (HSE.Let l binds e)  = parseBinds str t binds
-parseLocal _ _ _                      = return []
+parseLocal str t (HSE.Let l binds e) = parseBinds str t binds
+parseLocal _ _ _                     = return []
 
 -- | parses an expr
 parseExpr :: MonadState AHState m => MName -> TypeS a -> Exp a -> m (Expr a)
@@ -611,11 +611,11 @@ parseDecls = Prelude.foldr ((++) . parseOneDecl) []
 -- | Parses a single decl
 parseOneDecl :: Decl l -> TypeS l
 parseOneDecl (HSE.TypeSig l names t) = concatMap (parseTypeSig t) names
-parseOneDecl _ = []
+parseOneDecl _                       = []
 
 -- | Parses a name
 parsename :: Name l -> String
-parsename (Ident l name)                        = name
+parsename (Ident l name)      = name
 parsename (HSE.Symbol l name) = name
 
 -- | Parses a qname

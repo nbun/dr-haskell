@@ -24,8 +24,8 @@ import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
-import qualified Testing.TestExpExtractor             as Tee
 import qualified Testing.ArbitGen                     as AG
+import qualified Testing.TestExpExtractor             as Tee
 import           Util.ModifyAst
 
 data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)

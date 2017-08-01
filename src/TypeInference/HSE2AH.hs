@@ -5,11 +5,11 @@ module TypeInference.HSE2AH (hseToAH,parseFile') where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor
-import           Data.Map.Lazy                  as DML
-import           Language.Haskell.Exts          as HSE
-import           TypeInference.AbstractHaskell  as AH
-import           TypeInference.TypeSig
+import           Data.Map.Lazy                 as DML
+import           Language.Haskell.Exts         as HSE
+import           TypeInference.AbstractHaskell as AH
 import           TypeInference.HSEConversion
+import           TypeInference.TypeSig
 
 -- Funktionen aus der Prelude müssen qualifiziert werden
 -- Funktionsanwendungen als Symbol
@@ -107,7 +107,7 @@ abstrFuncName name fname =
     let funId =  fst $ fst fname
     case DML.lookup funName (frees ldb) of
       Nothing -> return fname
-      Just y -> return ((funId, name ++ "." ++ funName), snd fname)
+      Just y  -> return ((funId, name ++ "." ++ funName), snd fname)
 
 -- | Builds the abstract representation of a function declaration
 abstrFuncDef ::
@@ -169,7 +169,7 @@ abstrExpr name x@(AH.Var tanno vname)                                     =
     let newName =  name ++  "." ++ realName
     case DML.lookup realName (frees lds) of
      Nothing -> return x
-     Just y -> return $ AH.Var tanno ((fst $ fst vname ,newName), snd vname)
+     Just y  -> return $ AH.Var tanno ((fst $ fst vname ,newName), snd vname)
 abstrExpr name x@(AH.Lit tanno lit)                                       =
   return x
 abstrExpr name x@(AH.Symbol tyanno qname)                                 =
@@ -301,7 +301,7 @@ extendParameters a name x                          =
 -- | Tranforms variablenames into a variable(-expr) and adds them to a list of
 --   exprs
 transformVars :: a -> [VarName] -> [Expr a] -> [Expr a]
-transformVars a  [] z = z
+transformVars a  [] z    = z
 transformVars a (x:xs) y = transformVars a xs (y ++[AH.Var NoTypeAnn (x, a)] )
 
 -------------------------------------------------------------------------------
@@ -606,7 +606,7 @@ extractVarOutOfRule (AH.Rule a tyanno pats rhs locals : xs) =
 
 -- | Extracts the variables out of a right hand side
 extractVarOutOfRhs :: AH.Rhs l -> [VarName]
-extractVarOutOfRhs (SimpleRhs expr) = extractVarOutOfExpr expr
+extractVarOutOfRhs (SimpleRhs expr)     = extractVarOutOfExpr expr
 extractVarOutOfRhs (AH.GuardedRhs a es) = extractVarOutOfTups es
 
 -- | Extracts the variables out of a tupel
@@ -774,3 +774,4 @@ filterQualsStmts :: [QualStmt l] -> [QualStmt l]
 filterQualsStmts []                       = []
 filterQualsStmts (x@(QualStmt _ stm ):xs) = x : filterQualsStmts xs
 filterQualsStmts (x:xs)                   = filterQualsStmts xs
+

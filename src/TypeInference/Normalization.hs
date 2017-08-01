@@ -9,11 +9,12 @@ module TypeInference.Normalization
   , normBranchExpr
   ) where
 
-import Control.Monad.State (State, evalState, get, put)
-import qualified Data.Map as DM
-import Goodies (bothM)
-import TypeInference.AbstractHaskell
-import TypeInference.AbstractHaskellGoodies (teVar)
+import           Control.Monad.State                  (State, evalState, get,
+                                                       put)
+import qualified Data.Map                             as DM
+import           Goodies                              (bothM)
+import           TypeInference.AbstractHaskell
+import           TypeInference.AbstractHaskellGoodies (teVar)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type variable normalizations

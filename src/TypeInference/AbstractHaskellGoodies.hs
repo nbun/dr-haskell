@@ -11,8 +11,8 @@ module TypeInference.AbstractHaskellGoodies
   , funcName, modName, leftFuncType, rightFuncType, returnType, depGraph
   ) where
 
-import TypeInference.AbstractHaskell
-import TypeInference.SCC (scc)
+import           TypeInference.AbstractHaskell
+import           TypeInference.SCC             (scc)
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions for abstract Haskell data types
