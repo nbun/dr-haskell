@@ -4,7 +4,7 @@
 -}
 
 module TypeInference.AbstractHaskellGoodies
-  ( preName, tupleName, baseType, boolType, charType, stringType, intType
+  ( pre, preName, tupleName, baseType, boolType, charType, stringType, intType
   , floatType, orderingType, listType, ioType, maybeType, eitherType, tupleType
   , literalType, typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes
   , exprType, patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig
@@ -18,9 +18,13 @@ import TypeInference.SCC (scc)
 -- Definition of auxiliary functions for abstract Haskell data types
 -- -----------------------------------------------------------------------------
 
+-- | The module name of the 'Prelude'.
+pre :: MName
+pre = "Prelude"
+
 -- | Converts a string into a qualified name of the 'Prelude'.
 preName :: String -> QName
-preName n = ("Prelude", n)
+preName n = (pre, n)
 
 -- | Returns the qualified name of the tuple type constructor with the given
 --   number of components.
