@@ -41,7 +41,7 @@ manipulatePathWithHostvar file = do
     hostpath <- lookupEnv "DRHASKELLHOSTPATH"
     case hostpath of
         Nothing   -> return file
-        Just path -> return replace path "/tmp/drhaskell-src" file
+        Just path -> return $ replace path "/tmp/drhaskell-src" file
 
 -- | Determines from the level the correct levelCode and invokes hlint
 --   (including conversion of linting datastructures).
