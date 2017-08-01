@@ -45,6 +45,16 @@ filterCommentLines = map (second (dropWhile (\x ->
                      filter (isPrefixOf "> " . snd) .
                      map (second (dropWhile isSpace))
 
+-- we import the `Tests`-module qualified. Here we make sure that all test
+-- expressions do use the qualification.
+qualifyTests :: Exp () -> Exp()
+qualifyTests (Var _ (UnQual _ (Ident _ nm))) =
+             (Var () (Qual () (ModuleName () "Tests") (Ident () nm)))
+qualifyTests (App _ e1 e2)                   =
+             (App () (qualifyTests e1) e2)
+qualifyTests (InfixApp _ e1 q e2)            =
+             (InfixApp () (qualifyTests e1) q e2)
+
 -- this adds the test expression's string representation to the test expression
 -- for pretty printing of failed tests
 annotateTest :: Int -> String -> Exp () -> Exp ()
@@ -85,7 +95,7 @@ parseTest :: (Int,String) -> Either (Error Int) (Exp ())
 parseTest (l, s) = case parseExp s of
                         ParseFailed _ _ -> Left $ InvalidTest l s
                         ParseOk       e -> if checkTest e
-                                         then Right $ annotateTest l s $ void e
+                                         then Right $ qualifyTests $ annotateTest l s $ void e
                                          else Left $ InvalidTest l s
 
 extractTests :: (a, [Comment]) -> [Either (Error Int) (Exp ())]
@@ -148,7 +158,7 @@ transformModule m = do
   let
     impAdded = addImport ImportDecl {importAnn = (),
                                      importModule = ModuleName () "Tests",
-                                     importQualified = False,
+                                     importQualified = True,
                                      importSrc = False,
                                      importSafe = False,
                                      importPkg = Nothing,

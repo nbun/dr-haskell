@@ -34,7 +34,7 @@ type TESubst a = DM.Map Int (TypeExpr a)
 -- | Transforms a substitution into a string representation.
 showTESubst :: AHOptions -> TESubst a -> String
 showTESubst opts sub
-  = "{" ++ intercalate "," (map showMapping (teSubstToList sub)) ++ "}"
+  = '{' : intercalate "," (map showMapping (teSubstToList sub)) ++ "}"
   where
     showMapping :: (Int, TypeExpr a) -> String
     showMapping (v, te) = varToString v ++ " \8614 " ++ showTypeExpr opts te

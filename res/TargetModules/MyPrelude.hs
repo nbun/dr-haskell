@@ -1,15 +1,17 @@
--- | Simplified version of the Prelude without type classes
+{-|
+  Simplified version of the 'Prelude' without type classes.
+-}
 
 module MyPrelude (
-  -- | Data types
-  P.Int,
-  P.Float,
-  P.Bool(..),
-  P.Maybe(..),
-  P.Either(..),
-  P.Char,
-  P.String,
-  -- | Comparison operators ==, <, >, <=, >= for Int, Bool and Char
+  -- | Data types from the 'Prelude'.
+  Prelude.Int,
+  Prelude.Float,
+  Prelude.Char,
+  Prelude.String,
+  Prelude.Bool (..),
+  Prelude.Maybe (..),
+  Prelude.Either (..),
+  -- | Comparison operators ==, /=, <, >, <=, >= for 'Int', 'Bool' and 'Char'.
   eqInt,
   eqBool,
   eqChar,
@@ -28,7 +30,7 @@ module MyPrelude (
   geqInt,
   geqBool,
   geqChar,
-  -- | Arithmetic operators +, -, * and / for Int and Float
+  -- | Arithmetic operators +, -, * and / for 'Int' and 'Float'.
   (+),
   (-),
   (*),
@@ -37,156 +39,159 @@ module MyPrelude (
   (-.),
   (*.),
   (/.),
-  -- | Simple versions of list functions that use Foldable or Num
+  -- | Simple versions of list functions that use 'Foldable' or 'Num'.
   length,
   concat,
   foldl,
   foldr,
   sum,
   all,
-  lookup, -- | lookup has an extra eq :: a -> a -> Bool argument
-  -- | More infix operators
-  (P.++),
-  (P..),
-  (P.||),
-  (P.&&),
-  (P.!!),
-  -- | Functions that appear in the lecture or exercises
-  P.last,
-  P.head,
-  P.tail,
-  P.init,
-  P.fst,
-  P.snd,
-  P.zip,
-  P.unzip,
-  P.take,
-  P.flip,
-  P.map,
-  P.filter,
-  P.curry,
-  P.uncurry,
-  P.const,
-  P.repeat,
-  P.iterate,
-  P.putStr,
-  P.getLine,
-  P.readFile,
-  P.writeFile,
-  P.reverse,
-  P.replicate,
-  P.otherwise
+  -- | 'lookup' has an extra @eq :: a -> a -> Bool@ argument.
+  lookup,
+  -- | More infix operators.
+  (Prelude.++),
+  (Prelude..),
+  (Prelude.||),
+  (Prelude.&&),
+  (Prelude.!!),
+  -- | Functions that appear in the lecture or exercises.
+  Prelude.last,
+  Prelude.head,
+  Prelude.tail,
+  Prelude.init,
+  Prelude.fst,
+  Prelude.snd,
+  Prelude.zip,
+  Prelude.unzip,
+  Prelude.take,
+  Prelude.flip,
+  Prelude.map,
+  Prelude.filter,
+  Prelude.curry,
+  Prelude.uncurry,
+  Prelude.const,
+  Prelude.repeat,
+  Prelude.iterate,
+  Prelude.putStr,
+  Prelude.getLine,
+  Prelude.readFile,
+  Prelude.writeFile,
+  Prelude.reverse,
+  Prelude.replicate,
+  Prelude.otherwise
   ) where
 
-import qualified Prelude as P
+import qualified Prelude
 
---------------------------------------------------------------------------------
--- | Data types
-data Maybe a = Just a | Nothing
+-- -----------------------------------------------------------------------------
+-- Comparison operators
+-- -----------------------------------------------------------------------------
 
---------------------------------------------------------------------------------
--- | Comparison operators
-eqInt :: P.Int -> P.Int -> P.Bool
-eqInt = (P.==)
+eqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+eqInt = (Prelude.==)
 
-eqBool :: P.Bool -> P.Bool -> P.Bool
-eqBool = (P.==)
+eqBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+eqBool = (Prelude.==)
 
-eqChar :: P.Char -> P.Char -> P.Bool
-eqChar = (P.==)
+eqChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+eqChar = (Prelude.==)
 
-neqInt :: P.Int -> P.Int -> P.Bool
-neqInt = (P./=)
+neqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+neqInt = (Prelude./=)
 
-neqBool :: P.Bool -> P.Bool -> P.Bool
-neqBool = (P./=)
+neqBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+neqBool = (Prelude./=)
 
-neqChar :: P.Char -> P.Char -> P.Bool
-neqChar = (P./=)
+neqChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+neqChar = (Prelude./=)
 
-ltInt :: P.Int -> P.Int -> P.Bool
-ltInt = (P.<)
+ltInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+ltInt = (Prelude.<)
 
-leqInt :: P.Int -> P.Int -> P.Bool
-leqInt = (P.<=)
+leqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+leqInt = (Prelude.<=)
 
-gtInt :: P.Int -> P.Int -> P.Bool
-gtInt = (P.>)
+gtInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+gtInt = (Prelude.>)
 
-geqInt :: P.Int -> P.Int -> P.Bool
-geqInt = (P.>=)
+geqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
+geqInt = (Prelude.>=)
 
-ltBool :: P.Bool -> P.Bool -> P.Bool
-ltBool = (P.<)
+ltBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+ltBool = (Prelude.<)
 
-leqBool :: P.Bool -> P.Bool -> P.Bool
-leqBool = (P.<=)
+leqBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+leqBool = (Prelude.<=)
 
-gtBool :: P.Bool -> P.Bool -> P.Bool
-gtBool = (P.>)
+gtBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+gtBool = (Prelude.>)
 
-geqBool :: P.Bool -> P.Bool -> P.Bool
-geqBool = (P.>=)
+geqBool :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
+geqBool = (Prelude.>=)
 
-ltChar :: P.Char -> P.Char -> P.Bool
-ltChar = (P.<)
+ltChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+ltChar = (Prelude.<)
 
-leqChar :: P.Char -> P.Char -> P.Bool
-leqChar = (P.<=)
+leqChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+leqChar = (Prelude.<=)
 
-gtChar :: P.Char -> P.Char -> P.Bool
-gtChar = (P.>)
+gtChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+gtChar = (Prelude.>)
 
-geqChar :: P.Char -> P.Char -> P.Bool
-geqChar = (P.>=)
+geqChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
+geqChar = (Prelude.>=)
 
---------------------------------------------------------------------------------
--- | Arithmetic operators
-(-) :: P.Int -> P.Int -> P.Int
-(-) = (P.-)
+-- -----------------------------------------------------------------------------
+-- Arithmetic operators
+-- -----------------------------------------------------------------------------
 
-(+) :: P.Int -> P.Int -> P.Int
-(+) = (P.+)
+(-) :: Prelude.Int -> Prelude.Int -> Prelude.Int
+(-) = (Prelude.-)
 
-(*) :: P.Int -> P.Int -> P.Int
-(*) = (P.*)
+(+) :: Prelude.Int -> Prelude.Int -> Prelude.Int
+(+) = (Prelude.+)
 
-(/) :: P.Int -> P.Int -> P.Int
-(/) = P.div
+(*) :: Prelude.Int -> Prelude.Int -> Prelude.Int
+(*) = (Prelude.*)
 
-(-.) :: P.Float -> P.Float -> P.Float
-(-.) = (P.-)
+(/) :: Prelude.Int -> Prelude.Int -> Prelude.Int
+(/) = Prelude.div
 
-(+.) :: P.Float -> P.Float -> P.Float
-(+.) = (P.+)
+(-.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
+(-.) = (Prelude.-)
 
-(*.) :: P.Float -> P.Float -> P.Float
-(*.) = (P.*)
+(+.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
+(+.) = (Prelude.+)
 
-(/.) :: P.Float -> P.Float -> P.Float
-(/.) = (P./)
+(*.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
+(*.) = (Prelude.*)
 
---------------------------------------------------------------------------------
--- | List functions
-length :: [a] -> P.Int
-length = P.length
+(/.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
+(/.) = (Prelude./)
+
+-- -----------------------------------------------------------------------------
+-- List functions
+-- -----------------------------------------------------------------------------
+
+length :: [a] -> Prelude.Int
+length = Prelude.length
 
 concat :: [[a]] -> [a]
-concat = P.concat
+concat = Prelude.concat
 
 foldl :: (b -> a -> b) -> b -> [a] -> b
-foldl = P.foldl
+foldl = Prelude.foldl
 
 foldr :: (a -> b -> b) -> b -> [a] -> b
-foldr = P.foldr
+foldr = Prelude.foldr
 
-sum :: [P.Int] -> P.Int
-sum = P.sum
+sum :: [Prelude.Int] -> Prelude.Int
+sum = Prelude.sum
 
-all :: (a -> P.Bool) -> [a] -> P.Bool
-all = P.all
+all :: (a -> Prelude.Bool) -> [a] -> Prelude.Bool
+all = Prelude.all
 
-lookup :: (a -> a -> P.Bool) -> a -> [(a, b)] -> Maybe b
-lookup _ _ [] = Nothing
-lookup eq x ((a, b) : xs) | eq x a      = Just b
-                          | P.otherwise = lookup eq x xs
+lookup :: (a -> a -> Prelude.Bool) -> a -> [(a, b)] -> Prelude.Maybe b
+lookup _  _ []                              = Prelude.Nothing
+lookup eq x ((a, b):xs) | eq x a            = Prelude.Just b
+                        | Prelude.otherwise = lookup eq x xs

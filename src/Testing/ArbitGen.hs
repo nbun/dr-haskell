@@ -2,7 +2,8 @@ module Testing.ArbitGen (
     extractDataDecls,
     tyConToGenExp,
     typeToInstance,
-    modToInstance
+    modToInstance,
+    generateArbitraryInModule,
 ) where
 
 --Module for automatic generation of arbitrary instances
@@ -25,12 +26,12 @@ multiApplication = foldl (App ())
 
 tyConToGenExp :: QualConDecl () -> Exp ()
 tyConToGenExp (QualConDecl _ _ _ (ConDecl _ n ts)) =
-  Do () ([Generator () (PVar () (Ident () ('x':show i))) (Var () (UnQual () (Ident () "arbitrary"))) | i <- [1..(length ts)]]++
-  [Qualifier () (InfixApp () (Var () (UnQual () (Ident () "return"))) (QVarOp () (UnQual () (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [Var () (UnQual () (Ident () ('x':show i))) | i <- [1..(length ts)]]))])
+  Do () ([Generator () (PVar () (Ident () ('x':show i))) (Var () (Qual () (ModuleName () "Tests") (Ident () "arbitrary"))) | i <- [1..(length ts)]]++
+  [Qualifier () (InfixApp () (Var () (Qual () (ModuleName () "Prelude") (Ident () "return"))) (QVarOp () (Qual () (ModuleName () "Prelude") (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [Var () (UnQual () (Ident () ('x':show i))) | i <- [1..(length ts)]]))])
 
 typeToInstance :: Decl () -> Decl ()
 typeToInstance (DataDecl _ _ _ (DHead _ (Ident _ name)) qds _) =
-  InstDecl () Nothing (IRule () Nothing Nothing (IHApp () (IHCon () (UnQual () (Ident () "Arbitrary"))) (TyCon () (UnQual () (Ident () name))))) (Just [InsDecl () (PatBind () (PVar () (Ident () "arbitrary")) (UnGuardedRhs () (App () (Var () (UnQual () (Ident () "oneof"))) (List () (map tyConToGenExp qds)))) Nothing)])
+  InstDecl () Nothing (IRule () Nothing Nothing (IHApp () (IHCon () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary"))) (TyCon () (UnQual () (Ident () name))))) (Just [InsDecl () (PatBind () (PVar () (Ident () "arbitrary")) (UnGuardedRhs () (App () (Var () (Qual () (ModuleName () "Tests") (Ident () "oneof"))) (List () (map tyConToGenExp qds)))) Nothing)])
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo, [Comment])
 parseFile' f = fromParseResult <$> parseFileWithComments defaultParseMode f
@@ -52,6 +53,6 @@ generateArbitraryInModule m =
 
 processModule :: FilePath -> IO ()
 processModule fn = do
-  m <- parseModified fn
+  ParseOk m <- parseModified fn
   let m' = generateArbitraryInModule m
   putStrLn $ exactPrint (modifiedModule m') (modifiedComments m')

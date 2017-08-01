@@ -205,7 +205,7 @@ showTypeExpr opts = showTypeExpr' 0
       = parensIf (p > 0) (showTypeExpr' 1 t1 ++ " -> " ++ showTypeExpr opts t2)
     showTypeExpr' p (TCons _ (qn, _) tes)
       | snd qn == "[]" && one tes
-        = "[" ++ showTypeExpr opts (head tes) ++ "]"
+        = '[' : showTypeExpr opts (head tes) ++ "]"
       | isTupleCons qn
         = tupled (map (showTypeExpr opts) tes)
       | otherwise

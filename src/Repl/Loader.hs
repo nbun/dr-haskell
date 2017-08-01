@@ -25,6 +25,7 @@ import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.TestExpExtractor             as Tee
+import qualified Testing.ArbitGen                     as AG
 import           Util.ModifyAst
 
 data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
@@ -116,6 +117,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                       liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
+                      liftRepl $ promptModule .= determineModuleName transModule fname
                       testErrors <- if rt then runAllTests else return []
                       return $ levelSelectErrors ++
                                errors ++
@@ -139,6 +141,11 @@ checkLevelValid m = case filter isJust $
 determineLevel :: ModifiedModule -> Maybe Level
 determineLevel m = mfilter (const $ checkLevelValid m) $
                    foldr (mplus . commentToLevel) Nothing $ modifiedComments m
+
+determineModuleName :: ModifiedModule -> FilePath -> String
+determineModuleName m fp = case modifiedModule m of
+  (Module _ (Just (ModuleHead _ (ModuleName _ s) _ _)) _ _ _) -> s
+  _ -> takeFileName fp
 
 
 commentToLevel :: Comment -> Maybe Level
@@ -214,7 +221,7 @@ addMyPrelude hideDefs = addImport ImportDecl
 transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule hide s m = do
-  (m', es) <- liftIO $ Tee.transformModule m
+  (m', es) <- liftIO $ Tee.transformModule $ AG.generateArbitraryInModule m
   if s ^. customPrelude
   then return
     (addMyPrelude

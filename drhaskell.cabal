@@ -12,23 +12,48 @@ maintainer:          (none)
 -- copyright:           
 category:            Teaching
 build-type:          Simple
-extra-source-files:  README.md
+extra-source-files:  README.md LICENSE
 data-dir:            res
 data-files:          Testing/templates.hs, TargetModules/Tests.hs, TargetModules/MyPrelude.hs, TargetModules/StartupEnvironment.hs
 cabal-version:       >=1.10
 
+Flag Multicall
+  Description: Put all functionality into one big binary
+  Default:     False
+
 executable drhaskell
+  if flag(multicall)
+    buildable: False
+  else
+    buildable: True
   main-is:             Repl/Main.hs
   ghc-options:         -O2 -j4 -main-is Repl.Main
-  -- other-modules:       
-  -- other-extensions:   
+  -- other-modules:
+  -- other-extensions:
   build-depends:       process, temporary, hpc, QuickCheck >= 2.10.0.1, base >=4.8 && <=4.9.1, containers, directory, edit-distance >= 0.2.2.1, exceptions >=0.8, filepath, ghc-paths >=0.1 && <0.2, haskeline >=0.7 && <0.8, haskell-src-exts >=1.19 && <1.20, hint >=0.6, hlint >=1.9.38, json >= 0.9.1, lens, mtl >=2.2 && <2.3, transformers
   hs-source-dirs:      src
   default-language:    Haskell2010
 
 executable drhaskell-lint
+  if flag(multicall)
+    buildable: False
+  else
+    buildable: True
   main-is:             DrHaskellLint.hs
   ghc-options:         -O2 -j4 -main-is DrHaskellLint
+  -- other-modules:
+  -- other-extensions:
+  build-depends:       process, temporary, hpc, QuickCheck >= 2.10.0.1, base >=4.8 && <=4.9.1, containers, directory, edit-distance >= 0.2.2.1, exceptions >=0.8, filepath, ghc-paths >=0.1 && <0.2, haskeline >=0.7 && <0.8, haskell-src-exts >=1.19 && <1.20, hint >=0.6, hlint >=1.9.38, json >= 0.9.1, lens, mtl >=2.2 && <2.3, transformers
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+
+executable drhaskell-multicall
+  if flag(multicall)
+    buildable: True
+  else
+    buildable: False
+  main-is:             Multicall.hs
+  ghc-options:         -O2 -j4 -main-is Multicall
   -- other-modules:
   -- other-extensions:
   build-depends:       process, temporary, hpc, QuickCheck >= 2.10.0.1, base >=4.8 && <=4.9.1, containers, directory, edit-distance >= 0.2.2.1, exceptions >=0.8, filepath, ghc-paths >=0.1 && <0.2, haskeline >=0.7 && <0.8, haskell-src-exts >=1.19 && <1.20, hint >=0.6, hlint >=1.9.38, json >= 0.9.1, lens, mtl >=2.2 && <2.3, transformers

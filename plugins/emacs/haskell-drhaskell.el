@@ -91,29 +91,36 @@ Maps the followind commands in the haskell keymap.
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
   (local-set-key "\C-c\C-b" 'haskell-drhaskell-show-drhaskell-buffer)
-  (local-set-ket "\C-c\M-l" 'turn-on-haskell-drhaskell-linter)
-  (local-set-key "\C-c\M-1" '(lambda () (interactive) (haskell-drhaskell-set-level 1)))
-  (local-set-key "\C-c\M-2" '(lambda () (interactive) (haskell-drhaskell-set-level 2)))
-  (local-set-key "\C-c\M-3" '(lambda () (interactive) (haskell-drhaskell-set-level 3)))
-  (local-set-key "\C-c\M-4" '(lambda () (interactive) (haskell-drhaskell-set-level 4)))
-  )
+  (local-set-key "\C-c\M-l" 'turn-on-haskell-drhaskell-linter)
+  (local-set-key "\C-c\M-1" '(lambda () "Set DrHaskell level to 1" (interactive)
+                               (haskell-drhaskell-set-level 1)))
+  (local-set-key "\C-c\M-2" '(lambda () "Set DrHaskell level to 2" (interactive)
+                               (haskell-drhaskell-set-level 2)))
+  (local-set-key "\C-c\M-3" '(lambda () "Set DrHaskell level to 3" (interactive)
+                               (haskell-drhaskell-set-level 3)))
+  (local-set-key "\C-c\M-4" '(lambda () "Set DrHaskell level to 4" (interactive)
+                               (haskell-drhaskell-set-level 4)))
+  (message "DrHaskell is enabled"))
 
 (defun turn-on-haskell-drhaskell-linter ()
   (interactive)
   "Turn on DrHaskell linter"
-  (setq-default flycheck-haskell-hlint-executable "drhaskell-lint")
-  (setq-default flycheck-hlint-args (list "--hlint=l1"))
-  (setq-default flycheck-disabled-checkers '(haskell-ghc))
-  (flycheck-clear)
+  (setq flycheck-haskell-hlint-executable "drhaskell-lint")
+  (setq flycheck-hlint-args (list "--hint=l1"))
+  (unless (memq 'haskell-ghc flycheck-disabled-checkers)
+    (push 'haskell-ghc flycheck-disabled-checkers))
+  (message "DrHaskell linter is enabled")
+  (flycheck-buffer)
   )
 
 (defun turn-off-haskell-drhaskell ()
   (interactive)
-  "Turn off Haskell interaction mode with a Drhaskell interpreter within a buffer."
+  "Turn off Haskell interaction mode with a DrHaskell interpreter within a buffer."
   (local-unset-key  "\C-c\C-s")
   (local-unset-key  "\C-c\C-l")
   (local-unset-key  "\C-c\C-r")
   (local-unset-key  "\C-c\C-b")
+  (local-unset-key  "\C-c\M-l")
   (local-unset-key  "\C-c\M-1")
   (local-unset-key  "\C-c\M-2")
   (local-unset-key  "\C-c\M-3")
@@ -123,9 +130,9 @@ Maps the followind commands in the haskell keymap.
 (defun haskell-drhaskell-set-level (level)
   "Set DrHaskell level"
   (interactive)
-  (setq-default flycheck-hlint-args (list (concat "--hlint=l" (int-to-string level))))
-  (flycheck-clear)
-  )
+  (setq flycheck-hlint-args (list (concat "--hint=l" (int-to-string level))))
+  (message "Set DrHaskell level to %s" (int-to-string level))
+  (flycheck-buffer))
 
 (define-derived-mode haskell-drhaskell-mode comint-mode "Haskell Drhaskell"
 ;; called by haskell-drhaskell-start-process,
@@ -190,7 +197,7 @@ Prompts for a list of args if called with an argument."
   (message "Starting `drhaskell-process' %s" haskell-drhaskell-program-name)
   (if arg
       (setq haskell-drhaskell-program-args
-            (Read-minibuffer "List of args for Drhaskell:"
+            (read-minibuffer "List of args for Drhaskell:"
                              (prin1-to-string haskell-drhaskell-program-args))))
   (setq haskell-drhaskell-process-buffer
         (apply 'make-comint
@@ -207,7 +214,7 @@ Prompts for a list of args if called with an argument."
   (setq shell-dirtrackp         t)
   (add-hook 'comint-input-filter-functions 'shell-directory-tracker nil 'local)
                                 ; ? or  module name in Drhaskell 1.4
-  (setq comint-prompt-regexp  "^\? \\|^[A-Z][_a-zA-Z0-9\.\s]*> ")
+  (setq comint-prompt-regexp "^.*?(.*?)> ")
     ;; comint's history syntax conflicts with Drhaskell syntax, eg. !!
   (setq comint-input-autoexpand nil)
   (run-hooks 'haskell-drhaskell-hook)
@@ -229,7 +236,7 @@ current buffer after the last output."
   ;; Wait until output arrives and go to the last input.
   (haskell-drhaskell-wait-for-output)
   ;; Position for this input.
-  (goto-char (point-max))		
+  (goto-char (point-max))
   (apply 'insert string)
   (comint-send-input)
   (setq haskell-drhaskell-send-end (marker-position comint-last-input-end)))

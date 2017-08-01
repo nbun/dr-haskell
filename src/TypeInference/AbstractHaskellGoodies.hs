@@ -4,11 +4,11 @@
 -}
 
 module TypeInference.AbstractHaskellGoodies
-  ( preName, tupleName, baseType, boolType, charType, intType, floatType
-  , listType, ioType, maybeType, eitherType, stringType, tupleType, literalType
-  , typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes, exprType
-  , patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig, funcName
-  , modName, leftFuncType, rightFuncType, returnType, depGraph
+  ( pre, preName, tupleName, baseType, boolType, charType, stringType, intType
+  , floatType, orderingType, listType, ioType, maybeType, eitherType, tupleType
+  , literalType, typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes
+  , exprType, patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig
+  , funcName, modName, leftFuncType, rightFuncType, returnType, depGraph
   ) where
 
 import TypeInference.AbstractHaskell
@@ -18,15 +18,19 @@ import TypeInference.SCC (scc)
 -- Definition of auxiliary functions for abstract Haskell data types
 -- -----------------------------------------------------------------------------
 
+-- | The module name of the 'Prelude'.
+pre :: MName
+pre = "Prelude"
+
 -- | Converts a string into a qualified name of the 'Prelude'.
 preName :: String -> QName
-preName n = ("Prelude", n)
+preName n = (pre, n)
 
 -- | Returns the qualified name of the tuple type constructor with the given
 --   number of components.
 tupleName :: Int -> QName
 tupleName n | n == 0    = preName "()"
-            | n > 1     = preName ("(" ++ replicate (n - 1) ',' ++ ")")
+            | n > 1     = preName ('(' : replicate (n - 1) ',' ++ ")")
             | otherwise = error err
   where
     err = "The arity of a tuple type constructor can not be one or negative!"
@@ -44,6 +48,10 @@ boolType = baseType (preName "Bool")
 charType :: a -> a -> TypeExpr a
 charType = baseType (preName "Char")
 
+-- | Returns the 'String' type with the given annotations.
+stringType :: a -> a -> TypeExpr a
+stringType = baseType (preName "String")
+
 -- | Returns the 'Int' type with the given annotations.
 intType :: a -> a -> TypeExpr a
 intType = baseType (preName "Int")
@@ -51,6 +59,10 @@ intType = baseType (preName "Int")
 -- | Returns the 'Float' type with the given annotations.
 floatType :: a -> a -> TypeExpr a
 floatType = baseType (preName "Float")
+
+-- | Returns the 'Ordering' type with the given annotations.
+orderingType :: a -> a -> TypeExpr a
+orderingType = baseType (preName "Ordering")
 
 -- | Returns a list type with the given type expression and the given
 --   annotations.
@@ -72,10 +84,6 @@ maybeType te x y = TCons x (preName "Maybe", y) [te]
 eitherType :: TypeExpr a -> TypeExpr a -> a -> a -> TypeExpr a
 eitherType te1 te2 x y = TCons x (preName "Either", y) [te1, te2]
 
--- | Returns the 'String' type with the given annotations.
-stringType :: a -> a -> TypeExpr a
-stringType x y = listType (charType x y) x y
-
 -- | Returns a tuple type with the given list of type expressions and the given
 --   annotations.
 tupleType :: [TypeExpr a] -> a -> a -> TypeExpr a
@@ -84,10 +92,10 @@ tupleType tes  x y = TCons x (tupleName (length tes), y) tes
 
 -- | Converts the given literal and the given annotations to a literal type.
 literalType :: Literal -> a -> a -> TypeExpr a
-literalType (Intc _)    = intType
-literalType (Floatc _)  = floatType
-literalType (Charc _)   = charType
-literalType (Stringc _) = stringType
+literalType (Intc _)    x y = intType x y
+literalType (Floatc _)  x y = floatType x y
+literalType (Charc _)   x y = charType x y
+literalType (Stringc _) x y = listType (charType x y) x y
 
 -- | Returns the type expression from the given type signature or 'Nothing' if
 --   no such type expression exists.

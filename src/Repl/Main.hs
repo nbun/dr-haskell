@@ -5,6 +5,7 @@ module Repl.Main (module Repl.Main) where
 import           Control.Lens                 hiding (Level)
 import           Control.Monad.Catch          as MC
 import           Control.Monad.State
+import           Data.Char
 import           Data.List
 import           Data.Version                 (showVersion)
 import           Paths_drhaskell
@@ -26,12 +27,8 @@ Current Limitations:
 
 replRead :: Repl (Maybe String)
 replRead = do
-  mods <- liftInterpreter getLoadedModules
-  let filtered = mods \\ ["MyPrelude", "Tests", "StartupEnvironment"]
-      prompt = if   null filtered
-               then "Dr. Haskell"
-               else intercalate ", " filtered
-  level <- use currentLevel
+  level  <- use currentLevel
+  prompt <- use promptModule
   liftInput $ getInputLine $ prompt ++ " ("++ printLevel level ++")> "
 
 replPrint :: Maybe String -> ReplInput ()
@@ -88,22 +85,24 @@ replHelp input = return $ init $ unlines $ hint [
                     Nothing -> xs
 
 replEvalExp :: String -> ReplInterpreter (Maybe String)
-replEvalExp q =
-  MC.handleAll (\e -> do
-                      liftIO $ putStrLn (displayException e)
-                      return Nothing) $ do
-    t <- typeOf q
-    if t == "IO ()"
-      then do
-        --apparently the interpreter does not put the output through 'our'
-        --stdout, so we need to flush the buffer *within* the interpreter,
-        --which makes this really messy. Seems to work though.
-        action <- interpret
-                    ("("++q++")>>System.IO.hFlush System.IO.stdout")
-                    (as :: IO ())
-        liftIO action
-        return Nothing
-      else Just <$> eval q
+replEvalExp q = case filter (not . isSpace) q of
+  "" -> return Nothing
+  _  ->
+    MC.handleAll (\e -> do
+                        liftIO $ putStrLn (displayException e)
+                        return Nothing) $ do
+      t <- typeOf q
+      if t == "IO ()"
+        then do
+          --apparently the interpreter does not put the output through 'our'
+          --stdout, so we need to flush the buffer *within* the interpreter,
+          --which makes this really messy. Seems to work though.
+          action <- interpret
+                      ("("++q++")>>System.IO.hFlush System.IO.stdout")
+                      (as :: IO ())
+          liftIO action
+          return Nothing
+        else Just <$> eval q
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = if null cmd then invalid cmd else
@@ -123,8 +122,9 @@ replEvalCommand cmd = if null cmd then invalid cmd else
   where args = words cmd
         quit = return (Nothing, False)
         load = case args of
-          [_] -> return (Just "No File specified", True)
-          _   -> let fn = args !! 1 in do
+          [_]       -> return (Just "No File specified", True)
+          (_:_:_:_) -> return (Just "Cannot load multiple files.", True)
+          [_,fn]    -> do
             liftRepl $ modify (Control.Lens.set filename fn)
             errors <- loadModule fn
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True
@@ -135,7 +135,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
             return (Just "Ok, modules loaded: none.", True)
           else do
             errors <- loadModule md
-            return $ ((Just (unlines $ map printLoadMessage errors)), True)
+            return $ (Just $ unlines $ map printLoadMessage errors, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
         help = (,True) . Just <$> replHelp Nothing
 
@@ -144,7 +144,9 @@ commandTypeof [_]  = return (Just "Expression expected", True)
 commandTypeof args = MC.handleAll (\e ->
                           return (Just (displayException e), True)) $
                        liftInterpreter (typeOf expression) >>=
-                       \res -> return (Just (expression ++ " :: " ++ fixType res), True)
+                       \res -> return (Just (expression ++
+                                             " :: " ++
+                                             fixType res), True)
   where
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"

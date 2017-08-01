@@ -8,6 +8,7 @@ module Goodies
 
 import Control.Monad.State (get, put, runStateT)
 import Control.Monad.Trans (lift)
+import Data.List (intercalate)
 import Data.Tuple (swap)
 
 -- -----------------------------------------------------------------------------
@@ -57,10 +58,9 @@ two (_:xs) = one xs
 
 -- | Encloses a string in parentheses if the given condition is true.
 parensIf :: Bool -> String -> String
-parensIf c s = if c then "(" ++ s ++ ")" else s
+parensIf c s = if c then '(' : s ++ ")" else s
 
 -- | Returns a string representation of a tuple with the given list of
 --   components.
 tupled :: [String] -> String
-tupled []     = "()"
-tupled (x:xs) = "(" ++ x ++ concatMap (", " ++) xs ++ ")"
+tupled xs = '(' : intercalate ", " xs ++ ")"
