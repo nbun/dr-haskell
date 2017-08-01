@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypeInference.HSE2AH (hseToAH,parseFile') where
+module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile') where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor
@@ -29,9 +29,14 @@ parseFile' f = do
 -- MAIN FUNCTION --------------------------------------------------------------
 -------------------------------------------------------------------------------
 
+-- | Transforms the 'Prelude' into an abstract Haskell representation.
+preludeToAH :: Module a -> Prog a
+preludeToAH = hseToNLAH DML.empty
+
 -- | Main function to convert HSE modules to abstract Haskell programs.
-hseToAH :: Module a -> Prog a
-hseToAH modu =  evalState (nlahToAH (hseToNLAH modu)) initialStateLambda
+-- | The maping contains already known types and functions from the 'Prelude'.
+hseToAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
+hseToAH tenv m = evalState (nlahToAH (hseToNLAH tenv m)) initialStateLambda
 
 -------------------------------------------------------------------------------
 -- LAMBDA LIFTING FOR LOCAL DECLARATIONS  -------------------------------------

@@ -1,6 +1,8 @@
 {-# LANGUAGE FlexibleContexts      #-}
 
-module TypeInference.HSEConversion (hseToNLAH,parseNamePattern) where
+module TypeInference.HSEConversion
+  ( hseToNLAH, parseNamePattern
+  ) where
 
 import           Language.Haskell.Exts as HSE
 import           TypeInference.AbstractHaskell  as AH
@@ -42,8 +44,8 @@ getidx name = do
 
 -- | Transforms a haskell-src-extensions module into an abstract haskell
 --   program
-hseToNLAH :: Module a -> Prog a
-hseToNLAH modu = evalState (astToAbstractHaskell modu) initialState
+hseToNLAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
+hseToNLAH _ modu = evalState (astToAbstractHaskell modu) initialState
 
 astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
 astToAbstractHaskell modu@(Module l modh mp imps declas) =
