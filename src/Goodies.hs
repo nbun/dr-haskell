@@ -8,8 +8,8 @@ module Goodies
 
 import Control.Monad.State (get, put, runStateT)
 import Control.Monad.Trans (lift)
-import Data.List (intercalate)
-import Data.Tuple (swap)
+import Data.List           (intercalate)
+import Data.Tuple          (swap)
 
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions
