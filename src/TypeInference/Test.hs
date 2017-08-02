@@ -1,64 +1,21 @@
--- Test zur Extraktion der Funktionsnamen
-
-{- f x = x
-
-h x y = 5
-
-i =  \x -> 4 + x
-
-j = 4 + 5
-
-z a b | a == b = True
-      | otherwise = false
-
-w c d = y c
-  where
-    y c = 6
-
-v x = let g e = e + x
-        in x + g 5
-
-hallo x =
-  do
-    o <- gets
-    let fn =  "bu"
-    return ()
--}
---f :: [a] -> [a]
---f y = y ++ y
-
---f :: Int -> Int -> Int
---f x y = x
-
--- Abhängigkeit nach oben funktioniner hier bei f und g noch nicht
---g :: Int -> Int -> Int
---g z y = f z y
---------------------------------------------------------------------------------
-
--- Wenn lokale Funktionen keinen Typen haben gibt es bei der
--- Inferenz einen Fehler
+f x y =  g z
+  where g z = 6 + x
 
 
---f :: Int -> a -> Int
---f x y = h 5
---  where
---     h z = x
-
--------------------------------------------------------------------------------
-
--- Noch keine Typeangaben für Funktionen aus der Prelude
--- f :: Int -> Int -> Int
--- f x y = x + y
-
--------------------------------------------------------------------------------
--- Leeres Program funktioniert
--------------------------------------------------------------------------------
-
---Funktioniert
-
-
-
--------------------------------------------------------------------------------
---h :: a -> a
---h x  = x
--------------------------------------------------------------------------------
+Prog ("") [] []
+      [Func ("","f")  Public Untyped
+            (Rules [Rule NoTypeAnn
+                         [PVar NoTypeAnn (0,"x")
+                         ,PVar NoTypeAnn (1,"y")
+                         ]
+                         (SimpleRhs (Apply NoTypeAnn
+                                          (Symbol NoTypeAnn ("","f.g"))
+                                          (List NoTypeAnn [Var NoTypeAnn (2,"z")
+                                                          ,Var NoTypeAnn (0,"x")
+                                                          ]
+                                          )
+                                     )
+                          )
+                          [LocalFunc ...]
+              )
+      ,Func (SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 9 2 20, srcInfoPoints = []}) (("","f.g"),SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 9 2 20, srcInfoPoints = []}) 2 Public Untyped (Rules [Rule (SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 13 2 20, srcInfoPoints = [SrcSpan "TypeInference/Test.hs" 2 13 2 14]}) NoTypeAnn [PVar NoTypeAnn ((2,"z"),SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 11 2 12, srcInfoPoints = []}),PVar NoTypeAnn ((0,"x"),SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 13 2 20, srcInfoPoints = [SrcSpan "TypeInference/Test.hs" 2 13 2 14]})] (SimpleRhs (InfixApply (SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 15 2 20, srcInfoPoints = []}) NoTypeAnn (Lit NoTypeAnn (Intc 6,SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 15 2 16, srcInfoPoints = []})) (("","+"),SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 15 2 20, srcInfoPoints = []}) (Var NoTypeAnn ((0,"x"),SrcSpanInfo {srcInfoSpan = SrcSpan "TypeInference/Test.hs" 2 19 2 20, srcInfoPoints = []})))) []])]
