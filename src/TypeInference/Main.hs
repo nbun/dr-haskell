@@ -9,32 +9,22 @@ module TypeInference.Main
   , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
-import           Control.Applicative                  ((<|>))
-import           Control.Monad.Except                 (ExceptT, runExceptT,
-                                                       throwError)
-import           Control.Monad.State                  (State, evalState, get,
-                                                       modify, put)
-import           Data.List                            (find)
-import qualified Data.Map                             as DM
-import           Data.Maybe                           (catMaybes, fromJust,
-                                                       mapMaybe)
-import           Goodies                              (both, bothM, concatMapM,
-                                                       mapAccumM, one, two,
-                                                       (++=))
-import           Language.Haskell.Exts                (Module, ParseResult (..),
-                                                       SrcSpan, SrcSpanInfo,
-                                                       noInfoSpan, parseFile)
-import           TypeInference.AbstractHaskell
-import           TypeInference.AbstractHaskellGoodies
-import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
-import           TypeInference.HSEConversion          (hseToNLAH)
-import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
-import           TypeInference.Term                   (Term (..), TermEqs)
-import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
-                                                       applyTESubstFD)
-import           TypeInference.Unification            (UnificationError (..),
-                                                       unify)
+import Control.Applicative ((<|>))
+import Control.Monad.Except (ExceptT, runExceptT, throwError)
+import Control.Monad.State (State, evalState, get, modify, put)
+import Data.List (find)
+import qualified Data.Map as DM
+import Data.Maybe (catMaybes, fromJust, mapMaybe)
+import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
+import Language.Haskell.Exts (Module, ParseResult (..), SrcSpan (..),
+                              SrcSpanInfo, noInfoSpan, parseFile)
+import TypeInference.AbstractHaskell
+import TypeInference.AbstractHaskellGoodies
+import TypeInference.HSE2AH (hseToAH, preludeToAH)
+import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
+import TypeInference.Term (Term (..), TermEqs)
+import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
+import TypeInference.Unification (UnificationError (..), unify)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type environments
@@ -626,7 +616,9 @@ inferExpr' e = do e' <- annExpr e
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
-inferHSE ps = inferProg ps . hseToAH (getTypeEnv ps)
+inferHSE ps m = let tenv = getTypeEnv ps
+                    p = hseToAH tenv m
+                 in inferProgEnv (DM.union tenv (getTypeEnv [p])) p
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)

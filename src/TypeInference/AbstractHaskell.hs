@@ -12,7 +12,7 @@ module TypeInference.AbstractHaskell
   , showTypeSig, showTypeAnn, showLiteral
   ) where
 
-import           Goodies (one, parensIf, tupled)
+import Goodies (one, parensIf, tupled)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
