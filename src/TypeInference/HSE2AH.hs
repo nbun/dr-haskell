@@ -1,17 +1,17 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypeInference.HSE2AH (hseToAH,parseFile') where
+module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile') where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor
-import           Data.Map.Lazy                  as DML
-import           Language.Haskell.Exts          as HSE
-import           TypeInference.AbstractHaskell  as AH
-import           TypeInference.TypeSig
+import           Data.Map.Lazy                 as DML
+import           Language.Haskell.Exts         as HSE
+import           TypeInference.AbstractHaskell as AH
 import           TypeInference.HSEConversion
 import           TypeInference.AHAbstract
 import           TypeInference.AHAddVariables
+import           TypeInference.TypeSig
 
 -- Funktionen aus der Prelude müssen qualifiziert werden
 -- PreludeNamen mit aufnehmenn
@@ -26,9 +26,13 @@ parseFile' f = do
 -- MAIN FUNCTION --------------------------------------------------------------
 -------------------------------------------------------------------------------
 
--- | Main function to convert HSE modules to abstract Haskell programs.
---hseToAH :: Module a -> Prog a
-hseToAH modu = evalState (nlahToAH (hseToNLAH modu)) initialStateLambda
+-- | Transforms the 'Prelude' into an abstract Haskell representation.
+preludeToAH :: Module a -> Prog a
+preludeToAH = hseToNLAH DML.empty
+
+-- | The maping contains already known types and functions from the 'Prelude'.
+hseToAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
+hseToAH tenv m = evalState (nlahToAH (hseToNLAH tenv m)) initialStateLambda
 
 -------------------------------------------------------------------------------
 -- LAMBDA LIFTING FOR LOCAL DECLARATIONS  -------------------------------------
@@ -47,6 +51,7 @@ nlahToAH p@(Prog m q t fs) =
    let list = transFormLocalProg [] v
    let newProg = Prog n i t (fd ++ list)
    return newProg
+
 -------------------------------------------------------------------------------
 -- LIFTING TO TOPLEVEL --------------------------------------------------------
 -------------------------------------------------------------------------------

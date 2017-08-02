@@ -6,6 +6,7 @@ module DrHaskellLint (module DrHaskellLint) where
 import           CodeCoverage.Coverage
 import           Control.Lens                        hiding (Level)
 import           Data.List
+import           Data.List.Utils
 import           Data.Maybe
 import           Language.Haskell.Exts
 import qualified Language.Haskell.HLint3             as Hlint
@@ -32,7 +33,15 @@ main = do
             (level, file, format) <- parseArgs args
             -- parse the cli parameters for level,
             -- filename and the output format (plain,json)
-            run level file format -- the running, testing and linting
+            file' <- manipulatePathWithHostvar file --for dockerised running
+            run level file' format -- the running, testing and linting
+
+manipulatePathWithHostvar :: String -> IO String
+manipulatePathWithHostvar file = do
+    hostpath <- lookupEnv "DRHASKELLHOSTPATH"
+    case hostpath of
+        Nothing   -> return file
+        Just path -> return $ replace path "/tmp/drhaskell-src" file
 
 -- | Determines from the level the correct levelCode and invokes hlint
 --   (including conversion of linting datastructures).

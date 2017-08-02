@@ -6,7 +6,7 @@
 
 module TypeInference.Main
   ( TIError (..)
-  , inferExpr, inferFuncDecl, inferHSE, inferProg, getTEFromFile
+  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
 import Control.Applicative ((<|>))
@@ -16,11 +16,11 @@ import Data.List (find)
 import qualified Data.Map as DM
 import Data.Maybe (catMaybes, fromJust, mapMaybe)
 import Goodies ((++=), both, bothM, concatMapM, mapAccumM, one, two)
-import Language.Haskell.Exts (Module, ParseResult (..), SrcSpanInfo, parseFile)
+import Language.Haskell.Exts (Module, ParseResult (..), SrcSpan (..),
+                              SrcSpanInfo, noInfoSpan, parseFile)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH (hseToAH)
-import TypeInference.HSEConversion (hseToNLAH)
+import TypeInference.HSE2AH (hseToAH, preludeToAH)
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)
@@ -72,19 +72,70 @@ getTypeEnv = listToTypeEnv . concatMap extractProg
                                                    return (qn, te)
 
     extractTypeDecl :: TypeDecl a -> [(QName, TypeExpr a)]
-    extractTypeDecl (TypeSyn _ (qn, _) _ _ te) = [(qn, te)]
     extractTypeDecl (Type x qn _ vs cs)
       = map (extractConsDecl (TCons x qn (map TVar vs))) cs
+    extractTypeDecl (TypeSyn _ (qn, _) _ _ te) = [(qn, te)]
 
     extractConsDecl :: TypeExpr a -> ConsDecl a -> (QName, TypeExpr a)
     extractConsDecl te (Cons x (qn, _) _ _ tes)
       = (qn, foldr (FuncType x) te tes)
 
--- | Reads in the given file and returns the type environment given by the
---   corresponding Haskell module.
-getTEFromFile :: FilePath -> IO (TypeEnv SrcSpanInfo)
-getTEFromFile fp = do (ParseOk m) <- parseFile fp
-                      return (getTypeEnv [hseToNLAH m])
+-- | Reads in the 'Prelude' from the given file and returns the corresponding
+--   abstract Haskell representation. Adds functions for the list constructor
+--   '(:)' and the tuple type constructors with a maximum arity of fifteen.
+prelude :: FilePath -> IO (Prog SrcSpanInfo)
+prelude fp = do (ParseOk m) <- parseFile fp
+                let (Prog (_, x) _ tds fds) = preludeToAH m
+                let fds' = lc : map preQualFD fds ++ tupleCons 15
+                let tds' = map preQualTD tds
+                return (Prog (pre, x) [] tds' fds')
+  where
+    a = teVar 0 x
+    x = noInfoSpan (SrcSpan pre (-1) (-1) (-1) (-1))
+    lc = Func x (preName "(:)", x) 2 Public (TypeSig lte) (External x NoTypeAnn)
+    lte = FuncType x a (FuncType x (listType a x x) (listType a x x))
+
+    tupleCons :: Int -> [FuncDecl SrcSpanInfo]
+    tupleCons n | n < 2     = error err
+                | otherwise = map tupleCons' [2..n]
+      where
+        err = "There is no tuple type constructor with an arity lower than two!"
+
+    tupleCons' :: Int -> FuncDecl SrcSpanInfo
+    tupleCons' n
+      = let vs = map (`teVar` x) [0..n - 1]
+            te = foldr (FuncType x) (tupleType vs x x) vs
+         in Func x (tupleName n, x) n Public (TypeSig te) (External x NoTypeAnn)
+
+-- | Adds the 'Prelude' qualifier to all names in the given function
+--   declaration.
+preQualFD :: FuncDecl a -> FuncDecl a
+preQualFD (Func x ((_, n), y) a v ts _)
+  = Func x (preName n, y) a v (preQualTS ts) (External x NoTypeAnn)
+
+-- | Adds the 'Prelude' qualifier to all names in the given type signature.
+preQualTS :: TypeSig a -> TypeSig a
+preQualTS Untyped      = Untyped
+preQualTS (TypeSig te) = TypeSig (preQualTE te)
+
+-- | Adds the 'Prelude' qualifier to all names in the given type expression.
+preQualTE :: TypeExpr a -> TypeExpr a
+preQualTE (FuncType x t1 t2)        = FuncType x (preQualTE t1) (preQualTE t2)
+preQualTE (TCons x ((_, n), y) tes) = TCons x (preName n, y) (map preQualTE tes)
+preQualTE te                        = te
+
+-- | Adds the 'Prelude' qualifier to all names in the given type declaration.
+preQualTD :: TypeDecl a -> TypeDecl a
+preQualTD (Type x ((_, n), y) v vs cds)
+  = Type x (preName n, y) v vs (map preQualCD cds)
+preQualTD (TypeSyn x ((_, n), y) v vs te)
+  = TypeSyn x (preName n, y) v vs (preQualTE te)
+
+-- | Adds the 'Prelude' qualifier to all names in the given constructor
+--   declaration.
+preQualCD :: ConsDecl a -> ConsDecl a
+preQualCD (Cons x ((_, n), y) a v tes)
+  = Cons x (preName n, y) a v (map preQualTE tes)
 
 -- -----------------------------------------------------------------------------
 -- Representation of type inference states
@@ -386,13 +437,14 @@ annExpr (List x _ es)             = do te <- nextTVar x
 -- -----------------------------------------------------------------------------
 
 -- | Returns the annotated type from the given expression or 'Nothing' if no
---   type is annotated.
+--   type is annotated. Returns the return type for the 'InfixApply'
+--   constructor.
 exprType' :: Expr a -> Maybe (TypeExpr a)
 exprType' (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
 exprType' e                       = exprType e
 
 -- | Returns the annotated type from the given pattern or 'Nothing' if no type
---   is annotated.
+--   is annotated. Returns the return type for the 'PComb' constructor.
 patternType' :: Pattern a -> Maybe (TypeExpr a)
 patternType' (PComb _ ta _ _) = fmap returnType (typeAnnType ta)
 patternType' p                = patternType p
@@ -564,7 +616,9 @@ inferExpr' e = do e' <- annExpr e
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
-inferHSE ps = inferProg ps . hseToAH
+inferHSE ps m = let tenv = getTypeEnv ps
+                    p = hseToAH tenv m
+                 in inferProgEnv (DM.union tenv (getTypeEnv [p])) p
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)

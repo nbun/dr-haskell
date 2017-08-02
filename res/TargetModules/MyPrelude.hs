@@ -3,15 +3,15 @@
 -}
 
 module MyPrelude (
-  -- | Data types
+  -- | Data types from the 'Prelude'.
   Prelude.Int,
   Prelude.Float,
-  Prelude.Bool(..),
-  Prelude.Maybe(..),
-  Prelude.Either(..),
   Prelude.Char,
   Prelude.String,
-  -- | Comparison operators ==, <, >, <=, >= for Int, Bool and Char.
+  Prelude.Bool (..),
+  Prelude.Maybe (..),
+  Prelude.Either (..),
+  -- | Comparison operators ==, /=, <, >, <=, >= for 'Int', 'Bool' and 'Char'.
   eqInt,
   eqBool,
   eqChar,
@@ -30,7 +30,7 @@ module MyPrelude (
   geqInt,
   geqBool,
   geqChar,
-  -- | Arithmetic operators +, -, * and / for Int and Float.
+  -- | Arithmetic operators +, -, * and / for 'Int' and 'Float'.
   (+),
   (-),
   (*),
@@ -39,14 +39,15 @@ module MyPrelude (
   (-.),
   (*.),
   (/.),
-  -- | Simple versions of list functions that use Foldable or Num.
+  -- | Simple versions of list functions that use 'Foldable' or 'Num'.
   length,
   concat,
   foldl,
   foldr,
   sum,
   all,
-  lookup, -- lookup has an extra eq :: a -> a -> Bool argument.
+  -- | 'lookup' has an extra @eq :: a -> a -> Bool@ argument.
+  lookup,
   -- | More infix operators.
   (Prelude.++),
   (Prelude..),
@@ -82,8 +83,10 @@ module MyPrelude (
 
 import qualified Prelude
 
---------------------------------------------------------------------------------
--- | Comparison operators
+-- -----------------------------------------------------------------------------
+-- Comparison operators
+-- -----------------------------------------------------------------------------
+
 eqInt :: Prelude.Int -> Prelude.Int -> Prelude.Bool
 eqInt = (Prelude.==)
 
@@ -138,8 +141,10 @@ gtChar = (Prelude.>)
 geqChar :: Prelude.Char -> Prelude.Char -> Prelude.Bool
 geqChar = (Prelude.>=)
 
---------------------------------------------------------------------------------
--- | Arithmetic operators
+-- -----------------------------------------------------------------------------
+-- Arithmetic operators
+-- -----------------------------------------------------------------------------
+
 (-) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (-) = (Prelude.-)
 
@@ -164,8 +169,10 @@ geqChar = (Prelude.>=)
 (/.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (/.) = (Prelude./)
 
---------------------------------------------------------------------------------
--- | List functions
+-- -----------------------------------------------------------------------------
+-- List functions
+-- -----------------------------------------------------------------------------
+
 length :: [a] -> Prelude.Int
 length = Prelude.length
 
