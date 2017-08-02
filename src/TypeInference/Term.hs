@@ -12,7 +12,7 @@ module TypeInference.Term
   ) where
 
 import Data.List (intercalate)
-import Goodies (parensIf)
+import Goodies   (parensIf)
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations

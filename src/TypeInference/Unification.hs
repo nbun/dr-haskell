@@ -9,11 +9,12 @@ module TypeInference.Unification
   , unify, unifiable
   ) where
 
-import Data.Either (isRight)
-import Data.List (mapAccumL)
-import qualified Data.Map as DM
-import TypeInference.Substitution (Subst, emptySubst, extendSubst)
-import TypeInference.Term (VarIdx, Term (..), TermEq, TermEqs, showVarIdx)
+import           Data.Either                (isRight)
+import           Data.List                  (mapAccumL)
+import qualified Data.Map                   as DM
+import           TypeInference.Substitution (Subst, emptySubst, extendSubst)
+import           TypeInference.Term         (Term (..), TermEq, TermEqs, VarIdx,
+                                             showVarIdx)
 
 -- -----------------------------------------------------------------------------
 -- Representation of unification errors
