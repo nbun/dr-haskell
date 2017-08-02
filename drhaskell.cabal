@@ -6,13 +6,13 @@ version:             0.0.0.1
 -- synopsis:            
 -- description:         
 license:             GPL-3
-license-file:        LICENSE
+license-file:        LICENSE.md
 author:              (none)
 maintainer:          (none)
 -- copyright:           
 category:            Teaching
 build-type:          Simple
-extra-source-files:  README.md LICENSE
+extra-source-files:  README.md LICENSE.md
 data-dir:            res
 data-files:          Testing/templates.hs, TargetModules/Tests.hs, TargetModules/MyPrelude.hs, TargetModules/StartupEnvironment.hs
 cabal-version:       >=1.10
