@@ -22,7 +22,8 @@ import           Goodies                              (both, bothM, concatMapM,
                                                        mapAccumM, one, two,
                                                        (++=))
 import           Language.Haskell.Exts                (Module, ParseResult (..),
-                                                       SrcSpanInfo, parseFile)
+                                                       SrcSpan, SrcSpanInfo,
+                                                       noInfoSpan, parseFile)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
