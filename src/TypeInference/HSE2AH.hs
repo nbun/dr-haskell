@@ -13,8 +13,6 @@ import           TypeInference.AHAbstract
 import           TypeInference.AHAddVariables
 import           TypeInference.TypeSig
 
--- Funktionen aus der Prelude müssen qualifiziert werden
--- PreludeNamen mit aufnehmenn
 -- Special Constructoren dazu
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)

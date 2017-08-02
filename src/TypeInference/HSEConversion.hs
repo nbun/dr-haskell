@@ -9,6 +9,7 @@ import           Data.Map.Lazy                 as DML
 import           Language.Haskell.Exts         as HSE
 import           TypeInference.AbstractHaskell as AH
 import           TypeInference.TypeSig
+import           TypeInference.AbstractHaskellGoodies
 
 -------------------------------------------------------------------------------
 -- STATE FOR VARIABLEINDEX ----------------------------------------------------
@@ -233,7 +234,7 @@ parseRulesOutOfPats  modu ts pat rhs  =
 -- | Parses rules
 parseRules ::
   MonadState AHState m => MName -> TypeS a -> Match a -> m (AH.Rule a)
-parseRules str t (Match l _ pats rhs wbinds) =
+parseRules str t (Match l _ pats rhs wbinds)             =
   do
     r@(AH.Rule l tya p rh loc) <- parseRule str t pats rhs
     case wbinds of
@@ -241,7 +242,14 @@ parseRules str t (Match l _ pats rhs wbinds) =
       Just y -> do
                   locs <- (parseBinds str t) y
                   return $ AH.Rule l tya p rh (loc ++ locs)
--- InfixMatch
+parseRules str t (InfixMatch l pat name pats rhs mbinds) =
+  do
+    r@(AH.Rule l tya p rh loc) <- parseRule str t ([pat] ++ pats) rhs
+    case mbinds of
+      Nothing -> return $ AH.Rule l tya p rh (loc)
+      Just y -> do
+                  locs <- (parseBinds str t) y
+                  return $ AH.Rule l tya p rh (loc ++ locs)
 
 -- | Parses a rule
 parseRule ::
@@ -422,7 +430,7 @@ parseExpr mn  _ (HSE.Var l qn)                    =
                  y <- getidx (parseQName qn)
                  return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
-  return $ AH.Symbol NoTypeAnn  ((mn,parseQName qn), l)
+  return $ parseQNameForSpecial mn l qn
 parseExpr _  _ (HSE.Lit l lit)                   =
   return $ AH.Lit NoTypeAnn (parseLiteral lit, l)
 parseExpr mn t (InfixApp l exp1 qop exp2)        =
@@ -506,6 +514,23 @@ parseExpr mn t (EnumFromThenTo l exp1 exp2 exp3) =
                    (Apply l NoTypeAnn  expr1 (Apply l NoTypeAnn expr2 expr3))
 parseExpr _  _ _                                 =
   error "parseExpr"
+
+parseQNameForSpecial mn l x@(Special a (UnitCon b))          =
+    AH.Symbol NoTypeAnn ((mn,parseQName x), l)
+parseQNameForSpecial mn l (Special a (ListCon b))          =
+  AH.List b NoTypeAnn []
+parseQNameForSpecial mn l x@(Special a (FunCon b))         =
+  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
+parseQNameForSpecial mn l (Special a (TupleCon b box i))   =
+  AH.Tuple a NoTypeAnn []
+parseQNameForSpecial mn l (Special a(HSE.Cons b))          =
+    AH.List b NoTypeAnn []
+parseQNameForSpecial mn l (Special a (UnboxedSingleCon b)) =
+  AH.Tuple a NoTypeAnn []
+parseQNameForSpecial mn l x@(UnQual a name)                =
+  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
+parseQNameForSpecial mn l x@(Qual a mon name)              =
+  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
 
 -- | Transforms a right hand side to an expr
 rightHandtoExp ::
@@ -609,17 +634,16 @@ parseTyp modu (TyFun l t1 t2)         =
 parseTyp modu (TyTuple l Boxed types) =
   do
     ty <- mapM (parseTyp modu) types
-    return $ TCons l ((modu, "tupel"),l) ty
+    return $ TCons l (tupleName (length types),l) ty
 parseTyp modu (TyList l typ)          =
   do
     ty <- parseTyp modu typ
-    return $ TCons l ((modu, "list"),l) [(ty)]
+    return $ TCons l (("Prelude", "[]"),l) [(ty)]
 parseTyp modu (TyCon l qname)         =
   return $ TCons l ((modu, parseQName qname),l) []
 parseTyp modu (TyParen l t)           =
-  do
-    ty <- parseTyp modu t
-    return $ TCons l ((modu, "paren"),l) [(ty)]
+  parseTyp modu t
+    --return $ TCons l ((modu, ""),l) [(ty)]
 parseTyp modu  _                      =
   error "parseTyp"
 
@@ -668,8 +692,6 @@ parseQName _                 = ""
 parseMatchName :: Match l -> String
 parseMatchName (Match l name patterns rhs wbinds)       = parsename name
 parseMatchName (InfixMatch l pat1 name pat2 rhs wbinds) = parsename name
-
-
 
 -- | Look of the type of a function is defined in the module
 searchForType :: String -> TypeS l -> Maybe (Type l)
@@ -782,7 +804,7 @@ getFunctionNamesDecls (PatBind l pat rhs mbinds)        =
                    return ()
 getFunctionNamesDecls _                                 = return ()
 
-getFunctionNamesMatches (Match l name pats rhs mbinds) =
+getFunctionNamesMatches (Match l name pats rhs mbinds)          =
   do
     getFunctionNamesRhs rhs
     case mbinds of
@@ -795,7 +817,21 @@ getFunctionNamesMatches (Match l name pats rhs mbinds) =
                    ahs <- get
                    put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [parsename name]}
                    return ()
---InfixMatch l (Pat l) (Name l) [Pat l] (Rhs l) (Maybe (Binds l))
+getFunctionNamesMatches (InfixMatch l pat name pats rhs mbinds) =
+  do
+    getFunctionNamesRhs rhs
+    case mbinds of
+      Just mb -> do
+                   getFunctionNamesBinds mb
+                   ahs <- get
+                   put AHState {idx = idx ahs, vmap = vmap ahs,
+                   fctNames = fctNames ahs ++ [parsename name]}
+                   return ()
+      Nothing -> do
+                   ahs <- get
+                   put AHState {idx = idx ahs, vmap = vmap ahs,
+                   fctNames = fctNames ahs ++ [parsename name]}
+                   return ()
 
 getFunctionNamesBinds (BDecls l decls) =
   do
