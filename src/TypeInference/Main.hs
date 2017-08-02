@@ -20,7 +20,7 @@ import Language.Haskell.Exts (Module, ParseResult (..), SrcSpan (..),
                               SrcSpanInfo, noInfoSpan, parseFile)
 import TypeInference.AbstractHaskell
 import TypeInference.AbstractHaskellGoodies
-import TypeInference.HSE2AH (hseToAH, preludeToAH)
+import TypeInference.HSE2AH (hseToAH, preludeToAH,parseFile')
 import TypeInference.Normalization (normalize, normFuncDecl, normExpr)
 import TypeInference.Term (Term (..), TermEqs)
 import TypeInference.TypeSubstitution (TESubst, applyTESubstFD, applyTESubstE)

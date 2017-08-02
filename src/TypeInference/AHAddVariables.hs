@@ -40,10 +40,6 @@ addToPatterns xs ys l =
                ys
                xs
 
--- | Returns the difference of two lists
-findDifference :: Eq a => [a] -> [a] -> [a]
-findDifference xs ys = [y | y <- ys, y `notElem` xs]
-
 -------------------------------------------------------------------------------
 -- ADDING FREE VARIABLES ------------------------------------------------------
 -------------------------------------------------------------------------------

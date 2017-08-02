@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 
 module TypeInference.HSEConversion
-  ( hseToNLAH, parseNamePattern
+  ( hseToNLAH, parseNamePattern, findDifference
   ) where
 
 import           Control.Monad.State.Lazy
@@ -45,20 +45,45 @@ getidx name = do
 -- | Transforms a haskell-src-extensions module into an abstract haskell
 --   program
 hseToNLAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
-hseToNLAH _ modu = evalState (astToAbstractHaskell modu) initialState
+hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 
-astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
-astToAbstractHaskell modu@(Module l modh mp imps declas) =
+--astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
+astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
   do
     getFunctionNames modu
+    st <- get
+    let defFcts = fctNames st
+    let mapAsList = toList mapTE
+    let allKeys =  collectKeys mapAsList
+    let allKeyFctNames = extractOutOfQName allKeys
+    let difBtDefAndPre = findDifference defFcts allKeyFctNames
+    let addedPrefix = addPre difBtDefAndPre allKeyFctNames
+    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ addedPrefix}
     let mn = parseModuleHead modh
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
     tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
     fdcl <- mapM (parseFunDecls mn ts) $ filterFunDecls declas
     return $ Prog (mn,l) il tdcl fdcl
-astToAbstractHaskell _ = return $ Prog ("",undefined) [] [] []
+astToAbstractHaskell _ _ = return $ Prog ("",undefined) [] [] []
 
+collectKeys :: [(a,b)] -> [a]
+collectKeys []         = []
+collectKeys ((a,b):xs) = [a] ++ collectKeys xs
+
+-- | Returns the difference of two lists
+findDifference :: Eq a => [a] -> [a] -> [a]
+findDifference xs ys = [y | y <- ys, y `notElem` xs]
+
+extractOutOfQName :: [(MName,String)] -> [String]
+extractOutOfQName []         = []
+extractOutOfQName ((a,b):xs) = [b] ++ collectKeys xs
+
+addPre :: [String] -> [String] -> [String]
+addPre [] _         = []
+addPre (x:xs) mapkv = case elem x mapkv of
+                        False -> x : addPre xs mapkv
+                        True  -> ("Prelude"++ x): (addPre xs mapkv)
 -------------------------------------------------------------------------------
 -- CREATION OF TYPEDECLS ------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -115,28 +140,36 @@ parseConDecl _  _                            =
 
 -- | Parses a typevariables out of a type
 parseTypeVariables :: MonadState AHState m => Type l -> m [(VarName, l)]
-parseTypeVariables (TyVar l name)     = do
+parseTypeVariables (TyVar l name)      =
+  do
                                           y <- getidx (parsename name)
                                           return [((y, parsename name),l)]
-parseTypeVariables (TyFun _ t1 t2)    = do
+parseTypeVariables (TyFun _ t1 t2)     =
+  do
                                           pv1 <- parseTypeVariables t1
                                           pv2 <- parseTypeVariables t2
                                           return $ pv1 ++ pv2
-parseTypeVariables (TyTuple _ _ x)     = do
+parseTypeVariables (TyTuple _ _ x)     =
+  do
                                            pl <- mapM parseTypeVariables x
                                            let pv = concat pl
                                            return pv
-parseTypeVariables (TyList _ t)        = parseTypeVariables t
-parseTypeVariables (TyApp _ t1 t2)     = do
-                                           pv1 <- parseTypeVariables t1
-                                           pv2 <- parseTypeVariables t2
-                                           return $ pv1 ++ pv2
-parseTypeVariables (TyParen _ t)       = parseTypeVariables t
-parseTypeVariables (TyInfix _ t1 _ t2) = do
-                                           pv1 <- parseTypeVariables t1
-                                           pv2 <- parseTypeVariables t2
-                                           return $ pv1 ++ pv2
-parseTypeVariables _                   = return []
+parseTypeVariables (TyList _ t)        =
+  parseTypeVariables t
+parseTypeVariables (TyApp _ t1 t2)     =
+  do
+    pv1 <- parseTypeVariables t1
+    pv2 <- parseTypeVariables t2
+    return $ pv1 ++ pv2
+parseTypeVariables (TyParen _ t)       =
+  parseTypeVariables t
+parseTypeVariables (TyInfix _ t1 _ t2) =
+  do
+    pv1 <- parseTypeVariables t1
+    pv2 <- parseTypeVariables t2
+    return $ pv1 ++ pv2
+parseTypeVariables _                   =
+  return []
 
 -- | Parses a datatype name
 parseTypeName :: String -> DeclHead l -> AH.QName
@@ -380,6 +413,11 @@ parseExpr mn  _ (HSE.Var l qn)                    =
     let name = parseQName qn
     case elem name (fctNames ahs) of
       True ->  return $ AH.Symbol NoTypeAnn ((mn, parseQName qn), l)
+      False -> do
+                 y <- getidx (parseQName qn)
+                 return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
+    case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
+      True -> return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l)
       False -> do
                  y <- getidx (parseQName qn)
                  return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
