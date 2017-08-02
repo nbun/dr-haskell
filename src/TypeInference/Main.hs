@@ -517,10 +517,12 @@ eqsPattern te (PTuple x (TypeAnn tae) ps)
      in return [te =.= tae, tae =.= tupleType ptes x x]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PList x (TypeAnn tae) ps)
-  = let ptes = mapMaybe patternType' ps
-     in return ([te =.= tae, tae =.= listType (head ptes) x x]
-                  ++ map (head ptes =.=) (tail ptes))
-          ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
+  | null ps   = do tae' <- nextTVar x
+                   return [tae =.= listType tae' x x]
+  | otherwise = let ptes = mapMaybe patternType' ps
+                 in return ([te =.= tae, tae =.= listType (head ptes) x x]
+                              ++ map (head ptes =.=) (tail ptes))
+                      ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern _  _                            = return []
 
 -- | Returns the type expression equations for the given expression.
@@ -567,10 +569,12 @@ eqsExpr (Tuple x (TypeAnn te) es)
      in return [te =.= tupleType etes x x]
           ++= concatMapM eqsExpr es
 eqsExpr (List x (TypeAnn te) es)
-  = let etes = mapMaybe exprType' es
-     in return ((te =.= listType (head etes) x x)
-                  : map (head etes =.=) (tail etes))
-          ++= concatMapM eqsExpr es
+  | null es   = do te' <- nextTVar x
+                   return [te =.= listType te' x x]
+  | otherwise = let etes = mapMaybe exprType' es
+                 in return ((te =.= listType (head etes) x x)
+                             : map (head etes =.=) (tail etes))
+                      ++= concatMapM eqsExpr es
 eqsExpr _                                    = return []
 
 -- -----------------------------------------------------------------------------
