@@ -95,10 +95,10 @@ getTypeEnv = listToTypeEnv . concatMap extractProg
 --   '(:)' and the tuple type constructors with a maximum arity of fifteen.
 prelude :: FilePath -> IO (Prog SrcSpanInfo)
 prelude fp = do (ParseOk m) <- parseFile fp
-                let (Prog (_, x) _ tds fds) = preludeToAH m
+                let (Prog (_, y) _ tds fds) = preludeToAH m
                 let fds' = lc : map preQualFD fds ++ tupleCons 15
                 let tds' = map preQualTD tds
-                return (Prog (pre, x) [] tds' fds')
+                return (Prog (pre, y) [] tds' fds')
   where
     a = teVar 0 x
     x = noInfoSpan (SrcSpan pre (-1) (-1) (-1) (-1))
@@ -478,17 +478,17 @@ eqsRule te (Rule x (TypeAnn tae) ps rhs _)
           ++= eqsRhs rhs
 eqsRule _  _                               = return []
 
--- | Returns a type expression equation for the given guard expression.
-eqsGuard :: Expr a -> TIMonad a (TypeExprEq a)
+-- | Returns the type expression equations for the given guard expression.
+eqsGuard :: Expr a -> TIMonad a (TypeExprEqs a)
 eqsGuard e = let x = exprAnn e
-              in return (boolType x x =.= fromJust (exprType' e))
+              in return [boolType x x =.= fromJust (exprType' e)]
+                   ++= eqsExpr e
 
 -- | Returns the type expression equations for the given right-hand side.
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
-eqsRhs (GuardedRhs _ eqs) = do eqs' <- concatMapM (eqsExpr . snd) eqs
-                               geqs <- mapM (eqsGuard . fst) eqs
-                               return (eqs' ++ geqs)
+eqsRhs (GuardedRhs _ eqs)
+  = concatMapM (eqsExpr . snd) eqs ++= concatMapM (eqsGuard . fst) eqs
 
 -- | Returns the type expression equations for the given branch expression and
 --   the given case type expression and case expression type expression.
@@ -518,7 +518,7 @@ eqsPattern te (PTuple x (TypeAnn tae) ps)
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern te (PList x (TypeAnn tae) ps)
   | null ps   = do tae' <- nextTVar x
-                   return [tae =.= listType tae' x x]
+                   return [te =.= tae, tae =.= listType tae' x x]
   | otherwise = let ptes = mapMaybe patternType' ps
                  in return ([te =.= tae, tae =.= listType (head ptes) x x]
                               ++ map (head ptes =.=) (tail ptes))
@@ -584,8 +584,8 @@ eqsExpr _                                    = return []
 -- | Returns the type expression of a typed function declaration or a type
 --   variable if the function declaration is untyped.
 funcDeclType :: FuncDecl a -> TypeExpr a
-funcDeclType (Func x (qn, _) _ _ Untyped _)      = teVar 0 x
-funcDeclType (Func _ (qn, _) _ _ (TypeSig te) _) = te
+funcDeclType (Func x _ _ _ Untyped _)      = teVar 0 x
+funcDeclType (Func _ _ _ _ (TypeSig te) _) = te
 
 -- | Infers the given function declaration with the given list of programs. The
 --   function declaration may not be contained in the given programs.
