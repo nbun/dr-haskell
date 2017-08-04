@@ -46,3 +46,11 @@ data Error l = NoFunDef (Name l) [Name l]
   deriving (Show, Typeable, Ord, Eq)
 
 instance (Show l, Typeable l) => Exception (Error l)
+
+-- | Errors that make further usage of a module impossible
+isCritical :: Error l -> Bool
+isCritical (NoFunDef _ _)    = True
+isCritical (Undefined _ _)   = True
+isCritical (SyntaxError _ _) = True
+isCritical (Pragma _ _)      = True
+isCritical _                 = False
