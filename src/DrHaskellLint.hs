@@ -60,13 +60,15 @@ run level file format = do
 runWithRepl :: [Lint] -> String -> Level -> LinterOutput -> IO ()
 runWithRepl hlintHints file lvl format = do
     let state = forceLevel .~ Just lvl $ initialLintReplState -- get Repl state
-    ParseOk m1 <- parseModified file -- Parse input file with repl impl
-    (m2, errs) <- transformModule [] state m1 -- "
-    errs' <- runCheckLevel lvl file -- run checks
-    coverage <- getConverageOutput m2 -- run coverage
-    putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
-                                                             (errs ++ errs'))
-    -- build output
+    parseRes <- parseModified file -- Parse input file with repl impl
+    case parseRes of
+      ParseOk m1 -> do
+        (m2, errs) <- transformModule [] state m1 -- "
+        errs' <- runCheckLevel lvl file -- run checks
+        coverage <- getConverageOutput m2 -- run coverage
+        putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
+                                 (errs ++ errs')) -- build output
+      ParseFailed _ _ -> return ()
 
 -- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]
