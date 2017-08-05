@@ -98,6 +98,14 @@ buildUnknownError e  messageClass l =
         message = prettyErrorWithInfoSwitchAndLevel False l e
     in Lint filename position messageClass message
 
+buildParseError :: SrcLoc -> String -> Lint
+buildParseError loc message =
+  Lint (srcFilename loc) position Error message
+  where
+    lpos = srcLine loc
+    cpos = srcColumn loc
+    position = (lpos, cpos, lpos, cpos + 1)
+
 -- | Transforms every known Error via the previpusly specified functions into
 -- the Lint-Datatype
 transformError :: Maybe Level -> Error SrcSpanInfo -> Lint

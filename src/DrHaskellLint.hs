@@ -68,7 +68,8 @@ runWithRepl hlintHints file lvl format = do
         coverage <- getConverageOutput m2 -- run coverage
         putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
                                  (errs ++ errs')) -- build output
-      ParseFailed _ _ -> return ()
+      ParseFailed pos m ->
+        putStrLn $ lintErrorHlint [buildParseError pos m] format (Just lvl) []
 
 -- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]
