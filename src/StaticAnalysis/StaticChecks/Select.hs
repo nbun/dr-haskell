@@ -4,6 +4,7 @@ module StaticAnalysis.StaticChecks.Select (
 ) where
 
 import           AstChecks.Check
+import           Data.Char
 import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
@@ -118,9 +119,15 @@ dataDecls = declFilter isFunBind
 
 -- | Calculates the levenshtein distance of two names
 calcLev :: Name l -> Name l -> Int
-calcLev n m = levenshteinDistance defaultEditCosts s t
+calcLev n m = levenshteinDistance defaultEditCosts s t + penalty
   where s = nameString n
         t = nameString m
+        isChar c = let i = ord c in (i > 64 && i < 91) || (i > 96 && i < 123)
+        isOp     = foldr (\c b -> isChar c && b) True
+        penalty  = if (isOp s && not (isOp t)) || (not (isOp s) && isOp t)
+                  then 42 -- Operators like (+) should not be suggested when
+                          -- compared to a variable like 'x'
+                  else 0
 
 -- | Returns a list of similar names and their levenshtein distances for
 -- a given {module, declaration, ...} and a corresponding function that returns

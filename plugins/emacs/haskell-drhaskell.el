@@ -87,6 +87,7 @@ Maps the followind commands in the haskell keymap.
        to send the :reload command to Drhaskell without saving the buffer.
      \\[haskell-drhaskell-show-drhaskell-buffer]
        to show the Drhaskell buffer and go to it."
+  (setq haskell-doc-show-prelude nil)
   (local-set-key "\C-c\C-s" 'haskell-drhaskell-start-process)
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
