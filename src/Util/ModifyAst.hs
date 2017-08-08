@@ -9,6 +9,7 @@ module Util.ModifyAst (
   addDeriving,
   addDerivingToAllData,
   printModified,
+  translateLine,
 ) where
 
 import           Data.Char
@@ -273,3 +274,13 @@ addDerivingToAllData d (ModifiedModule mods (Module l h ps is ds) cs) = let
 
 printModified :: ModifiedModule -> String
 printModified m = exactPrint (modifiedModule m) (modifiedComments m)
+
+translateLine :: ModifiedModule -> Int -> Int
+translateLine = translateLine' . modifications
+  where
+    translateLine' []         q = q
+    translateLine' ((p,l):ms) q = translateLine' ms q'
+      where
+        q' = if q>p
+                then q-l
+                else q

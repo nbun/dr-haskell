@@ -20,8 +20,10 @@ cabal.sandbox.config
 .stack-work/
 cabal.project.local
 .HTF/
-.drhaskell/
+.ghc.environment.*
 
+.drhaskell/
+hlintReport.plain
 hpc_index.html
 hpc_index_alt.html
 hpc_index_exp.html
@@ -29,4 +31,3 @@ hpc_index_fun.html
 hpc_test
 hpc_test.tix
 Main.hs.html
-hlintReport.plain

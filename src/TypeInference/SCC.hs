@@ -5,7 +5,7 @@
 module TypeInference.SCC (scc) where
 
 import Data.Function (on)
-import Data.Set (Set (..), empty, insert, member)
+import Data.Set      (Set (..), empty, insert, member)
 
 -- -----------------------------------------------------------------------------
 -- Representation of internal data structures

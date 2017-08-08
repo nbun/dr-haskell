@@ -103,9 +103,9 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           (transModule, transErrors) <- transformModuleS duplDecls modLoad
           liftIO $ writeFile cfn $ printModified transModule
 
-          let errors = map (CheckError (Just level))
-                           (checkErrors' ++ transErrors)
-          if null errors || nonstrict
+          let errors' = checkErrors' ++ transErrors
+              errors  = map (CheckError (Just level)) errors'
+          if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++
                                            errors ++
