@@ -417,18 +417,18 @@ parseLocal _ _ _                     = return []
 parseExpr :: MonadState AHState m => MName -> TypeS a -> Exp a -> m (Expr a)
 parseExpr mn  _ (HSE.Var l qn)                    =
   do
-    ahs <- get
-    let name = parseQName qn
-    case elem name (fctNames ahs) of
-      True ->  return $ AH.Symbol NoTypeAnn ((mn, parseQName qn), l)
-      False -> do
-                 y <- getidx (parseQName qn)
-                 return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
-    case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
-      True -> return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l)
-      False -> do
-                 y <- getidx (parseQName qn)
-                 return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
+    case  qn  of
+        (Qual _ (ModuleName _ "Prelude") _) -> return $ AH.Symbol NoTypeAnn(("Prelude",parseQName qn),l)
+        _ -> do
+               ahs <- get
+               let name = parseQName qn
+               case elem name (fctNames ahs) of
+                 True ->  return $ AH.Symbol NoTypeAnn ((mn, parseQName qn), l)
+                 False -> case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
+                            True -> return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l)
+                            False -> do
+                                       y <- getidx (parseQName qn)
+                                       return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
   return $ parseQNameForSpecial mn l qn
 parseExpr _  _ (HSE.Lit l lit)                   =
@@ -644,8 +644,9 @@ parseTyp modu (TyCon l qname)         =
 parseTyp modu (TyParen l t)           =
   parseTyp modu t
     --return $ TCons l ((modu, ""),l) [(ty)]
-parseTyp modu  _                      =
-  error "parseTyp"
+--parseTyp modu (TyWildCard l mayn) = return $ TCons l (("",""), l) []
+--parseTyp modu  _                      =
+-- -error "parseTyp"
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
