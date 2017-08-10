@@ -96,7 +96,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                              SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
           -- TODO: Use return value of the type inference.
-          _ <- inferModule (modifiedModule modLoad)
+          _ <- liftIO $ inferModule (modifiedModule modLoad)
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
               cfn         = cdir </> base
