@@ -8,6 +8,7 @@ module Testing.ArbitGen (
 
 --Module for automatic generation of arbitrary instances
 
+import           Control.Arrow
 import           Data.Char
 import           Data.Functor
 import           Data.List
@@ -30,8 +31,23 @@ tyConToGenExp (QualConDecl _ _ _ (ConDecl _ n ts)) =
   [Qualifier () (InfixApp () (Var () (Qual () (ModuleName () "Prelude") (Ident () "return"))) (QVarOp () (Qual () (ModuleName () "Prelude") (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [Var () (UnQual () (Ident () ('x':show i))) | i <- [1..(length ts)]]))])
 
 typeToInstance :: Decl () -> Decl ()
-typeToInstance (DataDecl _ _ _ (DHead _ (Ident _ name)) qds _) =
-  InstDecl () Nothing (IRule () Nothing Nothing (IHApp () (IHCon () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary"))) (TyCon () (UnQual () (Ident () name))))) (Just [InsDecl () (PatBind () (PVar () (Ident () "arbitrary")) (UnGuardedRhs () (App () (Var () (Qual () (ModuleName () "Tests") (Ident () "oneof"))) (List () (map tyConToGenExp qds)))) Nothing)])
+typeToInstance (DataDecl _ _ _ h qds _) =
+    InstDecl () Nothing irule (Just [InsDecl () (PatBind () (PVar () (Ident () "arbitrary")) (UnGuardedRhs () (App () (Var () (Qual () (ModuleName () "Tests") (Ident () "oneof"))) (List () (map tyConToGenExp qds)))) Nothing)])
+  where
+    (name, tyvars) = deconstructHead h
+    deconstructHead :: DeclHead l -> (String, [String])
+    deconstructHead (DHead _ (Ident _ name)) = (name, [])
+    deconstructHead (DHParen _ h)            = deconstructHead h
+    deconstructHead (DHApp _ h (UnkindedVar _ (Ident _ tv)))   = (tv:) `second` deconstructHead h
+    deconstructHead (DHInfix _ (UnkindedVar _ (Ident _ tv)) (Ident _ name)) = (name, [tv])
+    irule = (IRule () Nothing context (IHApp () (IHCon () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary"))) instHead))
+    context = buildContext tyvars
+    buildContext [] = Nothing
+    buildContext xs = Just $ CxTuple () $ map buildContext' xs
+    buildContext' x = ClassA () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary")) [TyVar () (Ident () x)]
+    instHead = TyParen () $ buildInstHead tyvars
+    buildInstHead []     = TyCon () (UnQual () (Ident () name))
+    buildInstHead (x:xs) = TyApp () (buildInstHead xs) (TyVar () (Ident () x))
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo, [Comment])
 parseFile' f = fromParseResult <$> parseFileWithComments defaultParseMode f
