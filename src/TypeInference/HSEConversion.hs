@@ -36,7 +36,10 @@ getidx name = do
       Just x -> return x
       Nothing -> do
                    let idx' = idx ahs
-                   put AHState {idx= idx' +1 , vmap=insert name idx' $ vmap ahs,fctNames = fctNames ahs}
+                   put AHState {idx= idx' +1
+                               ,vmap=insert name idx' $ vmap ahs
+                               ,fctNames = fctNames ahs
+                               }
                    return idx'
 
 -------------------------------------------------------------------------------
@@ -418,17 +421,21 @@ parseExpr :: MonadState AHState m => MName -> TypeS a -> Exp a -> m (Expr a)
 parseExpr mn  _ (HSE.Var l qn)                    =
   do
     case  qn  of
-        (Qual _ (ModuleName _ "Prelude") _) -> return $ AH.Symbol NoTypeAnn(("Prelude",parseQName qn),l)
+        (Qual _ (ModuleName _ "Prelude") _) ->
+           return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn,l)
         _ -> do
                ahs <- get
-               let name = parseQName qn
+               let name = parseQName qn -- TODO gucken was ist hier richtig
                case elem name (fctNames ahs) of
-                 True ->  return $ AH.Symbol NoTypeAnn ((mn, parseQName qn), l)
-                 False -> case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
-                            True -> return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l)
-                            False -> do
-                                       y <- getidx (parseQName qn)
-                                       return $ AH.Var NoTypeAnn ((y,parseQName qn),l)
+                 True ->
+                   return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn, l)
+                 False ->
+                  case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
+                    True ->
+                      return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l) -- TODO hier auchnochmal gucken was das richtige ist
+                    False -> do
+                      y <- getidx (parseQName qn)
+                      return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
   return $ parseQNameForSpecial mn l qn
 parseExpr _  _ (HSE.Lit l lit)                   =
@@ -528,9 +535,9 @@ parseQNameForSpecial mn l (Special a(HSE.Cons b))          =
 parseQNameForSpecial mn l (Special a (UnboxedSingleCon b)) =
   AH.Tuple a NoTypeAnn []
 parseQNameForSpecial mn l x@(UnQual a name)                =
-  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
+  AH.Symbol NoTypeAnn (parseQNameNew mn x, l)
 parseQNameForSpecial mn l x@(Qual a mon name)              =
-  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
+  AH.Symbol NoTypeAnn (parseQNameNew mn x, l)
 
 -- | Transforms a right hand side to an expr
 rightHandtoExp ::
@@ -549,7 +556,7 @@ parsePatterns mn (HSE.PLit l sign lit)     =
 parsePatterns mn (PApp l qn pats)          =
   do
     pat <- mapM (parsePatterns mn) pats
-    return $ PComb l NoTypeAnn ((mn,parseQName qn),l) pat
+    return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) pat
 parsePatterns mn (HSE.PTuple l Boxed pats) =
   do
     pat <- mapM (parsePatterns mn) pats
@@ -584,8 +591,7 @@ parseStms str t (LetStmt l binds)   =
   do
     bnd <- parseBinds str t binds
     return $ SLet l bnd
-parseStms _  _ _                    =
-  error "parseStms"
+parseStms str t x = undefined
 
 -- | Parses a binding
 parseBinds ::
@@ -604,8 +610,8 @@ parseAlternatives str t (Alt l pat rhs _) =
 
 -- | Parses an QOp
 parseQOp :: String -> QOp l -> AH.QName
-parseQOp mn (QVarOp l qn) = (mn,parseQName qn)
-parseQOp mn (QConOp l qn) = (mn, parseQName qn)
+parseQOp mn (QVarOp l qn) = parseQNameNew mn qn
+parseQOp mn (QConOp l qn) = parseQNameNew mn qn
 
 -- | Parses an qualified statement
 parseQualsStms ::
@@ -622,31 +628,44 @@ parseLiteral _                = error "parseLiteral"
 
 -- | Parses a type
 parseTyp :: MonadState AHState m => MName -> Type a -> m (TypeExpr a)
-parseTyp _    (TyVar l name)          =
+parseTyp _    (TyVar l name)             =
   do
     y <- getidx (parsename name)
     return $ TVar ((y, parsename name),l)
-parseTyp modu (TyFun l t1 t2)         =
+parseTyp modu (TyFun l t1 t2)            =
   do
     ty1 <- parseTyp modu t1
     ty2 <- parseTyp modu t2
     return $ FuncType l ty1 ty2
-parseTyp modu (TyTuple l Boxed types) =
+parseTyp modu (TyTuple l Boxed types)    =
   do
     ty <- mapM (parseTyp modu) types
     return $ TCons l (tupleName (length types),l) ty
-parseTyp modu (TyList l typ)          =
+parseTyp modu (TyList l typ)             =
   do
     ty <- parseTyp modu typ
     return $ TCons l (("Prelude", "[]"),l) [(ty)]
-parseTyp modu (TyCon l qname)         =
-  return $ TCons l ((modu, parseQName qname),l) []
-parseTyp modu (TyParen l t)           =
+parseTyp modu (TyCon l qname)            =
+  do
+   case parseQName qname of
+     "Int"   -> return $ TCons l (("Prelude","Int"),l) []
+     "Maybe" -> return $ TCons l (("Prelude", "Maybe"),l) []
+     "Bool"  -> return $ TCons l (("Prelude","Bool"),l) []
+     "String"-> return $ TCons l (("Prelude", "String"),l) []
+     "Char"  -> return $ TCons l (("Prelude", "Char"),l) []
+     "Float" -> return $ TCons l (("Prelude","Float"),l) []
+     _ -> return $ TCons l (parseQNameNew modu qname,l) []
+parseTyp modu (TyParen l t)              =
   parseTyp modu t
-    --return $ TCons l ((modu, ""),l) [(ty)]
---parseTyp modu (TyWildCard l mayn) = return $ TCons l (("",""), l) []
---parseTyp modu  _                      =
--- -error "parseTyp"
+parseTyp modu (TyApp l t1 t2)            =
+  do
+    t1p <- parseTyp modu t1
+    t2p <- parseTyp modu t2
+    return $ FuncType l t1p t2p
+parseTyp modu (TyWildCard l (Just name)) =
+  return $ TCons l ((modu,parsename name), l) []
+parseTyp modu (TyWildCard l Nothing) =
+  return $ TCons l ((modu,""), l) []
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
@@ -689,6 +708,10 @@ parseQName (Qual l mdn name) = parsename name
 parseQName (UnQual l name)   = parsename name
 parseQName _                 = ""
 
+parseQNameNew modu (Qual l (ModuleName d mdn) name) = (mdn, parsename name)
+parseQNameNew modu (UnQual l name)   = (modu,parsename name)
+parseQNameNew modu _                 = ("","")
+
 -- | Parses a match name
 parseMatchName :: Match l -> String
 parseMatchName (Match l name patterns rhs wbinds)       = parsename name
@@ -728,11 +751,10 @@ parseNameOutOfPattern (PParen _ pat)            =
 parseNameOutOfPattern (PAsPat l name pat)       =
   parsename name
 
-  -- | For functions declarations only
-  --   FunBind,
-  --   Patbind,
-  --   are allowed
-
+-- | For functions declarations only
+--   FunBind,
+--   Patbind,
+--   are allowed
 filterFunDecls :: [Decl l] -> [Decl l]
 filterFunDecls []                                 = []
 filterFunDecls (x@(FunBind l mas@(m:matches)):xs) = x:filterFunDecls xs
