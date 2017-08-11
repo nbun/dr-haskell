@@ -555,9 +555,17 @@ parsePatterns mn (PAsPat l name pat)       =
   do
     y <- getidx (parsename name)
     patt <- parsePatterns mn pat
-    return $ PAs l NoTypeAnn ((y,parsename name),l) patt
+    return $ AH.PAs l NoTypeAnn ((y,parsename name),l) patt
+parsePatterns mn (HSE.PInfixApp l pat1 qn pat2)  =
+  do
+    pa1 <- parsePatterns mn pat1
+    pa2 <-parsePatterns mn pat2
+    return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) [pa1,pa2]
+parsePatterns mn (PWildCard l)             =
+  return $ AH.PList l NoTypeAnn []
 parsePatterns _  _                         =
   error "parsePatterns"
+
 
 parseStms ::
   MonadState AHState m => MName -> TypeS a -> Stmt a -> m (Statement a)
