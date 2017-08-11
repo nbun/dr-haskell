@@ -20,7 +20,7 @@ import           TypeInference.AbstractHaskellGoodies
 --   vmap contains all already seen variables and their index
 data AHState = AHState { idx      :: Int
                        , vmap     :: Map String Int
-                       , fctNames :: [String]
+                       , fctNames :: [AH.QName]
                        }
 
 -- | Initionalstate for AHState
@@ -54,16 +54,13 @@ hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 --astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
 astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
   do
-    getFunctionNames modu
-    st <- get
-    let defFcts = fctNames st
-    let mapAsList = toList mapTE
-    let allKeys =  collectKeys mapAsList
-    let allKeyFctNames = extractOutOfQName allKeys
-    let difBtDefAndPre = findDifference defFcts allKeyFctNames
-    let addedPrefix = addPre difBtDefAndPre allKeyFctNames
-    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ addedPrefix}
     let mn = parseModuleHead modh
+    getFunctionNames mn modu
+    st <- get
+    let qNamesMap = keys mapTE
+    let allFunctionNames = qNamesMap ++ fctNames st
+    -- selber definierte filter??
+    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
     tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
@@ -71,23 +68,10 @@ astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
     return $ Prog (mn,l) il tdcl fdcl
 astToAbstractHaskell _ _ = return $ Prog ("",undefined) [] [] []
 
-collectKeys :: [(a,b)] -> [a]
-collectKeys []         = []
-collectKeys ((a,b):xs) = [a] ++ collectKeys xs
-
 -- | Returns the difference of two lists
 findDifference :: Eq a => [a] -> [a] -> [a]
 findDifference xs ys = [y | y <- ys, y `notElem` xs]
 
-extractOutOfQName :: [(MName,String)] -> [String]
-extractOutOfQName []         = []
-extractOutOfQName ((a,b):xs) = [b] ++ collectKeys xs
-
-addPre :: [String] -> [String] -> [String]
-addPre [] _         = []
-addPre (x:xs) mapkv = case elem x mapkv of
-                        False -> x : addPre xs mapkv
-                        True  -> ("Prelude"++ x): (addPre xs mapkv)
 -------------------------------------------------------------------------------
 -- CREATION OF TYPEDECLS ------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -420,22 +404,22 @@ parseLocal _ _ _                     = return []
 parseExpr :: MonadState AHState m => MName -> TypeS a -> Exp a -> m (Expr a)
 parseExpr mn  _ (HSE.Var l qn)                    =
   do
+    ahs <- get
     case  qn  of
-        (Qual _ (ModuleName _ "Prelude") _) ->
-           return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn,l)
-        _ -> do
-               ahs <- get
-               let name = parseQName qn -- TODO gucken was ist hier richtig
-               case elem name (fctNames ahs) of
-                 True ->
-                   return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn, l)
-                 False ->
-                  case elem ('P':'r':'e':'l':'u':'d':'e':name) (fctNames ahs) of
-                    True ->
-                      return $ AH.Symbol NoTypeAnn (("Prelude",parseQName qn),l) -- TODO hier auchnochmal gucken was das richtige ist
-                    False -> do
-                      y <- getidx (parseQName qn)
-                      return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
+      (Qual _ mon name) -> case elem (parseModuleName mon,parsename name) (fctNames ahs) of
+                             True -> return $ AH.Symbol NoTypeAnn (parseQNameNew (parseModuleName mon) qn,l)
+                             False -> do
+                                       y <- getidx (parseQName qn)
+                                       return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
+
+      (UnQual l name) -> case elem (mn,parsename name) (fctNames ahs) of
+                           True -> return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn,l)
+                           False -> do
+                             case elem ("Prelude",parsename name) (fctNames ahs) of
+                               True -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
+                               False -> do
+                                         y <- getidx (parseQName qn)
+                                         return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
   return $ parseQNameForSpecial mn l qn
 parseExpr _  _ (HSE.Lit l lit)                   =
@@ -522,7 +506,7 @@ parseExpr mn t (EnumFromThenTo l exp1 exp2 exp3) =
 parseExpr _  _ _                                 =
   error "parseExpr"
 
-parseQNameForSpecial mn l x@(Special a (UnitCon b))          =
+parseQNameForSpecial mn l x@(Special a (UnitCon b))        =
     AH.Symbol NoTypeAnn ((mn,parseQName x), l)
 parseQNameForSpecial mn l (Special a (ListCon b))          =
   AH.List b NoTypeAnn []
@@ -575,7 +559,6 @@ parsePatterns mn (PAsPat l name pat)       =
 parsePatterns _  _                         =
   error "parsePatterns"
 
--- | parses a statement
 parseStms ::
   MonadState AHState m => MName -> TypeS a -> Stmt a -> m (Statement a)
 parseStms str t (Generator l pat e) =
@@ -797,105 +780,112 @@ filterQualsStmts (x:xs)                   = filterQualsStmts xs
 
 ------------------------------------------------------------------------------
 
-start modu = do
-  let (a,b) = runState (getFunctionNames modu) initialState
-  error $ show a
+start mn modu = do
+  let (a,b) = runState (getFunctionNames mn modu) initialState
   return a
 
-getFunctionNames :: MonadState AHState m => Module l -> m [String]
-getFunctionNames (Module l mdh mdP imps decl) =
+getFunctionNames :: MonadState AHState m =>String -> Module l -> m [AH.QName]
+getFunctionNames modu (Module l mdh mdP imps decl) =
   do
-   mapM getFunctionNamesDecls decl
+   mapM (getFunctionNamesDecls modu) decl
    ahs <- get
    return $ fctNames ahs
 
-getFunctionNamesDecls (FunBind l matches)               =
+getFunctionNamesDecls :: MonadState AHState m => String -> Decl l -> m ()
+getFunctionNamesDecls modu (FunBind l matches)               =
   do
-    mapM getFunctionNamesMatches matches
+    mapM (getFunctionNamesMatches modu) matches
     return ()
-getFunctionNamesDecls (PatBind l pat rhs mbinds)        =
+getFunctionNamesDecls modu (PatBind l pat rhs mbinds)        =
   do
     case mbinds of
       Nothing -> do
-                   getFunctionNamesPats pat
-                   getFunctionNamesRhs rhs
+                   getFunctionNamesPats modu pat
+                   getFunctionNamesRhs modu rhs
                    return ()
       Just mb -> do
-                   getFunctionNamesPats pat
-                   getFunctionNamesRhs rhs
-                   getFunctionNamesBinds mb
+                   getFunctionNamesPats modu pat
+                   getFunctionNamesRhs modu rhs
+                   getFunctionNamesBinds modu mb
                    return ()
-getFunctionNamesDecls _                                 = return ()
+getFunctionNamesDecls _  _                               =
+  return ()
 
-getFunctionNamesMatches (Match l name pats rhs mbinds)          =
+getFunctionNamesMatches :: MonadState AHState m =>String -> Match l -> m ()
+getFunctionNamesMatches modu (Match l name pats rhs mbinds)          =
   do
-    getFunctionNamesRhs rhs
+    getFunctionNamesRhs modu rhs
     case mbinds of
       Just mb -> do
-                   getFunctionNamesBinds mb
+                   getFunctionNamesBinds modu mb
                    ahs <- get
-                   put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [parsename name]}
+                   put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [(modu ,parsename name)]}
                    return ()
       Nothing -> do
                    ahs <- get
-                   put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [parsename name]}
+                   put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [(modu,parsename name)]}
                    return ()
-getFunctionNamesMatches (InfixMatch l pat name pats rhs mbinds) =
+getFunctionNamesMatches modu (InfixMatch l pat name pats rhs mbinds) =
   do
-    getFunctionNamesRhs rhs
+    getFunctionNamesRhs modu rhs
     case mbinds of
       Just mb -> do
-                   getFunctionNamesBinds mb
+                   getFunctionNamesBinds modu mb
                    ahs <- get
                    put AHState {idx = idx ahs, vmap = vmap ahs,
-                   fctNames = fctNames ahs ++ [parsename name]}
+                   fctNames = fctNames ahs ++ [(modu,parsename name)]}
                    return ()
       Nothing -> do
                    ahs <- get
                    put AHState {idx = idx ahs, vmap = vmap ahs,
-                   fctNames = fctNames ahs ++ [parsename name]}
+                   fctNames = fctNames ahs ++ [(modu,parsename name)]}
                    return ()
 
-getFunctionNamesBinds (BDecls l decls) =
+getFunctionNamesBinds :: MonadState AHState m => String -> Binds l -> m ()
+getFunctionNamesBinds modu (BDecls l decls) =
   do
-    mapM getFunctionNamesDecls decls
+    mapM (getFunctionNamesDecls modu) decls
     return ()
-getFunctionNamesBinds _                =
+getFunctionNamesBinds _ _               =
   return ()
 
-getFunctionNamesRhs (UnGuardedRhs l expr)          =
+getFunctionNamesRhs :: MonadState AHState m => String -> HSE.Rhs l -> m ()
+getFunctionNamesRhs modu (UnGuardedRhs l expr)          =
   do
-    getFunctionNamesExpr expr
+    getFunctionNamesExpr modu expr
     return ()
-getFunctionNamesRhs _                              =
+getFunctionNamesRhs _ _                             =
   return ()
 
-getFunctionNamesExpr (HSE.Let l binds expr) =
+getFunctionNamesExpr :: MonadState AHState m => String -> Exp l -> m ()
+getFunctionNamesExpr modu (HSE.Let l binds expr) =
   do
-    getFunctionNamesBinds binds
+    getFunctionNamesBinds modu binds
     return ()
-getFunctionNamesExpr (Do l stmts)           =
+getFunctionNamesExpr modu (Do l stmts)           =
   do
-    mapM getFunctionNamesStmts stmts
+    mapM (getFunctionNamesStmts modu) stmts
     return ()
-getFunctionNamesExpr _                      =
+getFunctionNamesExpr _   _                   =
   return ()
 
-getFunctionNamesPats pat =
+getFunctionNamesPats :: MonadState AHState m => String -> Pat l -> m ()
+getFunctionNamesPats modu pat                =
   do
     let fn = parseNameOutOfPattern pat
     ahs <- get
-    put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [fn]}
+    put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [(modu,fn)]}
     return ()
-getFunctionNamesStmts (Qualifier l expr)=
+
+getFunctionNamesStmts modu (Qualifier l expr)=
   do
-    getFunctionNamesExpr expr
+    getFunctionNamesExpr modu expr
     return ()
-getFunctionNamesStmts (LetStmt l binds) =
+getFunctionNamesStmts modu (LetStmt l binds) =
   do
-    getFunctionNamesBinds binds
+    getFunctionNamesBinds modu binds
     return ()
-getFunctionNamesStmts _                 =
+getFunctionNamesStmts _  _                   =
   return ()
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)

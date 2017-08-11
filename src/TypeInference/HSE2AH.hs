@@ -13,8 +13,6 @@ import           TypeInference.AHAbstract
 import           TypeInference.AHAddVariables
 import           TypeInference.TypeSig
 
--- Special Constructoren dazu
-
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do
           (ParseOk ast) <- parseFile f
