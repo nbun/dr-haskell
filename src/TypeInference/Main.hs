@@ -6,7 +6,7 @@
 
 module TypeInference.Main
   ( TIError (..)
-  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg,getTypeEnv
+  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg, getTypeEnv
   ) where
 
 import           Control.Applicative                  ((<|>))
