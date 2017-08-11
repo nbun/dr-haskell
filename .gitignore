@@ -1,5 +1,3 @@
-*.DS_Store
-*.directory
 dist
 dist-*
 cabal-dev
@@ -22,12 +20,11 @@ cabal.project.local
 .HTF/
 .ghc.environment.*
 
+.DS_Store
+.directory
 .drhaskell/
-hlintReport.plain
-hpc_index.html
-hpc_index_alt.html
-hpc_index_exp.html
-hpc_index_fun.html
-hpc_test
-hpc_test.tix
-Main.hs.html
+hpc_*
+*.hs.html
+*.mix
+*.pix
+*.tix
