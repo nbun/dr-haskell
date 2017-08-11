@@ -15,6 +15,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
 import           Data.Maybe
 import           Language.Haskell.Interpreter
+import           Paths_drhaskell
 import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
 import           System.FilePath
@@ -26,6 +27,8 @@ import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.ArbitGen                     as AG
 import qualified Testing.TestExpExtractor             as Tee
+import qualified TypeInference.AbstractHaskell        as AH
+import           TypeInference.Main
 import           Util.ModifyAst
 
 data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
@@ -54,6 +57,14 @@ loadInitialModules = do
 
 
 --todo: better path handling
+
+inferModule :: Exts.Module Exts.SrcSpanInfo
+            -> IO (Either (TIError Exts.SrcSpanInfo) (AH.Prog Exts.SrcSpanInfo))
+inferModule m
+  = do datadir <- getDataDir
+       let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
+       pre <- prelude myPreludePath
+       return (inferHSE [pre] m)
 
 {-
 loadModule does the following:
@@ -84,6 +95,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           return [CheckError Nothing $
                              SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
+          -- TODO: Use return value of the type inference.
+          _ <- liftIO $ inferModule (modifiedModule modLoad)
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
               cfn         = cdir </> base
