@@ -5,8 +5,9 @@
 -}
 
 module TypeInference.Main
-  ( TIError (..)
-  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg, getTypeEnv
+  ( TypeEnv, TIError (..)
+  , emptyTypeEnv, lookupType, insertType, listToTypeEnv, getTypeEnv, prelude
+  , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
 import           Control.Applicative                  ((<|>))

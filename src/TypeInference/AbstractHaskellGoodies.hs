@@ -200,13 +200,13 @@ modName (Prog (mn, _) _ _ _) = mn
 leftFuncType :: TypeExpr a -> TypeExpr a
 leftFuncType (FuncType _ te _) = te
 leftFuncType _
-  = error "The given type expression is not a function type!"
+  = error "The given type expression is not a function type expression!"
 
 -- | Returns the right type expression from the given function type expression.
 rightFuncType :: TypeExpr a -> TypeExpr a
 rightFuncType (FuncType _ _ te) = te
 rightFuncType _
-  = error "The given type expression is not a function type!"
+  = error "The given type expression is not a function type expression!"
 
 -- | Returns the return type expression of the given function type expression.
 returnType :: TypeExpr a -> TypeExpr a
