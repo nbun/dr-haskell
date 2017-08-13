@@ -9,10 +9,10 @@ module TypeInference.AbstractHaskell
   , Expr (..), Statement (..), Pattern (..), BranchExpr (..), Literal (..)
   , AHOptions (..)
   , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
-  , showTypeSig, showTypeAnn, showLiteral
+  , showTypeSig, showTypeAnn, showPattern, showLiteral
   ) where
 
-import Goodies (one, parensIf, tupled)
+import Goodies (list, one, parensIf, tuple, two)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -207,7 +207,7 @@ showTypeExpr opts = showTypeExpr' 0
       | snd qn == "[]" && one tes
         = '[' : showTypeExpr opts (head tes) ++ "]"
       | isTupleCons qn
-        = tupled (map (showTypeExpr opts) tes)
+        = tuple (map (showTypeExpr opts) tes)
       | otherwise
         = parensIf
             (p > 1 && not (null tes))
@@ -224,6 +224,25 @@ showTypeSig opts qn (TypeSig te) = showQName opts qn ++ " :: "
 showTypeAnn :: AHOptions -> TypeAnn a -> String
 showTypeAnn _    NoTypeAnn    = ""
 showTypeAnn opts (TypeAnn te) = showTypeExpr opts te
+
+-- | Transforms a pattern into a string representation.
+showPattern :: AHOptions -> Pattern a -> String
+showPattern opts = showPattern' True
+  where
+    showPattern' :: Bool -> Pattern a -> String
+    showPattern' _ (PVar _ (vn, _))       = showVarName vn
+    showPattern' _ (PLit _ (l, _))        = showLiteral l
+    showPattern' c (PComb _ _ (qn, _) ps)
+      | snd qn == "(:)" && two ps
+        = parensIf c (showPattern' True (head ps)
+                        ++ ":"
+                        ++ showPattern' True (ps !! 1))
+      | otherwise
+        = parensIf c (unwords (showQName opts qn : map (showPattern' True) ps))
+    showPattern' _ (PAs _ _ (vn, _) p)
+      = showVarName vn ++ "@" ++ showPattern' True p
+    showPattern' _ (PTuple _ _ ps)        = tuple (map (showPattern' False) ps)
+    showPattern' _ (PList _ _ ps)         = list (map (showPattern' False) ps)
 
 -- | Transforms a literal into a string representation.
 showLiteral :: Literal -> String

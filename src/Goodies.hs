@@ -3,7 +3,7 @@
 -}
 
 module Goodies
-  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf, tupled
+  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf, tuple, list
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -62,5 +62,10 @@ parensIf c s = if c then '(' : s ++ ")" else s
 
 -- | Returns a string representation of a tuple with the given list of
 --   components.
-tupled :: [String] -> String
-tupled xs = '(' : intercalate ", " xs ++ ")"
+tuple :: [String] -> String
+tuple xs = '(' : intercalate ", " xs ++ ")"
+
+-- | Returns a string representation of a list with the given list of
+--   components.
+list :: [String] -> String
+list xs = '[' : intercalate ", " xs ++ "]"
