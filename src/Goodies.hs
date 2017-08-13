@@ -4,6 +4,7 @@
 
 module Goodies
   ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf, tuple, list
+  , indent, vsep
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -69,3 +70,12 @@ tuple xs = '(' : intercalate ", " xs ++ ")"
 --   components.
 list :: [String] -> String
 list xs = '[' : intercalate ", " xs ++ "]"
+
+-- | Indents the given string with the given number of spaces.
+indent :: Int -> String -> String
+indent n xs = replicate n ' ' ++ xs
+
+-- | Joins the given list of strings to one single string by adding a newline
+--   character between two adjacent strings.
+vsep :: [String] -> String
+vsep = intercalate "\n"

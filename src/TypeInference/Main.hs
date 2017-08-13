@@ -6,8 +6,9 @@
 
 module TypeInference.Main
   ( TypeEnv, TIError (..)
-  , emptyTypeEnv, lookupType, insertType, listToTypeEnv, getTypeEnv, prelude
-  , inferExpr, inferFuncDecl, inferHSE, inferProg
+  , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
+  , composeTypeEnv, getTypeEnv, prelude, showTIError, inferExpr, inferFuncDecl
+  , inferHSE, inferProg
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -15,7 +16,6 @@ import           Control.Monad.Except                 (ExceptT, runExceptT,
                                                        throwError)
 import           Control.Monad.State                  (State, evalState, get,
                                                        modify, put)
-import           Data.List                            (find)
 import qualified Data.Map                             as DM
 import           Data.Maybe                           (catMaybes, fromJust,
                                                        mapMaybe)
@@ -69,6 +69,15 @@ insertType = DM.insert
 --   corresponding mapping of the given list is taken.
 listToTypeEnv :: [(QName, TypeExpr a)] -> TypeEnv a
 listToTypeEnv = DM.fromList
+
+-- | Returns a list with all mappings from the given type environment.
+typeEnvToList :: TypeEnv a -> [(QName, TypeExpr a)]
+typeEnvToList = DM.toList
+
+-- | Composes the first type environment with the second type environment.
+--   Mappings in the first type environment shadow those in the second.
+composeTypeEnv :: TypeEnv a -> TypeEnv a -> TypeEnv a
+composeTypeEnv = DM.union
 
 -- | Returns the type environment extracted from the given list of programs.
 getTypeEnv :: [Prog a] -> TypeEnv a
@@ -186,6 +195,17 @@ data TIError a = TIError String
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
   deriving Show
+
+-- | Transforms a type inference error into a string representation.
+showTIError :: TIError SrcSpanInfo -> String
+showTIError (TIError e)            = e
+showTIError (TIClash te1 te2)      = undefined
+showTIError (TIOccurCheck vn te)
+  = "OccurCheck: " ++ showVarName vn
+                   ++ " occurs in "
+                   ++ showTypeExpr defaultAHOptions te
+                   ++ "!"
+showTIError (TITooGeneral te1 te2) = undefined
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
@@ -582,6 +602,21 @@ eqsExpr _                                    = return []
 -- Functions for type inference of abstract Haskell programs
 -- -----------------------------------------------------------------------------
 
+-- | Infers the given expression with the given list of programs.
+inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
+inferExpr ps = inferExprEnv (getTypeEnv ps)
+
+-- | Infers the given expression with the given type environment.
+inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
+inferExprEnv tenv e = evalState (runExceptT (inferExpr' e)) (initTIState tenv)
+
+-- | Infers the given expression.
+inferExpr' :: Expr a -> TIMonad a (Expr a)
+inferExpr' e = do e' <- annExpr e
+                  eqs <- eqsExpr e'
+                  sub <- solve eqs
+                  return (normalize normExpr (applyTESubstE sub e'))
+
 -- | Returns the type expression of a typed function declaration or a type
 --   variable if the function declaration is untyped.
 funcDeclType :: FuncDecl a -> TypeExpr a
@@ -613,27 +648,12 @@ inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
        checkTooGeneral fd'
        return fd'
 
--- | Infers the given expression with the given list of programs.
-inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
-inferExpr ps = inferExprEnv (getTypeEnv ps)
-
--- | Infers the given expression with the given type environment.
-inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
-inferExprEnv tenv e = evalState (runExceptT (inferExpr' e)) (initTIState tenv)
-
--- | Infers the given expression.
-inferExpr' :: Expr a -> TIMonad a (Expr a)
-inferExpr' e = do e' <- annExpr e
-                  eqs <- eqsExpr e'
-                  sub <- solve eqs
-                  return (normalize normExpr (applyTESubstE sub e'))
-
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
 inferHSE ps m = let tenv = getTypeEnv ps
                     p = hseToAH tenv m
-                 in inferProgEnv (DM.union tenv (getTypeEnv [p])) p
+                 in inferProgEnv (composeTypeEnv tenv (getTypeEnv [p])) p
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
