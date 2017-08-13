@@ -30,7 +30,7 @@ import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
+                                                       normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
 import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
                                                        applyTESubstFD)
@@ -546,15 +546,48 @@ eqsPattern te (PList x (TypeAnn tae) ps)
                       ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern _  _                            = return []
 
+funExprType :: Expr a -> Maybe (TypeExpr a)
+funExprType (Var ta _)              = typeAnnType ta
+funExprType (Lit ta _)              = typeAnnType ta
+funExprType (Symbol ta _)           = typeAnnType ta
+funExprType (Apply _ _ e1 _)        = funExprType e1
+funExprType (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
+funExprType (Lambda _ ta _ _)       = typeAnnType ta
+funExprType (Let _ ta _ _)          = typeAnnType ta
+funExprType (DoExpr _ ta _)         = typeAnnType ta
+funExprType (ListComp _ ta _ _)     = typeAnnType ta
+funExprType (Case _ ta _ _)         = typeAnnType ta
+funExprType (Typed _ ta _ _)        = typeAnnType ta
+funExprType (IfThenElse _ ta _ _ _) = typeAnnType ta
+funExprType (Tuple _ ta _)          = typeAnnType ta
+funExprType (List _ ta _)           = typeAnnType ta
+
+funArgs :: Expr a -> [Maybe (TypeExpr a)]
+funArgs (Var ta _)              = []
+funArgs (Lit ta _)              = []
+funArgs (Symbol ta _)           = []
+funArgs (Apply _ _ e1 e2)       = funArgs e1 ++ [exprType' e2]
+funArgs (InfixApply _ ta _ _ _) = []
+funArgs (Lambda _ ta _ _)       = []
+funArgs (Let _ ta _ _)          = []
+funArgs (DoExpr _ ta _)         = []
+funArgs (ListComp _ ta _ _)     = []
+funArgs (Case _ ta _ _)         = []
+funArgs (Typed _ ta _ _)        = []
+funArgs (IfThenElse _ ta _ _ _) = []
+funArgs (Tuple _ ta _)          = []
+funArgs (List _ ta _)           = []
+
 -- | Returns the type expression equations for the given expression.
 eqsExpr :: Expr a -> TIMonad a (TypeExprEqs a)
 eqsExpr (Lit (TypeAnn te) (l, x))            = return [te =.= literalType l x x]
-eqsExpr (Apply _ (TypeAnn te) e1 e2)
-  = let lte = fromJust (exprType' e1)
-     in return [leftFuncType lte =.= fromJust (exprType' e2),
-                te =.= rightFuncType lte]
-          ++= eqsExpr e1
-          ++= eqsExpr e2
+eqsExpr (Apply x (TypeAnn te) e1 e2)
+  = let args = catMaybes (funArgs e1 ++ [exprType' e2])
+        fType = fromJust (funExprType e1)
+     in case fType of
+          _          -> return [fType =.= foldr (FuncType x) te args]
+                          ++= eqsExpr e1
+                          ++= eqsExpr e2
 eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
   = let lte = fromJust (exprType' e1)
         rte = fromJust (exprType' e2)
@@ -700,6 +733,9 @@ inferFuncGroup fds
 --   a too general variant of the second type expression or 'Nothing' if no such
 --   part exists.
 typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
+typeTooGeneral x@(TVar (vn1, _))  y@(TVar (vn2, _))
+  | fst vn1 == fst vn2 = Nothing
+  | otherwise          = Just (x, y)
 typeTooGeneral x@(TVar _)         y@FuncType{}         = Just (x, y)
 typeTooGeneral x@(TVar _)         y@TCons{}            = Just (x, y)
 typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
@@ -720,6 +756,8 @@ checkTooGeneral (Func _ (qn, _) _ _ _ rs)
   = do (tenv, _, _, _) <- get
        case lookupType qn tenv of
          Nothing -> return ()
-         Just te -> maybe (return ())
-                          (\(x, y) -> throwError (TITooGeneral x y))
-                          (typeTooGeneral te (head (catMaybes (rulesTypes rs))))
+         Just te ->
+           let te' = normalize normTypeExpr te
+            in maybe (return ())
+                     (\(x, y) -> throwError (TITooGeneral x y))
+                     (typeTooGeneral te' (head (catMaybes (rulesTypes rs))))
