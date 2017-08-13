@@ -205,7 +205,7 @@ showTypeExpr opts = showTypeExpr' 0
       = parensIf (p > 0) (showTypeExpr' 1 t1 ++ " -> " ++ showTypeExpr opts t2)
     showTypeExpr' p (TCons _ (qn, _) tes)
       | snd qn == "[]" && one tes
-        = '[' : showTypeExpr opts (head tes) ++ "]"
+        = list [showTypeExpr opts (head tes)]
       | isTupleCons qn
         = tuple (map (showTypeExpr opts) tes)
       | otherwise
@@ -235,12 +235,11 @@ showPattern opts = showPattern' True
     showPattern' c (PComb _ _ (qn, _) ps)
       | snd qn == "(:)" && two ps
         = parensIf c (showPattern' True (head ps)
-                        ++ ":"
-                        ++ showPattern' True (ps !! 1))
+                        ++ (':' : showPattern' True (ps !! 1)))
       | otherwise
         = parensIf c (unwords (showQName opts qn : map (showPattern' True) ps))
     showPattern' _ (PAs _ _ (vn, _) p)
-      = showVarName vn ++ "@" ++ showPattern' True p
+      = showVarName vn ++ ('@' : showPattern' True p)
     showPattern' _ (PTuple _ _ ps)        = tuple (map (showPattern' False) ps)
     showPattern' _ (PList _ _ ps)         = list (map (showPattern' False) ps)
 
