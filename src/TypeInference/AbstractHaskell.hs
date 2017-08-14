@@ -14,7 +14,7 @@ module TypeInference.AbstractHaskell
   , showBranchExpr, showLiteral
   ) where
 
-import Goodies (indent, list, one, parensIf, tuple, two, vsep)
+import Goodies (indent, list, one, parens, parensIf, tuple, two, vsep)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -201,15 +201,14 @@ showVarName = snd
 showProg :: AHOptions -> Prog a -> String
 showProg opts (Prog (mn, _) is tds fds)
   = let opts' = opts {currentModule = mn}
-        mn' = if null mn then mn else gsep (unwords ["module", mn, "where"])
+        mn' = if null mn then mn else unwords ["module", mn, "where"]
         is' = gsep (vsep (map (("import " ++) . fst) is))
         tds' = concatMap (gsep . showTypeDecl opts') tds
         fds' = concatMap (gsep . showFuncDecl opts') fds
-     in mn' ++ is' ++ tds' ++ fds'
+     in dropWhile (== '\n') (mn' ++ is' ++ tds' ++ fds')
   where
     gsep :: String -> String
-    gsep [] = []
-    gsep xs = xs ++ "\n\n"
+    gsep xs = if null xs then xs else "\n\n" ++ xs
 
 -- | Transforms an algebraic data type or type synonym declaration into a string
 --   representation.
@@ -319,9 +318,9 @@ showExpr' opts = showExpr'' False
                              showExpr'' True n e1,
                              showExpr'' True n e2])
     showExpr'' c n (Lambda _ _ ps e)
-      = parensIf True ("\\" ++ unwords (map (showPattern opts) ps)
-                            ++ " -> "
-                            ++ showExpr'' False n e)
+      = parens ("\\" ++ unwords (map (showPattern opts) ps)
+                     ++ " -> "
+                     ++ showExpr'' False n e)
     showExpr'' c n (Case _ _ e bs)
       = parensIf c ("case " ++ showExpr'' False n e
                             ++ " of\n"
@@ -336,7 +335,8 @@ showExpr' opts = showExpr'' False
       = tuple (map (showExpr'' False n) es)
     showExpr'' _ n (List _ _ es)
       = list (map (showExpr'' False n) es)
-    showExpr'' _ _ _                              = ""
+    showExpr'' _ _ _
+      = error "The expression can not be shown!"
 
 -- | Transforms a pattern into a string representation.
 showPattern :: AHOptions -> Pattern a -> String
