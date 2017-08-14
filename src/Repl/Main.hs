@@ -15,6 +15,7 @@ import           Language.Haskell.Interpreter
 import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
+import           StaticAnalysis.CheckState
 import           System.Console.Haskeline
 import           TypeInference.Main
 
@@ -141,13 +142,25 @@ replEvalCommand cmd = if null cmd then invalid cmd else
 
 commandTypeof :: [String] -> Repl (Maybe String, Bool)
 commandTypeof [_]  = return (Just "Expression expected", True)
-commandTypeof args = MC.handleAll (\e ->
-                          return (Just (displayException e), True)) $
-                       liftInterpreter (typeOf expression) >>=
-                       \res -> return (Just (expression ++
-                                             " :: " ++
-                                             fixType res), True)
+commandTypeof args = do
+    l <- use currentLevel
+    case l of
+         Level1    -> commandTypeofTI
+         Level2    -> commandTypeofTI
+         Level3    -> commandTypeofTI
+         LevelFull -> commandTypeofHint
   where
+    commandTypeofHint = MC.handleAll (\e ->
+                          return (Just (displayException e), True)) $
+                        liftInterpreter (typeOf expression) >>=
+                        \res -> return (Just (expression ++
+                                              " :: " ++
+                                              fixType res), True)
+    commandTypeofTI = do
+      p' <- use tiProg
+      case p' of
+           Nothing -> return (Nothing, True)
+           Just p  -> return (Just "type inference result", True)
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType         "Num a => a"         = "Int"

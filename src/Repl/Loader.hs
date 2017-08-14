@@ -122,8 +122,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           let errors' = checkErrors' ++ transErrors
               errors  = tiErrors ++ map (CheckError (Just level)) errors'
 
-          --TODO: reactivate this
-          if --null tiErrors &&
+          if null tiErrors &&
               (null errors || (nonstrict && not (any isCritical errors')))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++
