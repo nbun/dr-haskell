@@ -11,8 +11,7 @@ module TypeInference.Term
   , showVarIdx, showTermEq, showTermEqs
   ) where
 
-import Data.List (intercalate)
-import Goodies   (parensIf)
+import Goodies (parensIf, tuple)
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations
@@ -61,13 +60,10 @@ showTerm = showTerm' False
     showTerm' b (TermCons _ c ts)
       = case ts of
           []     -> show c
-          [l, r] -> parensIf b (showTerm' True l ++ " "
-                                                 ++ show c
-                                                 ++ " "
-                                                 ++ showTerm' True r)
-          _      -> show c ++ "("
-                           ++ intercalate "," (map (showTerm' False) ts)
-                           ++ ")"
+          [l, r] -> parensIf b (unwords [showTerm' True l,
+                                         show c,
+                                         showTerm' True r])
+          _      -> show c ++ tuple (map (showTerm' False) ts)
 
 -- | Transforms a term equation into a string representation.
 showTermEq :: Show f => TermEq f a -> String

@@ -3,8 +3,8 @@
 -}
 
 module Goodies
-  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, parensIf, tuple, list
-  , indent, vsep
+  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, brackets, parens
+  , parensIf, tuple, list, indent, vsep
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -57,19 +57,27 @@ two :: [a] -> Bool
 two []     = False
 two (_:xs) = one xs
 
+-- | Encloses a string in brackets.
+brackets :: String -> String
+brackets s = '[' : s ++ "]"
+
+-- | Encloses a string in parentheses.
+parens :: String -> String
+parens s = '(' : s ++ ")"
+
 -- | Encloses a string in parentheses if the given condition is true.
 parensIf :: Bool -> String -> String
-parensIf c s = if c then '(' : s ++ ")" else s
+parensIf c s = if c then parens s else s
 
 -- | Returns a string representation of a tuple with the given list of
 --   components.
 tuple :: [String] -> String
-tuple xs = '(' : intercalate ", " xs ++ ")"
+tuple = parens . intercalate ", "
 
 -- | Returns a string representation of a list with the given list of
 --   components.
 list :: [String] -> String
-list xs = '[' : intercalate ", " xs ++ "]"
+list = brackets . intercalate ", "
 
 -- | Indents the given string with the given number of spaces.
 indent :: Int -> String -> String
