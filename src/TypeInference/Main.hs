@@ -5,8 +5,10 @@
 -}
 
 module TypeInference.Main
-  ( TIError (..)
-  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg,getTypeEnv
+  ( TypeEnv, TIError (..)
+  , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
+  , composeTypeEnv, getTypeEnv, prelude, showTIError, inferExpr, inferFuncDecl
+  , inferHSE, inferProg
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -14,7 +16,6 @@ import           Control.Monad.Except                 (ExceptT, runExceptT,
                                                        throwError)
 import           Control.Monad.State                  (State, evalState, get,
                                                        modify, put)
-import           Data.List                            (find)
 import qualified Data.Map                             as DM
 import           Data.Maybe                           (catMaybes, fromJust,
                                                        mapMaybe)
@@ -29,7 +30,7 @@ import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
+                                                       normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
 import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
                                                        applyTESubstFD)
@@ -68,6 +69,15 @@ insertType = DM.insert
 --   corresponding mapping of the given list is taken.
 listToTypeEnv :: [(QName, TypeExpr a)] -> TypeEnv a
 listToTypeEnv = DM.fromList
+
+-- | Returns a list with all mappings from the given type environment.
+typeEnvToList :: TypeEnv a -> [(QName, TypeExpr a)]
+typeEnvToList = DM.toList
+
+-- | Composes the first type environment with the second type environment.
+--   Mappings in the first type environment shadow those in the second.
+composeTypeEnv :: TypeEnv a -> TypeEnv a -> TypeEnv a
+composeTypeEnv = DM.union
 
 -- | Returns the type environment extracted from the given list of programs.
 getTypeEnv :: [Prog a] -> TypeEnv a
@@ -185,6 +195,17 @@ data TIError a = TIError String
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
   deriving Show
+
+-- | Transforms a type inference error into a string representation.
+showTIError :: TIError SrcSpanInfo -> String
+showTIError (TIError e)            = e
+showTIError (TIClash te1 te2)      = undefined
+showTIError (TIOccurCheck vn te)
+  = "OccurCheck: " ++ showVarName vn
+                   ++ " occurs in "
+                   ++ showTypeExpr defaultAHOptions te
+                   ++ "!"
+showTIError (TITooGeneral te1 te2) = undefined
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
@@ -525,15 +546,48 @@ eqsPattern te (PList x (TypeAnn tae) ps)
                       ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
 eqsPattern _  _                            = return []
 
+funExprType :: Expr a -> Maybe (TypeExpr a)
+funExprType (Var ta _)              = typeAnnType ta
+funExprType (Lit ta _)              = typeAnnType ta
+funExprType (Symbol ta _)           = typeAnnType ta
+funExprType (Apply _ _ e1 _)        = funExprType e1
+funExprType (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
+funExprType (Lambda _ ta _ _)       = typeAnnType ta
+funExprType (Let _ ta _ _)          = typeAnnType ta
+funExprType (DoExpr _ ta _)         = typeAnnType ta
+funExprType (ListComp _ ta _ _)     = typeAnnType ta
+funExprType (Case _ ta _ _)         = typeAnnType ta
+funExprType (Typed _ ta _ _)        = typeAnnType ta
+funExprType (IfThenElse _ ta _ _ _) = typeAnnType ta
+funExprType (Tuple _ ta _)          = typeAnnType ta
+funExprType (List _ ta _)           = typeAnnType ta
+
+funArgs :: Expr a -> [Maybe (TypeExpr a)]
+funArgs (Var ta _)              = []
+funArgs (Lit ta _)              = []
+funArgs (Symbol ta _)           = []
+funArgs (Apply _ _ e1 e2)       = funArgs e1 ++ [exprType' e2]
+funArgs (InfixApply _ ta _ _ _) = []
+funArgs (Lambda _ ta _ _)       = []
+funArgs (Let _ ta _ _)          = []
+funArgs (DoExpr _ ta _)         = []
+funArgs (ListComp _ ta _ _)     = []
+funArgs (Case _ ta _ _)         = []
+funArgs (Typed _ ta _ _)        = []
+funArgs (IfThenElse _ ta _ _ _) = []
+funArgs (Tuple _ ta _)          = []
+funArgs (List _ ta _)           = []
+
 -- | Returns the type expression equations for the given expression.
 eqsExpr :: Expr a -> TIMonad a (TypeExprEqs a)
 eqsExpr (Lit (TypeAnn te) (l, x))            = return [te =.= literalType l x x]
-eqsExpr (Apply _ (TypeAnn te) e1 e2)
-  = let lte = fromJust (exprType' e1)
-     in return [leftFuncType lte =.= fromJust (exprType' e2),
-                te =.= rightFuncType lte]
-          ++= eqsExpr e1
-          ++= eqsExpr e2
+eqsExpr (Apply x (TypeAnn te) e1 e2)
+  = let args = catMaybes (funArgs e1 ++ [exprType' e2])
+        fType = fromJust (funExprType e1)
+     in case fType of
+          _          -> return [fType =.= foldr (FuncType x) te args]
+                          ++= eqsExpr e1
+                          ++= eqsExpr e2
 eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
   = let lte = fromJust (exprType' e1)
         rte = fromJust (exprType' e2)
@@ -581,6 +635,21 @@ eqsExpr _                                    = return []
 -- Functions for type inference of abstract Haskell programs
 -- -----------------------------------------------------------------------------
 
+-- | Infers the given expression with the given list of programs.
+inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
+inferExpr ps = inferExprEnv (getTypeEnv ps)
+
+-- | Infers the given expression with the given type environment.
+inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
+inferExprEnv tenv e = evalState (runExceptT (inferExpr' e)) (initTIState tenv)
+
+-- | Infers the given expression.
+inferExpr' :: Expr a -> TIMonad a (Expr a)
+inferExpr' e = do e' <- annExpr e
+                  eqs <- eqsExpr e'
+                  sub <- solve eqs
+                  return (normalize normExpr (applyTESubstE sub e'))
+
 -- | Returns the type expression of a typed function declaration or a type
 --   variable if the function declaration is untyped.
 funcDeclType :: FuncDecl a -> TypeExpr a
@@ -612,27 +681,12 @@ inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
        checkTooGeneral fd'
        return fd'
 
--- | Infers the given expression with the given list of programs.
-inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
-inferExpr ps = inferExprEnv (getTypeEnv ps)
-
--- | Infers the given expression with the given type environment.
-inferExprEnv :: TypeEnv a -> Expr a -> Either (TIError a) (Expr a)
-inferExprEnv tenv e = evalState (runExceptT (inferExpr' e)) (initTIState tenv)
-
--- | Infers the given expression.
-inferExpr' :: Expr a -> TIMonad a (Expr a)
-inferExpr' e = do e' <- annExpr e
-                  eqs <- eqsExpr e'
-                  sub <- solve eqs
-                  return (normalize normExpr (applyTESubstE sub e'))
-
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
 inferHSE ps m = let tenv = getTypeEnv ps
                     p = hseToAH tenv m
-                 in inferProgEnv (DM.union tenv (getTypeEnv [p])) p
+                 in inferProgEnv (composeTypeEnv tenv (getTypeEnv [p])) p
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
@@ -679,6 +733,9 @@ inferFuncGroup fds
 --   a too general variant of the second type expression or 'Nothing' if no such
 --   part exists.
 typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
+typeTooGeneral x@(TVar (vn1, _))  y@(TVar (vn2, _))
+  | fst vn1 == fst vn2 = Nothing
+  | otherwise          = Just (x, y)
 typeTooGeneral x@(TVar _)         y@FuncType{}         = Just (x, y)
 typeTooGeneral x@(TVar _)         y@TCons{}            = Just (x, y)
 typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
@@ -699,6 +756,8 @@ checkTooGeneral (Func _ (qn, _) _ _ _ rs)
   = do (tenv, _, _, _) <- get
        case lookupType qn tenv of
          Nothing -> return ()
-         Just te -> maybe (return ())
-                          (\(x, y) -> throwError (TITooGeneral x y))
-                          (typeTooGeneral te (head (catMaybes (rulesTypes rs))))
+         Just te ->
+           let te' = normalize normTypeExpr te
+            in maybe (return ())
+                     (\(x, y) -> throwError (TITooGeneral x y))
+                     (typeTooGeneral te' (head (catMaybes (rulesTypes rs))))

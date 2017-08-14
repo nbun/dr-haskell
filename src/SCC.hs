@@ -2,7 +2,7 @@
   Library for computation of strongly connected components.
 -}
 
-module TypeInference.SCC (scc) where
+module SCC (scc) where
 
 import Data.Function (on)
 import Data.Set      (Set (..), empty, insert, member)

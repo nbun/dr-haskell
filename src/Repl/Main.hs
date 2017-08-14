@@ -56,12 +56,12 @@ main :: IO ()
 main = do
   initialState <- handleCmdArgs
   res <- runRepl initialState $ do
+    liftInput showBanner
     initInterpreter
     fname <- use filename
     unless (null fname) $ do
       errors <- liftRepl $ loadModule fname
       liftInput $ replPrint (Just (unlines $ map printLoadMessage errors))
-    liftInput showBanner
     replLoop
   case res of
        Left err -> putStrLn $ "Error:" ++ show err

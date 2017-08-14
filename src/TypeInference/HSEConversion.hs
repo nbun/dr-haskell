@@ -216,7 +216,7 @@ parseRulesOutOfPats ::
   MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
 parseRulesOutOfPats  modu ts pat rhs  =
   do
-    rs <- parseRule modu ts [pat] rhs
+    rs <- parseRule modu ts [] rhs
     return $ Rules [rs]
 
 -- | Parses rules

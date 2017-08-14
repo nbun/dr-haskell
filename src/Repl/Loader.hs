@@ -95,8 +95,11 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           return [CheckError Nothing $
                              SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
-          -- TODO: Use return value of the type inference.
-          _ <- liftIO $ inferModule (modifiedModule modLoad)
+          tires <- liftIO $ inferModule (modifiedModule modLoad)
+          let (tiErrors, tiprog) = case tires of
+                Left e  -> ([DirectMessage $ show e], Nothing)
+                Right p -> ([], Just p)
+          tiProg .= tiprog
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
               cfn         = cdir </> base
@@ -117,8 +120,11 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           liftIO $ writeFile cfn $ printModified transModule
 
           let errors' = checkErrors' ++ transErrors
-              errors  = map (CheckError (Just level)) errors'
-          if null errors || (nonstrict && not (any isCritical errors'))
+              errors  = tiErrors ++ map (CheckError (Just level)) errors'
+
+          --TODO: reactivate this
+          if --null tiErrors &&
+              (null errors || (nonstrict && not (any isCritical errors')))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++
                                            errors ++

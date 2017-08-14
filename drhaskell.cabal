@@ -5,14 +5,14 @@ name:                drhaskell
 version:             0.0.0.1
 -- synopsis:            
 -- description:         
-license:             GPL-3
-license-file:        LICENSE.md
+license:             BSD3
+license-file:        LICENSE
 author:              (none)
 maintainer:          (none)
 -- copyright:           
 category:            Teaching
 build-type:          Simple
-extra-source-files:  README.md LICENSE.md
+extra-source-files:  README.md LICENSE
 data-dir:            res
 data-files:          Testing/templates.hs, TargetModules/Tests.hs, TargetModules/MyPrelude.hs, TargetModules/StartupEnvironment.hs
 cabal-version:       >=1.10
