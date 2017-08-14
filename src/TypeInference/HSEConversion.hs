@@ -422,14 +422,19 @@ parseExpr mn  _ (HSE.Var l qn)                    =
                                          y <- getidx (parseQName qn)
                                          return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
-  return $ parseQNameForSpecial mn l qn
+  do
+    case qn of
+      (UnQual _ (Ident _ "True")) -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
+      (UnQual _ (Ident _ "False")) -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
+      _ -> return $ parseQNameForSpecial mn l qn
 parseExpr _  _ (HSE.Lit l lit)                   =
   return $ AH.Lit NoTypeAnn (parseLiteral lit, l)
 parseExpr mn t (InfixApp l exp1 qop exp2)        =
   do
     expr1 <- parseExpr mn t exp1
     expr2 <- parseExpr mn t exp2
-    return $ InfixApply l NoTypeAnn expr1 (parseQOp mn qop, l) expr2
+    qop' <- parseQOp mn qop
+    return $ InfixApply l NoTypeAnn expr1 (qop', l) expr2
 parseExpr mn t (HSE.Lambda l pats e)             =
   do
     expr <- parseExpr mn t e
@@ -563,7 +568,9 @@ parsePatterns mn (HSE.PInfixApp l pat1 qn pat2) =
     pa2 <-parsePatterns mn pat2
     return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) [pa1,pa2]
 parsePatterns mn (PWildCard l)                  =
-  return $ AH.PList l NoTypeAnn []
+  do
+    y <- getidx ("")
+    return $ AH.PVar NoTypeAnn ((y,""),l)
 parsePatterns _  _                              =
   error "parsePatterns"
 
@@ -601,9 +608,23 @@ parseAlternatives str t (Alt l pat rhs _) =
     return $ Branch l patt rh
 
 -- | Parses an QOp
-parseQOp :: String -> QOp l -> AH.QName
-parseQOp mn (QVarOp l qn) = parseQNameNew mn qn
-parseQOp mn (QConOp l qn) = parseQNameNew mn qn
+--parseQOp :: String -> QOp l -> AH.QName
+parseQOp mn (QVarOp l qn) =
+   do
+     ahs <- get
+     case elem (mn,parseQName qn) (fctNames ahs) of
+       True -> return $ parseQNameNew mn qn
+       False -> case elem ("Prelude",parseQName qn) (fctNames ahs) of
+         True -> return $ parseQNameNew "Prelude" qn
+         False -> return $ parseQNameNew mn qn
+parseQOp mn (QConOp l qn) =
+  do
+    ahs <- get
+    case elem (mn,parseQName qn) (fctNames ahs) of
+      True -> return $ parseQNameNew mn qn
+      False -> case elem ("Prelude",parseQName qn) (fctNames ahs) of
+        True -> return $ parseQNameNew "Prelude" qn
+        False -> return $ parseQNameNew mn qn
 
 -- | Parses an qualified statement
 parseQualsStms ::
@@ -658,6 +679,8 @@ parseTyp modu (TyWildCard l (Just name)) =
   return $ TCons l ((modu,parsename name), l) []
 parseTyp modu (TyWildCard l Nothing) =
   return $ TCons l ((modu,""), l) []
+parseTyp modu (TyForall l mtv mc t) = do
+  parseTyp modu t
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
