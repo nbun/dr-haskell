@@ -51,7 +51,8 @@ getidx name = do
 hseToNLAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
 hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 
---astToAbstractHaskell :: MonadState AHState m => Module a -> m (Prog a)
+astToAbstractHaskell ::
+  MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
 astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
   do
     let mn = parseModuleHead modh
@@ -351,8 +352,8 @@ toExprList ((a,b):xs) = a: b: toExprList xs
 makeRules' :: [AH.Rhs t] -> [Expr t]
 makeRules' ((AH.GuardedRhs a es):xs) = (toExprList es) ++ makeRules' xs
 
-parseRulesOutOfGuarded
-  :: MonadState AHState m => MName -> TypeS a -> GuardedRhs a -> m (AH.Rhs a)
+parseRulesOutOfGuarded ::
+   MonadState AHState m => MName -> TypeS a -> GuardedRhs a -> m (AH.Rhs a)
 parseRulesOutOfGuarded str t (HSE.GuardedRhs l stmts expr) = do
   tups <- mapM (parseTupels str t expr) stmts
   return $ AH.GuardedRhs l tups
@@ -531,39 +532,39 @@ rightHandtoExp str t (GuardedRhss _ gdrhs) = error "rightHandtoExp"
 
 -- | Parses a pattern
 parsePatterns:: MonadState AHState m => MName -> Pat l -> m (Pattern l)
-parsePatterns mn (HSE.PVar l name)         =
+parsePatterns mn (HSE.PVar l name)              =
   do
     y <- getidx (parsename name)
     return $ AH.PVar NoTypeAnn ((y,parsename name),l)
-parsePatterns mn (HSE.PLit l sign lit)     =
+parsePatterns mn (HSE.PLit l sign lit)          =
   return $ AH.PLit NoTypeAnn (parseLiteral lit, l)
-parsePatterns mn (PApp l qn pats)          =
+parsePatterns mn (PApp l qn pats)               =
   do
     pat <- mapM (parsePatterns mn) pats
     return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) pat
-parsePatterns mn (HSE.PTuple l Boxed pats) =
+parsePatterns mn (HSE.PTuple l Boxed pats)      =
   do
     pat <- mapM (parsePatterns mn) pats
     return $ AH.PTuple l NoTypeAnn pat
-parsePatterns mn (HSE.PList l pats)        =
+parsePatterns mn (HSE.PList l pats)             =
   do
     pat <- mapM (parsePatterns mn) pats
     return $ AH.PList l NoTypeAnn pat
-parsePatterns mn (PParen _ pat)            =
+parsePatterns mn (PParen _ pat)                 =
   parsePatterns mn pat
-parsePatterns mn (PAsPat l name pat)       =
+parsePatterns mn (PAsPat l name pat)            =
   do
     y <- getidx (parsename name)
     patt <- parsePatterns mn pat
     return $ AH.PAs l NoTypeAnn ((y,parsename name),l) patt
-parsePatterns mn (HSE.PInfixApp l pat1 qn pat2)  =
+parsePatterns mn (HSE.PInfixApp l pat1 qn pat2) =
   do
     pa1 <- parsePatterns mn pat1
     pa2 <-parsePatterns mn pat2
     return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) [pa1,pa2]
-parsePatterns mn (PWildCard l)             =
+parsePatterns mn (PWildCard l)                  =
   return $ AH.PList l NoTypeAnn []
-parsePatterns _  _                         =
+parsePatterns _  _                              =
   error "parsePatterns"
 
 
