@@ -467,6 +467,11 @@ annExpr (List x _ es)             = do te <- nextTVar x
 -- Functions for creation of type expression equations
 -- -----------------------------------------------------------------------------
 
+-- | Returns the list of type expressions from the given right-hand side.
+rhsTypes' :: Rhs a -> [Maybe (TypeExpr a)]
+rhsTypes' (SimpleRhs e)      = [exprType' e]
+rhsTypes' (GuardedRhs _ eqs) = map (exprType' . snd) eqs
+
 -- | Returns the annotated type from the given expression or 'Nothing' if no
 --   type is annotated. Returns the return type for the 'InfixApply'
 --   constructor.
@@ -491,7 +496,7 @@ eqsRules _  _                          = return []
 --   given function type expression.
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
-  = let rhstes = catMaybes (rhsTypes rhs)
+  = let rhstes = catMaybes (rhsTypes' rhs)
         ptes = mapMaybe patternType' ps
         eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
      in return ((te =.= tae) : map (tae =.=) eqs)
@@ -584,10 +589,9 @@ eqsExpr (Lit (TypeAnn te) (l, x))            = return [te =.= literalType l x x]
 eqsExpr (Apply x (TypeAnn te) e1 e2)
   = let args = catMaybes (funArgs e1 ++ [exprType' e2])
         fType = fromJust (funExprType e1)
-     in case fType of
-          _          -> return [fType =.= foldr (FuncType x) te args]
-                          ++= eqsExpr e1
-                          ++= eqsExpr e2
+     in return [fType =.= foldr (FuncType x) te args]
+          ++= eqsExpr e1
+          ++= eqsExpr e2
 eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
   = let lte = fromJust (exprType' e1)
         rte = fromJust (exprType' e2)
