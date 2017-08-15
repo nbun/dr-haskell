@@ -767,25 +767,28 @@ inferFuncGroup fds
        extendTypeEnv [(qn, te) | Func _ (qn, _) _ _ (TypeSig te) _ <- nfds]
        return nfds
 
--- | Returns the part of the type expressions where the first type expression is
---   a too general variant of the second type expression or 'Nothing' if no such
---   part exists.
-typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
-typeTooGeneral x@(TVar (vn1, _))  y@(TVar (vn2, _))
-  | fst vn1 == fst vn2 = Nothing
-  | otherwise          = Just (x, y)
-typeTooGeneral x@(TVar _)         y@FuncType{}         = Just (x, y)
-typeTooGeneral x@(TVar _)         y@TCons{}            = Just (x, y)
-typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
-  = typeTooGeneral' [(t1, t1'), (t2, t2')]
-typeTooGeneral (TCons _ _ tes)    (TCons _ _ tes')
-  = typeTooGeneral' (zip tes tes')
-typeTooGeneral _                  _                    = Nothing
+-- -----------------------------------------------------------------------------
+-- Functions for detection of too general type expressions
+-- -----------------------------------------------------------------------------
 
--- | Iterates 'typeTooGeneral' over a list of type expression pairs.
-typeTooGeneral' :: [(TypeExpr a, TypeExpr a)] -> Maybe (TypeExpr a, TypeExpr a)
-typeTooGeneral' []          = Nothing
-typeTooGeneral' ((x, y):xs) = typeTooGeneral x y <|> typeTooGeneral' xs
+-- | Returns the part of the type expressions where the left type expression is
+--   a too general variant of the right type expression or 'Nothing' if no such
+--   part exists.
+typeTooGeneral :: TypeExprEq a -> Maybe (TypeExprEq a)
+typeTooGeneral (x@(TVar (vn1, _)), y@(TVar (vn2, _)))
+  | fst vn1 == fst vn2                                = Nothing
+  | otherwise                                         = Just (x, y)
+typeTooGeneral (x@(TVar _), y@FuncType{})             = Just (x, y)
+typeTooGeneral (x@(TVar _), y@TCons{})                = Just (x, y)
+typeTooGeneral (FuncType _ t1 t2, FuncType _ t1' t2')
+  = typeTooGeneral' [(t1, t1'), (t2, t2')]
+typeTooGeneral (TCons _ _ tes, TCons _ _ tes')
+  = typeTooGeneral' (zip tes tes')
+typeTooGeneral _                                      = Nothing
+
+-- | Iterates 'typeTooGeneral' over a list of type expression equations.
+typeTooGeneral' :: TypeExprEqs a -> Maybe (TypeExprEq a)
+typeTooGeneral' = foldr ((<|>) . typeTooGeneral) Nothing
 
 -- | Checks whether the given function declaration has a too general type
 --   signature compared to the infered type.
@@ -798,4 +801,4 @@ checkTooGeneral (Func _ (qn, _) _ _ _ rs)
            let te' = normalize normTypeExpr te
             in maybe (return ())
                      (\(x, y) -> throwError (TITooGeneral x y))
-                     (typeTooGeneral te' (head (catMaybes (rulesTypes rs))))
+                     (typeTooGeneral (te', head (catMaybes (rulesTypes rs))))
