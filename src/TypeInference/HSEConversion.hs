@@ -419,25 +419,25 @@ parseExpr mn  _ (HSE.Var l qn)                    =
     ahs <- get
     case  qn  of
       (Qual _ mon name) -> case elem (parseModuleName mon,parsename name) (fctNames ahs) of
-                             True -> return $ AH.Symbol NoTypeAnn (parseQNameNew (parseModuleName mon) qn,l)
+                             True -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew (parseModuleName mon) qn,l)
                              False -> do
                                        y <- getidx (parseQName qn)
                                        return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 
       (UnQual l name) -> case elem (mn,parsename name) (fctNames ahs) of
-                           True -> return $ AH.Symbol NoTypeAnn (parseQNameNew mn qn,l)
+                           True -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew mn qn,l)
                            False -> do
                              case elem ("Prelude",parsename name) (fctNames ahs) of
-                               True -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
+                               True -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
                                False -> do
                                          y <- getidx (parseQName qn)
                                          return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
   do
     case qn of
-      (UnQual _ (Ident _ "True")) -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
-      (UnQual _ (Ident _ "False")) -> return $ AH.Symbol NoTypeAnn (parseQNameNew "Prelude" qn,l)
-      _ -> return $ parseQNameForSpecial mn l qn
+      (UnQual _ (Ident _ "True")) -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
+      (UnQual _ (Ident _ "False")) -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
+      _ -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew mn qn,l)
 parseExpr _  _ (HSE.Lit l lit)                   =
   return $ AH.Lit NoTypeAnn (parseLiteral lit, l)
 parseExpr mn t (InfixApp l exp1 qop exp2)        =
@@ -521,23 +521,6 @@ parseExpr mn t (EnumFromThenTo l exp1 exp2 exp3) =
     return $ Apply l NoTypeAnn (AH.Lit NoTypeAnn (Stringc "enumFromThenTo",l))
                    (Apply l NoTypeAnn  expr1 (Apply l NoTypeAnn expr2 expr3))
 
-parseQNameForSpecial mn l x@(Special a (UnitCon b))        =
-    AH.Symbol NoTypeAnn ((mn,parseQName x), l)
-parseQNameForSpecial mn l (Special a (ListCon b))          =
-  AH.List b NoTypeAnn []
-parseQNameForSpecial mn l x@(Special a (FunCon b))         =
-  AH.Symbol NoTypeAnn ((mn,parseQName x), l)
-parseQNameForSpecial mn l (Special a (TupleCon b box i))   =
-  AH.Tuple a NoTypeAnn []
-parseQNameForSpecial mn l (Special a(HSE.Cons b))          =
-    AH.List b NoTypeAnn []
-parseQNameForSpecial mn l (Special a (UnboxedSingleCon b)) =
-  AH.Tuple a NoTypeAnn []
-parseQNameForSpecial mn l x@(UnQual a name)                =
-  AH.Symbol NoTypeAnn (parseQNameNew mn x, l)
-parseQNameForSpecial mn l x@(Qual a mon name)              =
-  AH.Symbol NoTypeAnn (parseQNameNew mn x, l)
-
 -- | Transforms a right hand side to an expr
 rightHandtoExp ::
   MonadState AHState m => MName -> TypeS a -> HSE.Rhs a -> m (Expr a)
@@ -555,7 +538,7 @@ parsePatterns mn (HSE.PLit l sign lit)          =
 parsePatterns mn (PApp l qn pats)               =
   do
     pat <- mapM (parsePatterns mn) pats
-    return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) pat
+    return $ PComb l NoTypeAnn (parseSpecialQNameNew mn qn,l) pat
 parsePatterns mn (HSE.PTuple l Boxed pats)      =
   do
     pat <- mapM (parsePatterns mn) pats
@@ -575,7 +558,7 @@ parsePatterns mn (HSE.PInfixApp l pat1 qn pat2) =
   do
     pa1 <- parsePatterns mn pat1
     pa2 <-parsePatterns mn pat2
-    return $ PComb l NoTypeAnn (parseQNameNew mn qn,l) [pa1,pa2]
+    return $ PComb l NoTypeAnn (parseSpecialQNameNew mn qn,l) [pa1,pa2]
 parsePatterns mn (PWildCard l)                  =
   do
     y <- getidx ("")
@@ -583,6 +566,14 @@ parsePatterns mn (PWildCard l)                  =
 parsePatterns _  _                              =
   error "parsePatterns"
 
+parseSpecialQNameNew :: String -> HSE.QName a -> AH.QName
+parseSpecialQNameNew mn (Special l (HSE.Cons g))             = ("Prelude","(:)")
+parseSpecialQNameNew mn (Special l (UnboxedSingleCon g)) = (tupleName 2)
+parseSpecialQNameNew mn (Special l (TupleCon g b i))     = (tupleName i)
+parseSpecialQNameNew mn (Special l (UnitCon g))          = ("Prelude", "()")
+parseSpecialQNameNew mn (Special l (ListCon g))          = ("Prelude", "[]")
+parseSpecialQNameNew mn (Special l (FunCon g ))          = ("Prelude", "->")
+parseSpecialQNameNew mn x                                = parseQNameNew mn x
 
 parseStms ::
   MonadState AHState m => MName -> TypeS a -> Stmt a -> m (Statement a)
@@ -599,7 +590,6 @@ parseStms str t (LetStmt l binds)   =
   do
     bnd <- parseBinds str t binds
     return $ SLet l bnd
-parseStms str t x = undefined
 
 -- | Parses a binding
 parseBinds ::
@@ -622,18 +612,18 @@ parseQOp mn (QVarOp l qn) =
    do
      ahs <- get
      case elem (mn,parseQName qn) (fctNames ahs) of
-       True -> return $ parseQNameNew mn qn
+       True -> return $ parseSpecialQNameNew mn qn
        False -> case elem ("Prelude",parseQName qn) (fctNames ahs) of
-         True -> return $ parseQNameNew "Prelude" qn
-         False -> return $ parseQNameNew mn qn
+         True -> return $ parseSpecialQNameNew "Prelude" qn
+         False -> return $ parseSpecialQNameNew mn qn
 parseQOp mn (QConOp l qn) =
   do
     ahs <- get
     case elem (mn,parseQName qn) (fctNames ahs) of
-      True -> return $ parseQNameNew mn qn
+      True -> return $ parseSpecialQNameNew mn qn
       False -> case elem ("Prelude",parseQName qn) (fctNames ahs) of
-        True -> return $ parseQNameNew "Prelude" qn
-        False -> return $ parseQNameNew mn qn
+        True -> return $ parseSpecialQNameNew "Prelude" qn
+        False -> return $ parseSpecialQNameNew mn qn
 
 -- | Parses an qualified statement
 parseQualsStms ::
@@ -676,7 +666,7 @@ parseTyp modu (TyCon l qname)            =
      "String"-> return $ TCons l (("Prelude", "String"),l) []
      "Char"  -> return $ TCons l (("Prelude", "Char"),l) []
      "Float" -> return $ TCons l (("Prelude","Float"),l) []
-     _ -> return $ TCons l (parseQNameNew modu qname,l) []
+     _ -> return $ TCons l (parseSpecialQNameNew modu qname,l) []
 parseTyp modu (TyParen l t)              =
   parseTyp modu t
 parseTyp modu (TyApp l t1 t2)            =
