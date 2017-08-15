@@ -25,8 +25,9 @@ import           Goodies                              (both, bothM, concatMapM,
 import           Language.Haskell.Exts                (Exp, Module,
                                                        ParseResult (..),
                                                        SrcSpan (..),
-                                                       SrcSpanInfo, noInfoSpan,
-                                                       parseFile)
+                                                       SrcSpanInfo (..),
+                                                       noInfoSpan, parseFile,
+                                                       prettyPrint)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
@@ -199,16 +200,30 @@ data TIError a = TIError String
   deriving (Show, Ord, Eq)
 
 -- | Transforms a type inference error into a string representation.
-showTIError :: TIError SrcSpanInfo -> String
-showTIError (TIError e)            = e
-showTIError (TIClash te1 te2)      = "type clash" -- TODO
-showTIError (TIOccurCheck vn te)
+showTIError :: AHOptions -> TIError SrcSpanInfo -> String
+showTIError _ (TIError e)            = e
+showTIError _ (TIClash te1 te2)
+  = let te1x = srcInfoSpan (typeExprAnn te1)
+        te2x = srcInfoSpan (typeExprAnn te2)
+        te1' = showTypeExpr defaultAHOptions te1
+        te2' = showTypeExpr defaultAHOptions te2
+     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '" ++ te2' ++ "'!\n. "
+        ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
+        ++ te2' ++ " found at: " ++ prettyPrint te2x
+showTIError opts (TIOccurCheck vn te)
   = "OccurCheck: " ++ showVarName vn
                    ++ " occurs in "
-                   ++ showTypeExpr defaultAHOptions te
+                   ++ showTypeExpr opts te
                    ++ "!"
-showTIError (TITooGeneral te1 te2) = "too general" -- TODO
- 
+showTIError _ (TITooGeneral te1 te2)
+  = let te1x = srcInfoSpan (typeExprAnn te1)
+        te2x = srcInfoSpan (typeExprAnn te2)
+        te1' = showTypeExpr defaultAHOptions te1
+        te2' = showTypeExpr defaultAHOptions te2
+     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '" ++ te2' ++ "'!\n"
+        ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n"
+        ++ te2' ++ " found at: " ++ prettyPrint te2x
+
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
 -- -----------------------------------------------------------------------------

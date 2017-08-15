@@ -7,6 +7,7 @@ import           Data.List
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
+import           TypeInference.AbstractHaskell (defaultAHOptions)
 import           TypeInference.Main
 
 type Filename = String
@@ -139,7 +140,7 @@ prettyErrorWithInfoSwitchAndLevel s level e@(TypeError l tiError) =
     let (filename, pos) = extractFilenameAndPosition l
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
-       ++ "Type error:\n" ++ showTIError tiError
+       ++ "Type error:\n" ++ showTIError defaultAHOptions tiError
 
 pragmaErrorMsg :: String -> Bool
 pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)
