@@ -97,7 +97,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
         ParseOk modLoad -> do
           tires <- liftIO $ inferModule (modifiedModule modLoad)
           let (tiErrors, tiprog) = case tires of
-                Left e  -> ([DirectMessage $ show e], Nothing)
+                Left e  -> ([TypeError noSrcSpan e], Nothing)
+                -- TODO extract position from error
                 Right p -> ([], Just p)
           tiProg .= tiprog
           let (dir, base) = splitFileName fn
@@ -119,11 +120,10 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           (transModule, transErrors) <- transformModuleS duplDecls modLoad
           liftIO $ writeFile cfn $ printModified transModule
 
-          let errors' = checkErrors' ++ transErrors
-              errors  = tiErrors ++ map (CheckError (Just level)) errors'
+          let errors' = checkErrors' ++ transErrors ++ tiErrors
+              errors  = map (CheckError (Just level)) errors'
 
-          if null tiErrors &&
-              (null errors || (nonstrict && not (any isCritical errors')))
+          if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++
                                            errors ++

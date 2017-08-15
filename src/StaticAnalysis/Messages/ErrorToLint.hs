@@ -130,6 +130,7 @@ transformError l e@(ModuleHeadUsed moduleName) = buildForModuleName moduleName
 transformError l e@(OwnDataDecl info)          = buildForInfo info e Error l
 transformError l e@(DoUsed info)               = buildForInfo info e Error l
 transformError l e@(Pragma info _)             = buildForInfo info e Error l
+transformError l e@(TypeError info _)          = buildForInfo info e Error l
 transformError l e                             = buildUnknownError e Warning l
 
 -- | Plain Lintoutput Generator

@@ -196,19 +196,19 @@ data TIError a = TIError String
                | TIClash (TypeExpr a) (TypeExpr a)
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
-  deriving Show
+  deriving (Show, Ord, Eq)
 
 -- | Transforms a type inference error into a string representation.
 showTIError :: TIError SrcSpanInfo -> String
 showTIError (TIError e)            = e
-showTIError (TIClash te1 te2)      = undefined
+showTIError (TIClash te1 te2)      = "type clash" -- TODO
 showTIError (TIOccurCheck vn te)
   = "OccurCheck: " ++ showVarName vn
                    ++ " occurs in "
                    ++ showTypeExpr defaultAHOptions te
                    ++ "!"
-showTIError (TITooGeneral te1 te2) = undefined
-
+showTIError (TITooGeneral te1 te2) = "too general" -- TODO
+ 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
 -- -----------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import           Data.List
 import           Language.Haskell.Exts
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
+import           TypeInference.Main
 
 type Filename = String
 type Position = (Int, Int, Int, Int)
@@ -134,6 +135,11 @@ prettyErrorWithInfoSwitchAndLevel s level e@(Pragma l name) =
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
        ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
+prettyErrorWithInfoSwitchAndLevel s level e@(TypeError l tiError) =
+    let (filename, pos) = extractFilenameAndPosition l
+    in printFilenameAndPosWithSwitch s filename pos
+       ++ appendLevelTag level e
+       ++ "Type error:\n" ++ showTIError tiError
 
 pragmaErrorMsg :: String -> Bool
 pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)

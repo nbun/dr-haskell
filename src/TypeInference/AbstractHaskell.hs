@@ -75,7 +75,7 @@ data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
 data TypeExpr a = TVar (VarName, a)
                 | FuncType a (TypeExpr a) (TypeExpr a)
                 | TCons a (QName, a) [TypeExpr a]
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 -- | Representation of a type signature for a function. The entities can be
 --   annotated with any data type.

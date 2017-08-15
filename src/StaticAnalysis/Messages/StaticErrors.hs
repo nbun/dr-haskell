@@ -2,9 +2,10 @@
 module StaticAnalysis.Messages.StaticErrors
   (module StaticAnalysis.Messages.StaticErrors) where
 
-import           Control.Exception
+import           Control.Exception hiding (TypeError (..))
 import           Data.Typeable
 import           Language.Haskell.Exts
+import           TypeInference.Main
 
 -- | Describes the kind of a declaration
 data Entity = Signature | Definition | Function | Datatype
@@ -43,6 +44,8 @@ data Error l = NoFunDef (Name l) [Name l]
              --     position, string representation of the test
              | Pragma l String
              --      pos pragmaname
+             | TypeError l (TIError l)
+             --          position, formatted output
   deriving (Show, Typeable, Ord, Eq)
 
 instance (Show l, Typeable l) => Exception (Error l)
@@ -53,4 +56,5 @@ isCritical (NoFunDef _ _)    = True
 isCritical (Undefined _ _)   = True
 isCritical (SyntaxError _ _) = True
 isCritical (Pragma _ _)      = True
+isCritical (TypeError _ _)   = True
 isCritical _                 = False
