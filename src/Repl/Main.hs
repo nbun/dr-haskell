@@ -7,10 +7,12 @@ import           Control.Monad.Catch          as MC
 import           Control.Monad.State
 import           Data.Char
 import           Data.List
+import           Data.Maybe                   (fromJust)
 import           Data.Version                 (showVersion)
 import           Paths_drhaskell
 import           System.FilePath
 
+import           Language.Haskell.Exts.Parser
 import           Language.Haskell.Interpreter
 import           Repl.CmdOptions
 import           Repl.Loader
@@ -18,6 +20,8 @@ import           Repl.Types
 import           StaticAnalysis.CheckState
 import           System.Console.Haskeline
 import           TypeInference.Main
+import           TypeInference.AbstractHaskell (defaultAHOptions, showTypeExpr)
+import           TypeInference.AbstractHaskellGoodies (exprType)
 
 {-
 Current Limitations:
@@ -160,7 +164,18 @@ commandTypeof args = do
       p' <- use tiProg
       case p' of
            Nothing -> return (Nothing, True)
-           Just p  -> return (Just "type inference result", True)
+           Just p  -> case parseExp expression of
+                           ParseFailed _ f -> return (Just f, True)
+                           ParseOk e       ->
+                             case inferHSEExp [p] e of
+                                  Left e -> return (Just $ show e, True)
+                                  Right e -> return (Just
+                                                      (expression ++
+                                                       " :: "     ++
+                                                      (showTypeExpr
+                                                        defaultAHOptions $
+                                                        fromJust         $
+                                                        exprType e)), True)
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType         "Num a => a"         = "Int"
