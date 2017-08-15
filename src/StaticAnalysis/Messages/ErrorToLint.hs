@@ -100,8 +100,11 @@ buildUnknownError e  messageClass l =
 
 buildParseError :: SrcLoc -> String -> Lint
 buildParseError loc message =
-  Lint (srcFilename loc) position Error message
+  Lint (srcFilename loc) position Error ("Syntax Error" ++ msg')
   where
+    msg' = if pragmaErrorMsg message
+              then ""
+              else " (" ++ message ++ ")"
     lpos = srcLine loc
     cpos = srcColumn loc
     position = (lpos, cpos, lpos, cpos + 1)

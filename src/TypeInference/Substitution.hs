@@ -11,7 +11,7 @@ module TypeInference.Substitution
 import           Data.List          (intercalate)
 import qualified Data.Map           as DM
 import           Data.Maybe         (fromMaybe)
-import           Goodies            (both)
+import           Goodies            (both, braces)
 import           TypeInference.Term (Term (..), TermEq, TermEqs, VarIdx,
                                      showVarIdx)
 
@@ -32,8 +32,7 @@ type Subst f a = DM.Map VarIdx (Term f a)
 
 -- | Transforms a substitution into a string representation.
 showSubst :: Show f => Subst f a -> String
-showSubst sub
-  = '{' : intercalate ", " (map showMapping (substToList sub)) ++ "}"
+showSubst sub = braces (intercalate ", " (map showMapping (substToList sub)))
   where
     showMapping :: Show f => (VarIdx, Term f a) -> String
     showMapping (v, t) = showVarIdx v ++ " \8614 " ++ show t

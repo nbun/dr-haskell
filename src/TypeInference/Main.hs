@@ -8,7 +8,7 @@ module TypeInference.Main
   ( TypeEnv, TIError (..)
   , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
   , composeTypeEnv, getTypeEnv, prelude, showTIError, inferExpr, inferFuncDecl
-  , inferHSE, inferProg
+  , inferHSE, inferProg, inferHSEExp
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -22,13 +22,15 @@ import           Data.Maybe                           (catMaybes, fromJust,
 import           Goodies                              (both, bothM, concatMapM,
                                                        mapAccumM, one, two,
                                                        (++=))
-import           Language.Haskell.Exts                (Module, ParseResult (..),
+import           Language.Haskell.Exts                (Exp, Module,
+                                                       ParseResult (..),
                                                        SrcSpan (..),
                                                        SrcSpanInfo, noInfoSpan,
                                                        parseFile)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
+import           TypeInference.HSEConversion          (hseExprToAhExpr)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
                                                        normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
@@ -638,6 +640,13 @@ eqsExpr _                                    = return []
 -- -----------------------------------------------------------------------------
 -- Functions for type inference of abstract Haskell programs
 -- -----------------------------------------------------------------------------
+
+-- | Infers the given expression with the 'Language.Haskell.Exts.Syntax'
+--   representation using the given list of programs.
+inferHSEExp :: [Prog a] -> Exp a -> Either (TIError a) (Expr a)
+inferHSEExp ps e = let tenv = getTypeEnv ps
+                       e' = hseExprToAhExpr tenv e
+                    in inferExprEnv tenv e'
 
 -- | Infers the given expression with the given list of programs.
 inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)

@@ -3,8 +3,8 @@
 -}
 
 module Goodies
-  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, brackets, parens
-  , parensIf, tuple, list, indent, vsep
+  ( (++=), both, bothM, concatMapM, mapAccumM, one, two, bquotes, brackets
+  , braces, parens, parensIf, tuple, list, indent, vsep
   ) where
 
 import Control.Monad.State (get, put, runStateT)
@@ -57,9 +57,17 @@ two :: [a] -> Bool
 two []     = False
 two (_:xs) = one xs
 
+-- | Encloses a string with back quotes.
+bquotes :: String -> String
+bquotes s = '`' : s ++ "`"
+
 -- | Encloses a string in brackets.
 brackets :: String -> String
 brackets s = '[' : s ++ "]"
+
+-- | Encloses a string in braces.
+braces :: String -> String
+braces s = '{' : s ++ "}"
 
 -- | Encloses a string in parentheses.
 parens :: String -> String
@@ -81,7 +89,7 @@ list = brackets . intercalate ", "
 
 -- | Indents the given string with the given number of spaces.
 indent :: Int -> String -> String
-indent n xs = replicate n ' ' ++ xs
+indent n s = replicate n ' ' ++ s
 
 -- | Joins the given list of strings to one single string by adding a newline
 --   character between two adjacent strings.
