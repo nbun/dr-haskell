@@ -118,9 +118,12 @@ prettyErrorWithInfoSwitchAndLevel s level e@(DoUsed l) =
        ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
 prettyErrorWithInfoSwitchAndLevel s level e@(SyntaxError l err) =
     let (filename, pos) = extractFilenameAndPosition l
+        msg = if pragmaErrorMsg err
+              then ""
+              else " (" ++ err ++ ")"
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
-       ++ "Syntax Error (" ++ err ++ ") at " ++ prettyLoc l ++ "."
+       ++ "Syntax Error" ++ msg ++ " at " ++ prettyLoc l ++ "."
 prettyErrorWithInfoSwitchAndLevel s level e@(InvalidTest l t) =
     let (filename, pos) = extractFilenameAndPosition l
     in printFilenameAndPosWithSwitch s filename pos
@@ -131,6 +134,9 @@ prettyErrorWithInfoSwitchAndLevel s level e@(Pragma l name) =
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
        ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
+
+pragmaErrorMsg :: String -> Bool
+pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)
 
 appendLevelTag :: Maybe Level -> Error SrcSpanInfo -> String
 appendLevelTag Nothing _ = ""
