@@ -81,7 +81,7 @@ list = brackets . intercalate ", "
 
 -- | Indents the given string with the given number of spaces.
 indent :: Int -> String -> String
-indent n xs = replicate n ' ' ++ xs
+indent n s = replicate n ' ' ++ s
 
 -- | Joins the given list of strings to one single string by adding a newline
 --   character between two adjacent strings.
