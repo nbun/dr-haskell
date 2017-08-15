@@ -201,28 +201,30 @@ data TIError a = TIError String
 
 -- | Transforms a type inference error into a string representation.
 showTIError :: AHOptions -> TIError SrcSpanInfo -> String
-showTIError _ (TIError e)            = e
-showTIError _ (TIClash te1 te2)
+showTIError _    (TIError e)            = e
+showTIError opts (TIClash te1 te2)
   = let te1x = srcInfoSpan (typeExprAnn te1)
         te2x = srcInfoSpan (typeExprAnn te2)
-        te1' = showTypeExpr defaultAHOptions te1
-        te2' = showTypeExpr defaultAHOptions te2
-     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '" ++ te2' ++ "'!\n. "
-        ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
-        ++ te2' ++ " found at: " ++ prettyPrint te2x
+        te1' = showTypeExpr opts te1
+        te2' = showTypeExpr opts te2
+     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '"
+          ++ te2' ++ "'!\n. "
+          ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
+          ++ te2' ++ " found at: " ++ prettyPrint te2x
 showTIError opts (TIOccurCheck vn te)
   = "OccurCheck: " ++ showVarName vn
                    ++ " occurs in "
                    ++ showTypeExpr opts te
                    ++ "!"
-showTIError _ (TITooGeneral te1 te2)
+showTIError opts (TITooGeneral te1 te2)
   = let te1x = srcInfoSpan (typeExprAnn te1)
         te2x = srcInfoSpan (typeExprAnn te2)
-        te1' = showTypeExpr defaultAHOptions te1
-        te2' = showTypeExpr defaultAHOptions te2
-     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '" ++ te2' ++ "'!\n"
-        ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n"
-        ++ te2' ++ " found at: " ++ prettyPrint te2x
+        te1' = showTypeExpr opts te1
+        te2' = showTypeExpr opts te2
+     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '"
+          ++ te2' ++ "'!\n  "
+          ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
+          ++ te2' ++ " found at: " ++ prettyPrint te2x
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
