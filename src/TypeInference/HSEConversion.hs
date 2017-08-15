@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 
 module TypeInference.HSEConversion
-  ( hseToNLAH, parseNamePattern, findDifference
+  ( hseToNLAH, parseNamePattern, findDifference,hseExprToAhExpr
   ) where
 
 import           Control.Monad.State.Lazy
@@ -51,6 +51,18 @@ getidx name = do
 hseToNLAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
 hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 
+hseExprToAhExpr :: Map AH.QName a -> Exp a1 -> Expr a1
+hseExprToAhExpr mapTE expr = evalState (astExprToAbstractHaskellExpr mapTE expr) initialState
+
+astExprToAbstractHaskellExpr :: MonadState AHState m => Map AH.QName a -> Exp a1 -> m (Expr a1)
+astExprToAbstractHaskellExpr mapTE expr =
+  do
+    ahs <- get
+    let qNamesMap = keys mapTE
+    put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ qNamesMap}
+    exprNew <- parseExpr "" [] expr
+    return exprNew
+
 astToAbstractHaskell ::
   MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
 astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
@@ -60,7 +72,6 @@ astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
     st <- get
     let qNamesMap = keys mapTE
     let allFunctionNames = qNamesMap ++ fctNames st
-    -- selber definierte filter??
     put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
@@ -509,8 +520,6 @@ parseExpr mn t (EnumFromThenTo l exp1 exp2 exp3) =
     expr3 <- parseExpr mn t exp3
     return $ Apply l NoTypeAnn (AH.Lit NoTypeAnn (Stringc "enumFromThenTo",l))
                    (Apply l NoTypeAnn  expr1 (Apply l NoTypeAnn expr2 expr3))
-parseExpr _  _ _                                 =
-  error "parseExpr"
 
 parseQNameForSpecial mn l x@(Special a (UnitCon b))        =
     AH.Symbol NoTypeAnn ((mn,parseQName x), l)
@@ -732,7 +741,7 @@ parseMatchName :: Match l -> String
 parseMatchName (Match l name patterns rhs wbinds)       = parsename name
 parseMatchName (InfixMatch l pat1 name pat2 rhs wbinds) = parsename name
 
--- | Look of the type of a function is defined in the module
+-- | Looks if the type of a function is defined in the module
 searchForType :: String -> TypeS l -> Maybe (Type l)
 searchForType _ [] = Nothing
 searchForType name ((n , t):nts) | name == (parsename n) =  Just t
