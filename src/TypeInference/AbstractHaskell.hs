@@ -404,9 +404,9 @@ showLiteral (Stringc s) = show s
 
 -- | Checks whether the given qualified name represents a Haskell operator.
 isOperator :: QName -> Bool
-isOperator (_, "")     = False
-isOperator (_, '(':cs) = last cs == ')' && isOperatorStr (init cs)
-isOperator (_, n)      = isOperatorStr n
+isOperator (_, "")         = False
+isOperator (_, n@('(':cs)) = last n == ')' && isOperatorStr (init cs)
+isOperator (_, n)          = isOperatorStr n
 
 -- | Checks whether the given string represents a Haskell operator.
 isOperatorStr :: String -> Bool
