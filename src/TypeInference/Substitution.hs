@@ -32,7 +32,8 @@ type Subst f a = DM.Map VarIdx (Term f a)
 
 -- | Transforms a substitution into a string representation.
 showSubst :: Show f => Subst f a -> String
-showSubst sub = '{' : intercalate "," (map showMapping (substToList sub)) ++ "}"
+showSubst sub
+  = '{' : intercalate ", " (map showMapping (substToList sub)) ++ "}"
   where
     showMapping :: Show f => (VarIdx, Term f a) -> String
     showMapping (v, t) = showVarIdx v ++ " \8614 " ++ show t
