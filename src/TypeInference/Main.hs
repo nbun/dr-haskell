@@ -8,7 +8,7 @@ module TypeInference.Main
   ( TypeEnv, TIError (..)
   , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
   , composeTypeEnv, getTypeEnv, prelude, showTIError, inferExpr, inferFuncDecl
-  , inferHSE, inferProg, inferHSEExp
+  , inferHSE, inferProg, inferHSEExp, posOfTIError
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -26,7 +26,8 @@ import           Language.Haskell.Exts                (Exp, Module,
                                                        ParseResult (..),
                                                        SrcSpan (..),
                                                        SrcSpanInfo (..),
-                                                       noInfoSpan, parseFile,
+                                                       noInfoSpan, noSrcSpan,
+                                                       parseFile,
                                                        prettyPrint)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
@@ -225,6 +226,13 @@ showTIError opts (TITooGeneral te1 te2)
           ++ te2' ++ "'!\n  "
           ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
           ++ te2' ++ " found at: " ++ prettyPrint te2x
+
+-- | Returns the position of a TIError
+posOfTIError :: AHOptions -> TIError SrcSpanInfo -> SrcSpanInfo
+posOfTIError _    (TIError _)         = noSrcSpan
+posOfTIError opts (TIClash _ te)      = typeExprAnn te
+posOfTIError opts (TIOccurCheck _ te) = typeExprAnn te
+posOfTIError opts (TITooGeneral _ te) = typeExprAnn te
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module

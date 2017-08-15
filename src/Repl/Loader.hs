@@ -6,7 +6,8 @@ module Repl.Loader (
   determineLevel,
   transformModule,
   loadModule,
-  loadInitialModules
+  loadInitialModules,
+  inferModule
 ) where
 
 import           Control.Lens                         hiding (Level)
@@ -97,8 +98,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
         ParseOk modLoad -> do
           tires <- liftIO $ inferModule (modifiedModule modLoad)
           let (tiErrors, tiprog) = case tires of
-                Left e  -> ([TypeError noSrcSpan e], Nothing)
-                -- TODO extract position from error
+                Left e  -> let pos = posOfTIError AH.defaultAHOptions e
+                            in ([TypeError pos e], Nothing)
                 Right p -> ([], Just p)
           tiProg .= tiprog
           let (dir, base) = splitFileName fn

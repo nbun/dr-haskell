@@ -140,7 +140,7 @@ prettyErrorWithInfoSwitchAndLevel s level e@(TypeError l tiError) =
     let (filename, pos) = extractFilenameAndPosition l
     in printFilenameAndPosWithSwitch s filename pos
        ++ appendLevelTag level e
-       ++ "Type error:\n" ++ showTIError defaultAHOptions tiError
+       ++ showTIError defaultAHOptions tiError
 
 pragmaErrorMsg :: String -> Bool
 pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)

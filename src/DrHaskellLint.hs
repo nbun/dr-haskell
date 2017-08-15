@@ -16,11 +16,13 @@ import           Repl.Types
 import           StaticAnalysis.CheckState
 import           StaticAnalysis.Messages.ErrorToLint
 import           StaticAnalysis.Messages.Prettify
+import           StaticAnalysis.Messages.StaticErrors
 import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
 import           System.IO
 import           TypeInference.Main
+import           TypeInference.AbstractHaskell
 import           Util.ModifyAst
 
 -- | Entry point for the cli call
@@ -65,9 +67,14 @@ runWithRepl hlintHints file lvl format = do
       ParseOk m1 -> do
         (m2, errs) <- transformModule [] state m1 -- "
         errs' <- runCheckLevel lvl file -- run checks
+        tires <- inferModule (modifiedModule m1)
+        let tiErrors = case tires of -- run type inference
+              Left e  -> let pos = posOfTIError defaultAHOptions e
+                          in [TypeError pos e]
+              Right p -> []
         coverage <- getConverageOutput m2 -- run coverage
         putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
-                                 (errs ++ errs')) -- build output
+                                 (errs ++ errs' ++ tiErrors)) -- build output
       ParseFailed pos m ->
         putStrLn $ lintErrorHlint [buildParseError pos m] format (Just lvl) []
 
