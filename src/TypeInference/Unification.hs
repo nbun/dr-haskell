@@ -32,14 +32,10 @@ data UnificationError f a = Clash (Term f a) (Term f a)
 
 -- | Transforms a unification error into a string representation.
 showUnificationError :: Show f => UnificationError f a -> String
-showUnificationError (Clash t1 t2)    = "Clash: " ++ show t1
-                                                  ++ " is not equal to "
-                                                  ++ show t2
-                                                  ++ "!"
-showUnificationError (OccurCheck v t) = "OccurCheck: " ++ showVarIdx v
-                                                       ++ " occurs in "
-                                                       ++ show t
-                                                       ++ "!"
+showUnificationError (Clash t1 t2)
+  = unwords ["Clash:", show t1, "is not equal to", show t2] ++ "!"
+showUnificationError (OccurCheck v t)
+  = unwords ["OccurCheck:", showVarIdx v, "occurs in", show t] ++ "!"
 
 instance Show f => Show (UnificationError f a) where
   show = showUnificationError

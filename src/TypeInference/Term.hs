@@ -11,7 +11,7 @@ module TypeInference.Term
   , showVarIdx, showTermEq, showTermEqs
   ) where
 
-import Goodies (parensIf, tuple)
+import Goodies (parensIf, tuple, vsep)
 
 -- -----------------------------------------------------------------------------
 -- Representation of first-order terms and term equations
@@ -71,4 +71,4 @@ showTermEq (l, r) = show l ++ " = " ++ show r
 
 -- | Transforms a list of term equations into a string representation.
 showTermEqs :: Show f => TermEqs f a -> String
-showTermEqs = unlines . map showTermEq
+showTermEqs = vsep . map showTermEq
