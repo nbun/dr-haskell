@@ -3,13 +3,17 @@ module StaticAnalysis.Messages.Prettify (
     module StaticAnalysis.Messages.Prettify
 ) where
 
-import Data.List
-import Language.Haskell.Exts
-import StaticAnalysis.Level
-import StaticAnalysis.Messages.StaticErrors
-import StaticAnalysis.StaticChecks.Select
+import Data.List                            (intercalate)
+import Language.Haskell.Exts                (ModuleName (..), Name (..), Pretty,
+                                             QName (..), SrcSpan (..),
+                                             SrcSpanInfo (..), prettyPrint)
+
+import StaticAnalysis.Level                 (Level (..))
+import StaticAnalysis.Messages.StaticErrors (Error (..))
+import StaticAnalysis.StaticChecks.Select   (getNameOfQName)
+
 import TypeInference.AbstractHaskell        (defaultAHOptions)
-import TypeInference.Main
+import TypeInference.Main                   (showTIError)
 
 type Filename = String
 type Position = (Int, Int, Int, Int)
@@ -35,109 +39,215 @@ prettyErrorForLint = prettyErrorWithInfoSwitch True
 prettyErrorWithInfoSwitch :: Bool -> Error SrcSpanInfo -> String
 prettyErrorWithInfoSwitch s = prettyErrorWithInfoSwitchAndLevel s Nothing
 
+-- prettyErrorWithInfoSwitchAndLevel :: Bool -> Maybe Level
+--                                           -> Error SrcSpanInfo
+--                                           -> String
+-- prettyErrorWithInfoSwitchAndLevel s level e@(NoFunDef name sims) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Type signature for " ++ prettyPrintQ name ++ " at "
+--        ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
+-- prettyErrorWithInfoSwitchAndLevel s level e@(Undefined name sims) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
+--        ++ prettyNameLoc name ++ ".\n" ++ prettySims sims
+-- prettyErrorWithInfoSwitchAndLevel s level e@(Duplicated name entity maymod) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ show entity ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+--        ++ " is already defined" ++ mod ++ "."
+--     where mod = case maymod of
+--                   Just mname -> " in module " ++ prettyPrintQ mname
+--                   Nothing    -> ""
+-- prettyErrorWithInfoSwitchAndLevel s level e@(TypeVarApplication name) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+--        ++ " cannot be applied to another type."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(HigherOrder position) =
+--     let (filename, pos) = extractFilenameAndPosition position
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "HigherOrder function located at " ++ prettyLoc position ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(LambdaFunction position) =
+--     let (filename, pos) = extractFilenameAndPosition position
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Lambda function located at " ++ prettyLoc position ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(NoTypeDef name) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "No TypeSignature for function named " ++ prettyPrintQ name ++ " at "
+--        ++ prettyNameLoc name ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(Shadowing qname) =
+--     let (filename, pos) = extractFilenameAndPositionFromQName qname
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found shadowing of variable " ++ getNameOfQName qname ++ " at "
+--        ++ prettyLoc (extractPositionFromQname qname) ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(TypeVar name) =
+--     let (filename, pos) = extractFilenameAndPositionFromName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
+--        ++ prettyNameLoc name ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(Imported name) =
+--     let (filename, pos) = extractFilenameAndPositionFromModuleName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found import " ++ prettyPrintQ name ++ " at "
+--        ++ prettyModNameLoc name ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(ModuleHeadUsed name) =
+--     let (filename, pos) = extractFilenameAndPositionFromModuleName name
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found module head " ++ prettyPrintQ name ++ " at "
+--        ++ prettyModNameLoc name ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(OwnDataDecl l) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found data declaration or type synonym at " ++ prettyLoc l ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(DoUsed l) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(SyntaxError l err) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--         msg = if pragmaErrorMsg err
+--               then ""
+--               else " (" ++ err ++ ")"
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Syntax Error" ++ msg ++ " at " ++ prettyLoc l ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(InvalidTest l t) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(Pragma l name) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
+-- prettyErrorWithInfoSwitchAndLevel s level e@(TypeError l tiError) =
+--     let (filename, pos) = extractFilenameAndPosition l
+--     in printFilenameAndPosWithSwitch s filename pos
+--        ++ appendLevelTag level e
+--        ++ showTIError defaultAHOptions tiError
+
 prettyErrorWithInfoSwitchAndLevel :: Bool -> Maybe Level
                                           -> Error SrcSpanInfo
                                           -> String
-prettyErrorWithInfoSwitchAndLevel s level e@(NoFunDef name sims) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Type signature for " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
-prettyErrorWithInfoSwitchAndLevel s level e@(Undefined name sims) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ ".\n" ++ prettySims sims
-prettyErrorWithInfoSwitchAndLevel s level e@(Duplicated name entity maymod) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ show entity ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
-       ++ " is already defined" ++ mod ++ "."
-    where mod = case maymod of
-                  Just mname -> " in module " ++ prettyPrintQ mname
-                  Nothing    -> ""
-prettyErrorWithInfoSwitchAndLevel s level e@(TypeVarApplication name) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
-       ++ " cannot be applied to another type."
-prettyErrorWithInfoSwitchAndLevel s level e@(HigherOrder position) =
-    let (filename, pos) = extractFilenameAndPosition position
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "HigherOrder function located at " ++ prettyLoc position ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(LambdaFunction position) =
-    let (filename, pos) = extractFilenameAndPosition position
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Lambda function located at " ++ prettyLoc position ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(NoTypeDef name) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "No TypeSignature for function named " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(Shadowing qname) =
-    let (filename, pos) = extractFilenameAndPositionFromQName qname
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found shadowing of variable " ++ getNameOfQName qname ++ " at "
-       ++ prettyLoc (extractPositionFromQname qname) ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(TypeVar name) =
-    let (filename, pos) = extractFilenameAndPositionFromName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
-       ++ prettyNameLoc name ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(Imported name) =
-    let (filename, pos) = extractFilenameAndPositionFromModuleName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found import " ++ prettyPrintQ name ++ " at "
-       ++ prettyModNameLoc name ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(ModuleHeadUsed name) =
-    let (filename, pos) = extractFilenameAndPositionFromModuleName name
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found module head " ++ prettyPrintQ name ++ " at "
-       ++ prettyModNameLoc name ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(OwnDataDecl l) =
-    let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found data declaration or type synonym at " ++ prettyLoc l ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(DoUsed l) =
-    let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(SyntaxError l err) =
-    let (filename, pos) = extractFilenameAndPosition l
-        msg = if pragmaErrorMsg err
-              then ""
-              else " (" ++ err ++ ")"
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Syntax Error" ++ msg ++ " at " ++ prettyLoc l ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(InvalidTest l t) =
-    let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(Pragma l name) =
-    let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
-prettyErrorWithInfoSwitchAndLevel s level e@(TypeError l tiError) =
-    let (filename, pos) = extractFilenameAndPosition l
-    in printFilenameAndPosWithSwitch s filename pos
-       ++ appendLevelTag level e
-       ++ showTIError defaultAHOptions tiError
+prettyErrorWithInfoSwitchAndLevel s level e =
+  case e of
+    NoFunDef name sims ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Type signature for " ++ prettyPrintQ name ++ " at "
+         ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
+    Undefined name sims ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+      ++ appendLevelTag level e
+      ++ "Undefined identifier " ++ prettyPrintQ name ++ " at "
+      ++ prettyNameLoc name ++ ".\n" ++ prettySims sims
+    Duplicated name entity maymod ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ show entity ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+         ++ " is already defined" ++ mod ++ "."
+      where mod = case maymod of
+                    Just mname -> " in module " ++ prettyPrintQ mname
+                    Nothing    -> ""
+    TypeVarApplication name ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Type variable " ++ prettyPrintQ name ++ " at " ++ prettyNameLoc name
+         ++ " cannot be applied to another type."
+    HigherOrder position ->
+      let (filename, pos) = extractFilenameAndPosition position
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "HigherOrder function located at " ++ prettyLoc position ++ "."
+    LambdaFunction position ->
+      let (filename, pos) = extractFilenameAndPosition position
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Lambda function located at " ++ prettyLoc position ++ "."
+    NoTypeDef name ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "No TypeSignature for function named " ++ prettyPrintQ name ++ " at "
+         ++ prettyNameLoc name ++ "."
+    Shadowing qname ->
+      let (filename, pos) = extractFilenameAndPositionFromQName qname
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found shadowing of variable " ++ getNameOfQName qname ++ " at "
+         ++ prettyLoc (extractPositionFromQname qname) ++ "."
+    TypeVar name ->
+      let (filename, pos) = extractFilenameAndPositionFromName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
+         ++ prettyNameLoc name ++ "."
+    Imported name ->
+      let (filename, pos) = extractFilenameAndPositionFromModuleName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found import " ++ prettyPrintQ name ++ " at "
+         ++ prettyModNameLoc name ++ "."
+    ModuleHeadUsed name ->
+      let (filename, pos) = extractFilenameAndPositionFromModuleName name
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found module head " ++ prettyPrintQ name ++ " at "
+         ++ prettyModNameLoc name ++ "."
+    OwnDataDecl l  ->
+      let (filename, pos) = extractFilenameAndPosition l
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found data declaration or type synonym at " ++ prettyLoc l ++ "."
+    DoUsed l ->
+      let (filename, pos) = extractFilenameAndPosition l
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Found 'do' notation at " ++ prettyLoc l ++ "."
+    SyntaxError l err ->
+      let (filename, pos) = extractFilenameAndPosition l
+          msg = if pragmaErrorMsg err
+                then ""
+                else " (" ++ err ++ ")"
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Syntax Error" ++ msg ++ " at " ++ prettyLoc l ++ "."
+    InvalidTest l t ->
+      let (filename, pos) = extractFilenameAndPosition l
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
+    Pragma l name ->
+      let (filename, pos) = extractFilenameAndPosition l
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
+    TypeError l tiError ->
+      let (filename, pos) = extractFilenameAndPosition l
+      in printFilenameAndPosWithSwitch s filename pos
+         ++ appendLevelTag level e
+         ++ showTIError defaultAHOptions tiError
 
 pragmaErrorMsg :: String -> Bool
 pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)
