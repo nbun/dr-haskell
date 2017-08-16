@@ -19,9 +19,10 @@ import           Control.Monad.State                  (State, evalState, get,
 import qualified Data.Map                             as DM
 import           Data.Maybe                           (catMaybes, fromJust,
                                                        mapMaybe)
-import           Goodies                              (both, bothM, concatMapM,
+import           Goodies                              (both, bothM, bquotes,
+                                                       concatMapM, indent,
                                                        mapAccumM, one, two,
-                                                       (++=))
+                                                       vsep, (++=))
 import           Language.Haskell.Exts                (Exp, Module,
                                                        ParseResult (..),
                                                        SrcSpan (..),
@@ -204,30 +205,36 @@ data TIError a = TIError String
 showTIError :: AHOptions -> TIError SrcSpanInfo -> String
 showTIError _    (TIError e)            = e
 showTIError opts (TIClash te1 te2)
-  = let te1x = srcInfoSpan (typeExprAnn te1)
-        te2x = srcInfoSpan (typeExprAnn te2)
+  = let x = srcInfoSpan (typeExprAnn te1)
+        y = srcInfoSpan (typeExprAnn te2)
         te1' = showTypeExpr opts te1
         te2' = showTypeExpr opts te2
-     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '"
-          ++ te2' ++ "'!\n. "
-          ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
-          ++ te2' ++ " found at: " ++ prettyPrint te2x
+        err = unwords ["Couldn't match expected type",
+                       bquotes te1',
+                       "with actual type",
+                       bquotes te2'] ++ "!"
+     in vsep [err,
+              indent 2 (prettyPrint x ++ ": " ++ te1'),
+              indent 2 (prettyPrint y ++ ": " ++ te2')]
 showTIError opts (TIOccurCheck vn te)
-  = "OccurCheck: " ++ showVarName vn
-                   ++ " occurs in "
-                   ++ showTypeExpr opts te
-                   ++ "!"
+  = unwords ["OccurCheck:",
+             bquotes (showVarName vn),
+             "occurs in",
+             bquotes (showTypeExpr opts te)] ++ "!"
 showTIError opts (TITooGeneral te1 te2)
-  = let te1x = srcInfoSpan (typeExprAnn te1)
-        te2x = srcInfoSpan (typeExprAnn te2)
+  = let x = srcInfoSpan (typeExprAnn te1)
+        y = srcInfoSpan (typeExprAnn te2)
         te1' = showTypeExpr opts te1
         te2' = showTypeExpr opts te2
-     in "Couldn't match expected type '" ++ te1' ++ "' with actual type '"
-          ++ te2' ++ "'!\n  "
-          ++ te1' ++ " found at: " ++ prettyPrint te1x ++ "\n  "
-          ++ te2' ++ " found at: " ++ prettyPrint te2x
+        err = unwords ["Couldn't match expected but too general type",
+                       bquotes te1',
+                       "with actual more specific type",
+                       bquotes te2'] ++ "!"
+     in vsep [err,
+              indent 2 (prettyPrint x ++ ": " ++ te1'),
+              indent 2 (prettyPrint y ++ ": " ++ te2')]
 
--- | Returns the position of a TIError
+-- | Returns the position of a type inference error.
 posOfTIError :: TIError SrcSpanInfo -> SrcSpanInfo
 posOfTIError (TIError _)         = noSrcSpan
 posOfTIError (TIClash _ te)      = typeExprAnn te
@@ -251,7 +258,8 @@ toTypeExpr (TermVar [x] v)         = teVar v x
 toTypeExpr (TermCons (x:xs) qn ts)
   | snd qn == "->" && two ts
     = FuncType x (toTypeExpr (head ts)) (toTypeExpr (ts !! 1))
-  | one xs = TCons x (qn, head xs) (map toTypeExpr ts)
+  | one xs
+    = TCons x (qn, head xs) (map toTypeExpr ts)
 toTypeExpr _
   = error "The given term can not be converted into a type expression!"
 
