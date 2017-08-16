@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile') where
+module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile',hseExpToAHExpr) where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor

@@ -27,12 +27,11 @@ import           Language.Haskell.Exts                (Exp, Module,
                                                        SrcSpan (..),
                                                        SrcSpanInfo (..),
                                                        noInfoSpan, noSrcSpan,
-                                                       parseFile,
-                                                       prettyPrint)
+                                                       parseFile, prettyPrint)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
-import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
-import           TypeInference.HSEConversion          (hseExpToAHExpr)
+import           TypeInference.HSE2AH                 (hseExpToAHExpr, hseToAH,
+                                                       preludeToAH)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
                                                        normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
