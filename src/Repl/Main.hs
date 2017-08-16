@@ -140,7 +140,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
             return (Just "Ok, modules loaded: none.", True)
           else do
             errors <- loadModule md
-            return $ (Just $ unlines $ map printLoadMessage errors, True)
+            return (Just $ unlines $ map printLoadMessage errors, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
         help = (,True) . Just <$> replHelp Nothing
 

@@ -17,6 +17,10 @@ type Position = (Int, Int, Int, Int)
 data Level = Level1 | Level2 | Level3 | LevelFull
   deriving Show
 
+useOwnTI :: Level -> Bool
+useOwnTI LevelFull = False
+useOwnTI _         = True
+
 printFilenameAndPos :: Filename -> Position -> String
 printFilenameAndPos filename pos =
     let (line, column, _, _) = pos

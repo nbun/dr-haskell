@@ -96,12 +96,6 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           return [CheckError Nothing $
                              SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
-          tires <- liftIO $ inferModule (modifiedModule modLoad)
-          let (tiErrors, tiprog) = case tires of
-                Left e  -> let pos = posOfTIError e
-                            in ([TypeError pos e], Nothing)
-                Right p -> ([], Just p)
-          tiProg .= tiprog
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
               cfn         = cdir </> base
@@ -115,6 +109,15 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                   else [DirectMessage
                                         ("No valid level selection "++
                                          "found. Using Level 1")]
+
+          tires <- liftIO $ inferModule (modifiedModule modLoad)
+          let (tiErrors, tiprog) =
+                case (useOwnTI level, tires) of
+                  (False,      _)  -> ([], Nothing)
+                  (True,  Left e)  -> let pos = posOfTIError e
+                                      in ([TypeError pos e], Nothing)
+                  (True,  Right p) -> ([], Just p)
+          tiProg .= tiprog
 
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
