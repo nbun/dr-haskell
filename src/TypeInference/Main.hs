@@ -32,7 +32,7 @@ import           Language.Haskell.Exts                (Exp, Module,
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
-import           TypeInference.HSEConversion          (hseExprToAhExpr)
+import           TypeInference.HSEConversion          (hseExpToAHExpr)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
                                                        normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
@@ -359,10 +359,10 @@ annProg (Prog mn is tds fds) = do fds' <- mapM annFunc fds
 
 -- | Annotates the given function declaration with fresh type variables.
 annFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
-annFunc (Func x y@(qn, _) a v _ rs) = do initVarTypes
-                                         te <- getTypeVariant qn
-                                         rs' <- annRules rs
-                                         return (Func x y a v (TypeSig te) rs')
+annFunc (Func x y@(qn, _) a v ts rs) = do initVarTypes
+                                          te <- getTypeVariant qn
+                                          rs' <- annRules rs
+                                          return (Func x y a v (TypeSig te) rs')
 
 -- | Annotates the given group of function declarations with fresh type
 --   variables.
@@ -415,9 +415,9 @@ annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
                                             return (PVar (TypeAnn te) y)
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
-annPattern (PComb x _ y@(qn, _) ps)    = do te <- getTypeVariant qn
+annPattern (PComb x _ y@(qn, z) ps)    = do te <- getTypeVariant qn
                                             ps' <- mapM annPattern ps
-                                            return (PComb x (TypeAnn te) y ps')
+                                            return (PComb x (TypeAnn (replaceTEAnn z te)) y ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
                                             insertVarType v te
                                             p' <- annPattern p
@@ -433,6 +433,11 @@ annPattern (PList x _ ps)              = do te <- nextTVar x
 annBranchExpr :: BranchExpr a -> TIMonad a (BranchExpr a)
 annBranchExpr (Branch x p e) = Branch x <$> annPattern p <*> annExpr e
 
+replaceTEAnn :: a -> TypeExpr a -> TypeExpr a
+replaceTEAnn x (TVar (qn, _))    = TVar (qn, x)
+replaceTEAnn x (FuncType _ te1 te2) = FuncType x (replaceTEAnn x te1) (replaceTEAnn x te2)
+replaceTEAnn x (TCons _ (qn, _) tes)    = TCons x (qn, x) (map (replaceTEAnn x) tes)
+
 -- | Annotates the given expression with fresh type variables.
 annExpr :: Expr a -> TIMonad a (Expr a)
 annExpr (Var _ x@(vn@(v, _), _))
@@ -443,17 +448,17 @@ annExpr (Var _ x@(vn@(v, _), _))
                                                       ++ "\"!")
 annExpr (Lit _ l@(_, x))          = do te <- nextTVar x
                                        return (Lit (TypeAnn te) l)
-annExpr (Symbol _ x@(qn, _))      = do te <- getTypeVariant qn
-                                       return (Symbol (TypeAnn te) x)
+annExpr (Symbol _ x@(qn, y))      = do te <- getTypeVariant qn
+                                       return (Symbol (TypeAnn (replaceTEAnn y te)) x)
 annExpr (Apply x _ e1 e2)         = do te <- nextTVar x
                                        e1' <- annExpr e1
                                        e2' <- annExpr e2
                                        return (Apply x (TypeAnn te) e1' e2')
-annExpr (InfixApply x _ e1 qn e2)
-  = do te <- getTypeVariant (fst qn)
+annExpr (InfixApply x _ e1 z@(qn, y) e2)
+  = do te <- getTypeVariant qn
        e1' <- annExpr e1
        e2' <- annExpr e2
-       return (InfixApply x (TypeAnn te) e1' qn e2')
+       return (InfixApply x (TypeAnn (replaceTEAnn y te)) e1' z e2')
 annExpr (Lambda x _ ps e)         = do te <- nextTVar x
                                        ps' <- mapM annPattern ps
                                        e' <- annExpr e
@@ -670,7 +675,7 @@ eqsExpr _                                    = return []
 --   representation using the given list of programs.
 inferHSEExp :: [Prog a] -> Exp a -> Either (TIError a) (Expr a)
 inferHSEExp ps e = let tenv = getTypeEnv ps
-                       e' = hseExprToAhExpr tenv e
+                       e' = hseExpToAHExpr tenv e
                     in inferExprEnv tenv e'
 
 -- | Infers the given expression with the given list of programs.

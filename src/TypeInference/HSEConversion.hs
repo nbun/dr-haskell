@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 
 module TypeInference.HSEConversion
-  ( hseToNLAH, parseNamePattern, findDifference,hseExprToAhExpr
+  ( hseToNLAH, parseNamePattern, findDifference,hseExpToAHExpr
   ) where
 
 import           Control.Monad.State.Lazy
@@ -51,8 +51,8 @@ getidx name = do
 hseToNLAH :: DML.Map AH.QName (TypeExpr a) -> Module a -> Prog a
 hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 
-hseExprToAhExpr :: Map AH.QName a -> Exp a1 -> Expr a1
-hseExprToAhExpr mapTE expr = evalState (astExprToAbstractHaskellExpr mapTE expr) initialState
+hseExpToAHExpr :: Map AH.QName a -> Exp a1 -> Expr a1
+hseExpToAHExpr mapTE expr = evalState (astExprToAbstractHaskellExpr mapTE expr) initialState
 
 astExprToAbstractHaskellExpr :: MonadState AHState m => Map AH.QName a -> Exp a1 -> m (Expr a1)
 astExprToAbstractHaskellExpr mapTE expr =
