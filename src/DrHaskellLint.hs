@@ -69,7 +69,7 @@ runWithRepl hlintHints file lvl format = do
         errs' <- runCheckLevel lvl file -- run checks
         tires <- inferModule (modifiedModule m1)
         let tiErrors = case tires of -- run type inference
-              Left e  -> let pos = posOfTIError defaultAHOptions e
+              Left e  -> let pos = posOfTIError e
                           in [TypeError pos e]
               Right p -> []
         coverage <- getConverageOutput m2 -- run coverage

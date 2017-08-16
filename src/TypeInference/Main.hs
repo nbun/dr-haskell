@@ -7,8 +7,8 @@
 module TypeInference.Main
   ( TypeEnv, TIError (..)
   , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
-  , composeTypeEnv, getTypeEnv, prelude, showTIError, inferExpr, inferFuncDecl
-  , inferHSE, inferProg, inferHSEExp, posOfTIError
+  , composeTypeEnv, getTypeEnv, prelude, showTIError, posOfTIError, inferHSEExp
+  , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -28,6 +28,7 @@ import           Language.Haskell.Exts                (Exp, Module,
                                                        SrcSpanInfo (..),
                                                        noInfoSpan, noSrcSpan,
                                                        parseFile, prettyPrint)
+import           System.FilePath                      (takeFileName)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
 import           TypeInference.HSE2AH                 (hseExpToAHExpr, hseToAH,
@@ -114,7 +115,7 @@ prelude fp = do (ParseOk m) <- parseFile fp
                 return (Prog (pre, y) [] tds' fds')
   where
     a = teVar 0 x
-    x = noInfoSpan (SrcSpan pre (-1) (-1) (-1) (-1))
+    x = noInfoSpan (SrcSpan (takeFileName fp) (-1) (-1) (-1) (-1))
     lc = Func x (preName "(:)", x) 2 Public (TypeSig lte) (External x NoTypeAnn)
     lte = FuncType x a (FuncType x (listType a x x) (listType a x x))
 
@@ -197,7 +198,7 @@ data TIError a = TIError String
                | TIClash (TypeExpr a) (TypeExpr a)
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
-  deriving (Show, Ord, Eq)
+  deriving (Show, Eq, Ord)
 
 -- | Transforms a type inference error into a string representation.
 showTIError :: AHOptions -> TIError SrcSpanInfo -> String
@@ -227,11 +228,11 @@ showTIError opts (TITooGeneral te1 te2)
           ++ te2' ++ " found at: " ++ prettyPrint te2x
 
 -- | Returns the position of a TIError
-posOfTIError :: AHOptions -> TIError SrcSpanInfo -> SrcSpanInfo
-posOfTIError _    (TIError _)         = noSrcSpan
-posOfTIError opts (TIClash _ te)      = typeExprAnn te
-posOfTIError opts (TIOccurCheck _ te) = typeExprAnn te
-posOfTIError opts (TITooGeneral _ te) = typeExprAnn te
+posOfTIError :: TIError SrcSpanInfo -> SrcSpanInfo
+posOfTIError (TIError _)         = noSrcSpan
+posOfTIError (TIClash _ te)      = typeExprAnn te
+posOfTIError (TIOccurCheck _ te) = typeExprAnn te
+posOfTIError (TITooGeneral _ te) = typeExprAnn te
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module

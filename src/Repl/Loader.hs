@@ -98,7 +98,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
         ParseOk modLoad -> do
           tires <- liftIO $ inferModule (modifiedModule modLoad)
           let (tiErrors, tiprog) = case tires of
-                Left e  -> let pos = posOfTIError AH.defaultAHOptions e
+                Left e  -> let pos = posOfTIError e
                             in ([TypeError pos e], Nothing)
                 Right p -> ([], Just p)
           tiProg .= tiprog
