@@ -6,7 +6,6 @@ import           AstChecks.Check
 import           Data.List
 import qualified Data.Set                             as DS
 import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import           StaticAnalysis.StaticChecks.Select
 import           Text.JSON

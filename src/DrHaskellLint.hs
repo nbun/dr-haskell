@@ -4,16 +4,17 @@
 module DrHaskellLint (module DrHaskellLint) where
 
 import           CodeCoverage.Coverage
-import           Control.Lens                        hiding (Level)
+import           Control.Lens                         hiding (Level)
 import           Data.List
 import           Data.List.Utils
 import           Data.Maybe
 import           Language.Haskell.Exts
-import qualified Language.Haskell.HLint3             as Hlint
+import qualified Language.Haskell.HLint3              as Hlint
 import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Level
 import           StaticAnalysis.Messages.ErrorToLint
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
@@ -21,8 +22,8 @@ import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
 import           System.IO
-import           TypeInference.Main
 import           TypeInference.AbstractHaskell
+import           TypeInference.Main
 import           Util.ModifyAst
 
 -- | Entry point for the cli call

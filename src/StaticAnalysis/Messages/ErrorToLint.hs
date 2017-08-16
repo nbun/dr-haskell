@@ -5,6 +5,7 @@ module StaticAnalysis.Messages.ErrorToLint (
 ) where
 
 import           Language.Haskell.Exts
+import           StaticAnalysis.Level
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Text.JSON                            as Json

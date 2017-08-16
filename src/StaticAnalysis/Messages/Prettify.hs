@@ -3,23 +3,16 @@ module StaticAnalysis.Messages.Prettify (
     module StaticAnalysis.Messages.Prettify
 ) where
 
-import           Data.List
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
-import           TypeInference.AbstractHaskell (defaultAHOptions)
-import           TypeInference.Main
+import Data.List
+import Language.Haskell.Exts
+import StaticAnalysis.Level
+import StaticAnalysis.Messages.StaticErrors
+import StaticAnalysis.StaticChecks.Select
+import TypeInference.AbstractHaskell        (defaultAHOptions)
+import TypeInference.Main
 
 type Filename = String
 type Position = (Int, Int, Int, Int)
-
--- | A level determine the checks applied to a module
-data Level = Level1 | Level2 | Level3 | LevelFull
-  deriving Show
-
-useOwnTI :: Level -> Bool
-useOwnTI LevelFull = False
-useOwnTI _         = True
 
 printFilenameAndPos :: Filename -> Position -> String
 printFilenameAndPos filename pos =
@@ -183,10 +176,6 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
 extractPositionFromQname :: QName l -> l
 extractPositionFromQname (Qual l _ _) = l
 extractPositionFromQname (UnQual l _) = l
-
-getNameOfQName :: QName l -> String
-getNameOfQName (Qual _ _ name) = nameString name
-getNameOfQName (UnQual _ name) = nameString name
 
 prettyNameLoc :: Name SrcSpanInfo -> String
 prettyNameLoc (Ident l _)  = prettyLoc l

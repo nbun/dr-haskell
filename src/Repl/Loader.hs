@@ -24,6 +24,7 @@ import           System.FilePath
 import           Language.Haskell.Exts                as Exts
 import           Repl.Types
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Level                 (useOwnTI)
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.ArbitGen                     as AG

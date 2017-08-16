@@ -13,7 +13,7 @@ import Data.Functor.Identity                          (Identity)
 import Language.Haskell.Exts                          (Module, SrcSpanInfo)
 import Paths_drhaskell                                (getDataFileName)
 
-import StaticAnalysis.Messages.Prettify               (Level (..))
+import StaticAnalysis.Level                           (Level (..))
 import StaticAnalysis.Messages.StaticErrors           (Error)
 import StaticAnalysis.StaticChecks.DoUsed             (doUsed)
 import StaticAnalysis.StaticChecks.Duplicated         (duplicated)
