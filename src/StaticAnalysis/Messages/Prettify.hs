@@ -149,11 +149,10 @@ prettyErrorWithInfoSwitchAndLevel :: Bool -> Maybe Level
 prettyErrorWithInfoSwitchAndLevel s level e =
   case e of
     NoFunDef name sims ->
-      let (filename, pos) = extractFilenameAndPositionFromName name
-      in printFilenameAndPosWithSwitch s filename pos
-         ++ appendLevelTag level e
-         ++ "Type signature for " ++ prettyPrintQ name ++ " at "
-         ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
+      infoLine name
+      ++ appendLevelTag level e
+      ++ "Type signature for " ++ prettyPrintQ name ++ " at "
+      ++ prettyNameLoc name ++ " without a definition.\n" ++ prettySims sims
     Undefined name sims ->
       let (filename, pos) = extractFilenameAndPositionFromName name
       in printFilenameAndPosWithSwitch s filename pos
@@ -248,6 +247,11 @@ prettyErrorWithInfoSwitchAndLevel s level e =
       in printFilenameAndPosWithSwitch s filename pos
          ++ appendLevelTag level e
          ++ showTIError defaultAHOptions tiError
+  where infoLine name =
+          let (filename, pos) = extractFilenameAndPositionFromName name
+          in printFilenameAndPosWithSwitch s filename pos
+
+
 
 pragmaErrorMsg :: String -> Bool
 pragmaErrorMsg msg = foldr (\w b -> (w == "pragma") || b) False (words msg)
