@@ -332,6 +332,8 @@ extendTypeEnv ms
 freshVariant :: TypeExpr a -> TIMonad a (TypeExpr a)
 freshVariant te = snd <$> rename DM.empty te
   where
+    rename :: DM.Map Int (TypeExpr a) -> TypeExpr a
+           -> TIMonad a (DM.Map Int (TypeExpr a), TypeExpr a)
     rename sub (TVar ((v, _), x))
       = case DM.lookup v sub of
           Just v' -> return (sub, v')
@@ -352,9 +354,9 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                                       Just te -> return te
                          Just te -> freshVariant te
   where
-    err = TIError ("There is no type expression for \""
-                     ++ showQName defaultAHOptions qn
-                     ++ "\"!")
+    err = TIError ("There is no type expression for "
+                     ++ bquotes (showQName defaultAHOptions qn)
+                     ++ "!")
 
 -- -----------------------------------------------------------------------------
 -- Functions for type annotation of abstract Haskell programs
@@ -371,6 +373,12 @@ annFunc (Func x y@(qn, _) a v ts rs) = do initVarTypes
                                           te <- getTypeVariant qn
                                           rs' <- annRules rs
                                           return (Func x y a v (TypeSig te) rs')
+
+-- | Returns the type expression of a typed function declaration or a type
+--   variable if the function declaration is untyped.
+funcDeclType :: FuncDecl a -> TypeExpr a
+funcDeclType (Func _ (_, x) _ _ Untyped _) = teVar 0 x
+funcDeclType (Func _ _ _ _ (TypeSig te) _) = te
 
 -- | Annotates the given group of function declarations with fresh type
 --   variables.
@@ -416,6 +424,15 @@ annStatement (SPat x p e) = do p' <- annPattern p
 annStatement (SLet x lds) = do lds' <- mapM annLocalDecl lds
                                return (SLet x lds')
 
+-- | Replaces the annotation of the given type expression with the given
+--   annotation.
+replaceTEAnn :: a -> TypeExpr a -> TypeExpr a
+replaceTEAnn x (TVar (qn, _))        = TVar (qn, x)
+replaceTEAnn x (FuncType _ te1 te2)
+  = FuncType x (replaceTEAnn x te1) (replaceTEAnn x te2)
+replaceTEAnn x (TCons _ (qn, _) tes)
+  = TCons x (qn, x) (map (replaceTEAnn x) tes)
+
 -- | Annotates the given pattern with fresh type variables.
 annPattern :: Pattern a -> TIMonad a (Pattern a)
 annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
@@ -423,9 +440,10 @@ annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
                                             return (PVar (TypeAnn te) y)
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
-annPattern (PComb x _ y@(qn, z) ps)    = do te <- getTypeVariant qn
-                                            ps' <- mapM annPattern ps
-                                            return (PComb x (TypeAnn (replaceTEAnn z te)) y ps')
+annPattern (PComb x _ y@(qn, z) ps)
+  = do te <- getTypeVariant qn
+       ps' <- mapM annPattern ps
+       return (PComb x (TypeAnn (replaceTEAnn z te)) y ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
                                             insertVarType v te
                                             p' <- annPattern p
@@ -441,67 +459,73 @@ annPattern (PList x _ ps)              = do te <- nextTVar x
 annBranchExpr :: BranchExpr a -> TIMonad a (BranchExpr a)
 annBranchExpr (Branch x p e) = Branch x <$> annPattern p <*> annExpr e
 
-replaceTEAnn :: a -> TypeExpr a -> TypeExpr a
-replaceTEAnn x (TVar (qn, _))    = TVar (qn, x)
-replaceTEAnn x (FuncType _ te1 te2) = FuncType x (replaceTEAnn x te1) (replaceTEAnn x te2)
-replaceTEAnn x (TCons _ (qn, _) tes)    = TCons x (qn, x) (map (replaceTEAnn x) tes)
-
 -- | Annotates the given expression with fresh type variables.
 annExpr :: Expr a -> TIMonad a (Expr a)
 annExpr (Var _ x@(vn@(v, _), _))
   = lookupVarType v
       >>= maybe (throwError err) (\te -> return (Var (TypeAnn te) x))
   where
-    err = TIError ("There is no type variable for \"" ++ showVarName vn
-                                                      ++ "\"!")
-annExpr (Lit _ l@(_, x))          = do te <- nextTVar x
-                                       return (Lit (TypeAnn te) l)
-annExpr (Symbol _ x@(qn, y))      = do te <- getTypeVariant qn
-                                       return (Symbol (TypeAnn (replaceTEAnn y te)) x)
-annExpr (Apply x _ e1 e2)         = do te <- nextTVar x
-                                       e1' <- annExpr e1
-                                       e2' <- annExpr e2
-                                       return (Apply x (TypeAnn te) e1' e2')
+    err = TIError ("There is no type variable for " ++ bquotes (showVarName vn)
+                                                    ++ "!")
+annExpr (Lit _ l@(_, x))
+  = do te <- nextTVar x
+       return (Lit (TypeAnn te) l)
+annExpr (Symbol _ x@(qn, y))
+  = do te <- getTypeVariant qn
+       return (Symbol (TypeAnn (replaceTEAnn y te)) x)
+annExpr (Apply x _ e1 e2)
+  = do te <- nextTVar x
+       e1' <- annExpr e1
+       e2' <- annExpr e2
+       return (Apply x (TypeAnn te) e1' e2')
 annExpr (InfixApply x _ e1 z@(qn, y) e2)
   = do te <- getTypeVariant qn
        e1' <- annExpr e1
        e2' <- annExpr e2
        return (InfixApply x (TypeAnn (replaceTEAnn y te)) e1' z e2')
-annExpr (Lambda x _ ps e)         = do te <- nextTVar x
-                                       ps' <- mapM annPattern ps
-                                       e' <- annExpr e
-                                       return (Lambda x (TypeAnn te) ps' e')
-annExpr (Let x _ lds e)           = do te <- nextTVar x
-                                       lds' <- mapM annLocalDecl lds
-                                       e' <- annExpr e
-                                       return (Let x (TypeAnn te) lds' e')
-annExpr (DoExpr x _ sts)          = do te <- nextTVar x
-                                       sts' <- mapM annStatement sts
-                                       return (DoExpr x (TypeAnn te) sts')
-annExpr (ListComp x _ e sts)      = do te <- nextTVar x
-                                       e' <- annExpr e
-                                       sts' <- mapM annStatement sts
-                                       return (ListComp x (TypeAnn te) e' sts')
-annExpr (Case x _ e bes)          = do te <- nextTVar x
-                                       e' <- annExpr e
-                                       bes' <- mapM annBranchExpr bes
-                                       return (Case x (TypeAnn te) e' bes')
-annExpr (Typed x ta e te)         = do tae <- nextTVar x
-                                       e' <- annExpr e
-                                       te' <- freshVariant te
-                                       return (Typed x (TypeAnn tae) e' te')
+annExpr (Lambda x _ ps e)
+  = do te <- nextTVar x
+       ps' <- mapM annPattern ps
+       e' <- annExpr e
+       return (Lambda x (TypeAnn te) ps' e')
+annExpr (Let x _ lds e)
+  = do te <- nextTVar x
+       lds' <- mapM annLocalDecl lds
+       e' <- annExpr e
+       return (Let x (TypeAnn te) lds' e')
+annExpr (DoExpr x _ sts)
+  = do te <- nextTVar x
+       sts' <- mapM annStatement sts
+       return (DoExpr x (TypeAnn te) sts')
+annExpr (ListComp x _ e sts)
+  = do te <- nextTVar x
+       e' <- annExpr e
+       sts' <- mapM annStatement sts
+       return (ListComp x (TypeAnn te) e' sts')
+annExpr (Case x _ e bes)
+  = do te <- nextTVar x
+       e' <- annExpr e
+       bes' <- mapM annBranchExpr bes
+       return (Case x (TypeAnn te) e' bes')
+annExpr (Typed x ta e te)
+  = do tae <- nextTVar x
+       e' <- annExpr e
+       te' <- freshVariant te
+       return (Typed x (TypeAnn tae) e' te')
 annExpr (IfThenElse x _ e1 e2 e3)
   = do te <- nextTVar x
        e1' <- annExpr e1
        e2' <- annExpr e2
        e3' <- annExpr e3
        return (IfThenElse x (TypeAnn te) e1' e2' e3')
-annExpr (Tuple x _ es)            = do te <- nextTVar x
-                                       es' <- mapM annExpr es
-                                       return (Tuple x (TypeAnn te) es')
-annExpr (List x _ es)             = do te <- nextTVar x
-                                       es' <- mapM annExpr es
-                                       return (List x (TypeAnn te) es')
+annExpr (Tuple x _ es)
+  = do te <- nextTVar x
+       es' <- mapM annExpr es
+       return (Tuple x (TypeAnn te) es')
+annExpr (List x _ es)
+  = do te <- nextTVar x
+       es' <- mapM annExpr es
+       return (List x (TypeAnn te) es')
 
 -- -----------------------------------------------------------------------------
 -- Functions for creation of type expression equations
@@ -554,7 +578,7 @@ eqsGuard e = let x = exprAnn e
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
 eqsRhs (GuardedRhs _ eqs)
-  = concatMapM (eqsExpr . snd) eqs ++= concatMapM (eqsGuard . fst) eqs
+  = concatMapM (eqsGuard . fst) eqs ++= concatMapM (eqsExpr . snd) eqs
 
 -- | Returns the type expression equations for the given branch expression and
 --   the given case type expression and case expression type expression.
@@ -567,10 +591,11 @@ eqsBranch te' te (Branch _ p e) = return [te' =.= fromJust (exprType' e)]
 -- | Returns the type expression equations for the given pattern with the given
 --   type expression.
 eqsPattern :: TypeExpr a -> Pattern a -> TIMonad a (TypeExprEqs a)
-eqsPattern te (PVar (TypeAnn tae) _)       = return [te =.= tae]
+eqsPattern te (PVar (TypeAnn tae) _)
+  = return [te =.= tae]
 eqsPattern te (PLit (TypeAnn tae) (l, x))
   = return [te =.= tae, tae =.= literalType l x x]
-eqsPattern te (PComb x (TypeAnn tae) _ ps)
+eqsPattern te (PComb _ (TypeAnn tae) (_, x) ps)
   = let ptes = mapMaybe patternType' ps
         rtae = returnType tae
      in return [te =.= rtae, tae =.= foldr (FuncType x) rtae ptes]
@@ -589,46 +614,28 @@ eqsPattern te (PList x (TypeAnn tae) ps)
                  in return ([te =.= tae, tae =.= listType (head ptes) x x]
                               ++ map (head ptes =.=) (tail ptes))
                       ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
-eqsPattern _  _                            = return []
+eqsPattern _  _
+  = return []
 
-funExprType :: Expr a -> Maybe (TypeExpr a)
-funExprType (Var ta _)              = typeAnnType ta
-funExprType (Lit ta _)              = typeAnnType ta
-funExprType (Symbol ta _)           = typeAnnType ta
-funExprType (Apply _ _ e1 _)        = funExprType e1
-funExprType (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
-funExprType (Lambda _ ta _ _)       = typeAnnType ta
-funExprType (Let _ ta _ _)          = typeAnnType ta
-funExprType (DoExpr _ ta _)         = typeAnnType ta
-funExprType (ListComp _ ta _ _)     = typeAnnType ta
-funExprType (Case _ ta _ _)         = typeAnnType ta
-funExprType (Typed _ ta _ _)        = typeAnnType ta
-funExprType (IfThenElse _ ta _ _ _) = typeAnnType ta
-funExprType (Tuple _ ta _)          = typeAnnType ta
-funExprType (List _ ta _)           = typeAnnType ta
+-- | Returns the annotated type of a function symbol within the given expression
+--   or 'Nothing' if no type is annotated.
+funType :: Expr a -> Maybe (TypeExpr a)
+funType (Apply _ _ e _) = funType e
+funType e               = exprType' e
 
+-- | Returns all annotated types of the arguments applied to a function symbol
+--   within the given expression.
 funArgs :: Expr a -> [Maybe (TypeExpr a)]
-funArgs (Var ta _)              = []
-funArgs (Lit ta _)              = []
-funArgs (Symbol ta _)           = []
-funArgs (Apply _ _ e1 e2)       = funArgs e1 ++ [exprType' e2]
-funArgs (InfixApply _ ta _ _ _) = []
-funArgs (Lambda _ ta _ _)       = []
-funArgs (Let _ ta _ _)          = []
-funArgs (DoExpr _ ta _)         = []
-funArgs (ListComp _ ta _ _)     = []
-funArgs (Case _ ta _ _)         = []
-funArgs (Typed _ ta _ _)        = []
-funArgs (IfThenElse _ ta _ _ _) = []
-funArgs (Tuple _ ta _)          = []
-funArgs (List _ ta _)           = []
+funArgs (Apply _ _ e1 e2) = funArgs e1 ++ [exprType' e2]
+funArgs _                 = []
 
 -- | Returns the type expression equations for the given expression.
 eqsExpr :: Expr a -> TIMonad a (TypeExprEqs a)
-eqsExpr (Lit (TypeAnn te) (l, x))            = return [te =.= literalType l x x]
+eqsExpr (Lit (TypeAnn te) (l, x))
+  = return [te =.= literalType l x x]
 eqsExpr (Apply x (TypeAnn te) e1 e2)
   = let args = catMaybes (funArgs e1 ++ [exprType' e2])
-        fType = fromJust (funExprType e1)
+        fType = fromJust (funType e1)
      in return [fType =.= foldr (FuncType x) te args]
           ++= eqsExpr e1
           ++= eqsExpr e2
@@ -652,7 +659,7 @@ eqsExpr ListComp{}
 eqsExpr (Case _ (TypeAnn te) e bs)
   = eqsExpr e ++= concatMapM (eqsBranch te (fromJust (exprType' e))) bs
 eqsExpr (Typed _ (TypeAnn tae) e te)
-  = return [tae =.= fromJust (exprType' e), tae =.= te] ++= eqsExpr e
+  = return [tae =.= fromJust (exprType' e), te =.= tae] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
   = let ate = fromJust (exprType' e1)
         bte = fromJust (exprType' e2)
@@ -673,7 +680,8 @@ eqsExpr (List x (TypeAnn te) es)
                  in return ((te =.= listType (head etes) x x)
                              : map (head etes =.=) (tail etes))
                       ++= concatMapM eqsExpr es
-eqsExpr _                                    = return []
+eqsExpr _
+  = return []
 
 -- -----------------------------------------------------------------------------
 -- Functions for type inference of abstract Haskell programs
@@ -701,12 +709,6 @@ inferExpr' e = do e' <- annExpr e
                   sub <- solve eqs
                   return (normalize normExpr (applyTESubstE sub e'))
 
--- | Returns the type expression of a typed function declaration or a type
---   variable if the function declaration is untyped.
-funcDeclType :: FuncDecl a -> TypeExpr a
-funcDeclType (Func x _ _ _ Untyped _)      = teVar 0 x
-funcDeclType (Func _ _ _ _ (TypeSig te) _) = te
-
 -- | Infers the given function declaration with the given list of programs. The
 --   function declaration may not be contained in the given programs.
 inferFuncDecl :: [Prog a] -> FuncDecl a -> Either (TIError a) (FuncDecl a)
@@ -715,7 +717,8 @@ inferFuncDecl ps = inferFuncDeclEnv (getTypeEnv ps)
 -- | Infers the given function declaration with the given type environment.
 inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
 inferFuncDeclEnv tenv fd
-  | DM.member (funcName fd) tenv = Left (TIError err)
+  | DM.member (funcName fd) tenv
+    = Left (TIError err)
   | otherwise
     = evalState (runExceptT (insertFunType (funcName fd) (funcDeclType fd)
                                >> annFunc fd >>= inferFunc))
@@ -812,6 +815,7 @@ checkTooGeneral (Func _ (qn, _) _ _ _ rs)
          Nothing -> return ()
          Just te ->
            let te' = normalize normTypeExpr te
+               rsts = catMaybes (rulesTypes rs)
             in maybe (return ())
                      (\(x, y) -> throwError (TITooGeneral x y))
-                     (typeTooGeneral (te', head (catMaybes (rulesTypes rs))))
+                     (typeTooGeneral' (map (te' =.=) rsts))
