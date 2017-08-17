@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 
-module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile') where
+module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile',hseExpToAHExpr) where
 
 import           Control.Monad.State.Lazy
 import           Data.Functor
@@ -12,8 +12,6 @@ import           TypeInference.HSEConversion
 import           TypeInference.AHAbstract
 import           TypeInference.AHAddVariables
 import           TypeInference.TypeSig
-
--- Special Constructoren dazu
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do

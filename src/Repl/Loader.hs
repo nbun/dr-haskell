@@ -6,7 +6,8 @@ module Repl.Loader (
   determineLevel,
   transformModule,
   loadModule,
-  loadInitialModules
+  loadInitialModules,
+  inferModule
 ) where
 
 import           Control.Lens                         hiding (Level)
@@ -15,6 +16,7 @@ import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
 import           Data.Maybe
 import           Language.Haskell.Interpreter
+import           Paths_drhaskell
 import           StaticAnalysis.StaticChecks.Select
 import           System.Directory
 import           System.FilePath
@@ -22,10 +24,13 @@ import           System.FilePath
 import           Language.Haskell.Exts                as Exts
 import           Repl.Types
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Level                 (useOwnTI)
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.ArbitGen                     as AG
 import qualified Testing.TestExpExtractor             as Tee
+import qualified TypeInference.AbstractHaskell        as AH
+import           TypeInference.Main
 import           Util.ModifyAst
 
 data LoadMessage = CheckError (Maybe Level) (Error SrcSpanInfo)
@@ -54,6 +59,14 @@ loadInitialModules = do
 
 
 --todo: better path handling
+
+inferModule :: Exts.Module Exts.SrcSpanInfo
+            -> IO (Either (TIError Exts.SrcSpanInfo) (AH.Prog Exts.SrcSpanInfo))
+inferModule m
+  = do datadir <- getDataDir
+       let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
+       pre <- prelude myPreludePath
+       return (inferHSE [pre] m)
 
 {-
 loadModule does the following:
@@ -98,13 +111,23 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                         ("No valid level selection "++
                                          "found. Using Level 1")]
 
+          tires <- liftIO $ inferModule (modifiedModule modLoad)
+          let (tiErrors, tiprog) =
+                case (useOwnTI level, tires) of
+                  (False,      _)  -> ([], Nothing)
+                  (True,  Left e)  -> let pos = posOfTIError e
+                                      in ([TypeError pos e], Nothing)
+                  (True,  Right p) -> ([], Just p)
+          tiProg .= tiprog
+
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
           (transModule, transErrors) <- transformModuleS duplDecls modLoad
           liftIO $ writeFile cfn $ printModified transModule
 
-          let errors' = checkErrors' ++ transErrors
+          let errors' = checkErrors' ++ transErrors ++ tiErrors
               errors  = map (CheckError (Just level)) errors'
+
           if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++

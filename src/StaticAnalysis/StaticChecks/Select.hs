@@ -3,13 +3,13 @@ module StaticAnalysis.StaticChecks.Select (
   module StaticAnalysis.StaticChecks.Select
 ) where
 
-import           AstChecks.Check
-import           Data.Char
-import           Data.List
-import           Data.Maybe
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors (Entity (..))
-import           Text.EditDistance
+import AstChecks.Check
+import Data.Char
+import Data.List
+import Data.Maybe
+import Language.Haskell.Exts
+import StaticAnalysis.Messages.StaticErrors (Entity (..))
+import Text.EditDistance
 
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names
@@ -76,6 +76,12 @@ importedModules :: Module l -> [ModuleName l]
 importedModules (Module _ _ _ imps _) = map impName imps
   where impName (ImportDecl _ mname _ _ _ _ _ _) = mname
 importedModules _ = []
+
+-- Returns name of a QName as a string
+getNameOfQName :: QName l -> String
+getNameOfQName (Qual _ _ name) = nameString name
+getNameOfQName (UnQual _ name) = nameString name
+
 
 --------------------------------------------------------------------------------
 -- Filter declarations

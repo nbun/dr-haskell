@@ -5,8 +5,10 @@
 -}
 
 module TypeInference.Main
-  ( TIError (..)
-  , prelude, inferExpr, inferFuncDecl, inferHSE, inferProg
+  ( TypeEnv, TIError (..)
+  , emptyTypeEnv, lookupType, insertType, listToTypeEnv, typeEnvToList
+  , composeTypeEnv, getTypeEnv, prelude, showTIError, posOfTIError, inferHSEExp
+  , inferExpr, inferFuncDecl, inferHSE, inferProg
   ) where
 
 import           Control.Applicative                  ((<|>))
@@ -14,22 +16,26 @@ import           Control.Monad.Except                 (ExceptT, runExceptT,
                                                        throwError)
 import           Control.Monad.State                  (State, evalState, get,
                                                        modify, put)
-import           Data.List                            (find)
 import qualified Data.Map                             as DM
 import           Data.Maybe                           (catMaybes, fromJust,
                                                        mapMaybe)
-import           Goodies                              (both, bothM, concatMapM,
+import           Goodies                              (both, bothM, bquotes,
+                                                       concatMapM, indent,
                                                        mapAccumM, one, two,
-                                                       (++=))
-import           Language.Haskell.Exts                (Module, ParseResult (..),
+                                                       vsep, (++=))
+import           Language.Haskell.Exts                (Exp, Module,
+                                                       ParseResult (..),
                                                        SrcSpan (..),
-                                                       SrcSpanInfo, noInfoSpan,
-                                                       parseFile)
+                                                       SrcSpanInfo (..),
+                                                       noInfoSpan, noSrcSpan,
+                                                       parseFile, prettyPrint)
+import           System.FilePath                      (takeFileName)
 import           TypeInference.AbstractHaskell
 import           TypeInference.AbstractHaskellGoodies
-import           TypeInference.HSE2AH                 (hseToAH, preludeToAH)
+import           TypeInference.HSE2AH                 (hseExpToAHExpr, hseToAH,
+                                                       preludeToAH)
 import           TypeInference.Normalization          (normExpr, normFuncDecl,
-                                                       normalize)
+                                                       normTypeExpr, normalize)
 import           TypeInference.Term                   (Term (..), TermEqs)
 import           TypeInference.TypeSubstitution       (TESubst, applyTESubstE,
                                                        applyTESubstFD)
@@ -69,6 +75,15 @@ insertType = DM.insert
 listToTypeEnv :: [(QName, TypeExpr a)] -> TypeEnv a
 listToTypeEnv = DM.fromList
 
+-- | Returns a list with all mappings from the given type environment.
+typeEnvToList :: TypeEnv a -> [(QName, TypeExpr a)]
+typeEnvToList = DM.toList
+
+-- | Composes the first type environment with the second type environment.
+--   Mappings in the first type environment shadow those in the second.
+composeTypeEnv :: TypeEnv a -> TypeEnv a -> TypeEnv a
+composeTypeEnv = DM.union
+
 -- | Returns the type environment extracted from the given list of programs.
 getTypeEnv :: [Prog a] -> TypeEnv a
 getTypeEnv = listToTypeEnv . concatMap extractProg
@@ -101,7 +116,7 @@ prelude fp = do (ParseOk m) <- parseFile fp
                 return (Prog (pre, y) [] tds' fds')
   where
     a = teVar 0 x
-    x = noInfoSpan (SrcSpan pre (-1) (-1) (-1) (-1))
+    x = noInfoSpan (SrcSpan (takeFileName fp) (-1) (-1) (-1) (-1))
     lc = Func x (preName "(:)", x) 2 Public (TypeSig lte) (External x NoTypeAnn)
     lte = FuncType x a (FuncType x (listType a x x) (listType a x x))
 
@@ -184,7 +199,47 @@ data TIError a = TIError String
                | TIClash (TypeExpr a) (TypeExpr a)
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
-  deriving Show
+  deriving (Show, Eq, Ord)
+
+-- | Transforms a type inference error into a string representation.
+showTIError :: AHOptions -> TIError SrcSpanInfo -> String
+showTIError _    (TIError e)            = e
+showTIError opts (TIClash te1 te2)
+  = let x = srcInfoSpan (typeExprAnn te1)
+        y = srcInfoSpan (typeExprAnn te2)
+        te1' = showTypeExpr opts te1
+        te2' = showTypeExpr opts te2
+        err = unwords ["Couldn't match expected type",
+                       bquotes te1',
+                       "with actual type",
+                       bquotes te2'] ++ "!"
+     in vsep [err,
+              indent 2 (prettyPrint x ++ ": " ++ te1'),
+              indent 2 (prettyPrint y ++ ": " ++ te2')]
+showTIError opts (TIOccurCheck vn te)
+  = unwords ["OccurCheck:",
+             bquotes (showVarName vn),
+             "occurs in",
+             bquotes (showTypeExpr opts te)] ++ "!"
+showTIError opts (TITooGeneral te1 te2)
+  = let x = srcInfoSpan (typeExprAnn te1)
+        y = srcInfoSpan (typeExprAnn te2)
+        te1' = showTypeExpr opts te1
+        te2' = showTypeExpr opts te2
+        err = unwords ["Couldn't match expected but too general type",
+                       bquotes te1',
+                       "with actual more specific type",
+                       bquotes te2'] ++ "!"
+     in vsep [err,
+              indent 2 (prettyPrint x ++ ": " ++ te1'),
+              indent 2 (prettyPrint y ++ ": " ++ te2')]
+
+-- | Returns the position of a type inference error.
+posOfTIError :: TIError SrcSpanInfo -> SrcSpanInfo
+posOfTIError (TIError _)         = noSrcSpan
+posOfTIError (TIClash _ te)      = typeExprAnn te
+posOfTIError (TIOccurCheck _ te) = typeExprAnn te
+posOfTIError (TITooGeneral _ te) = typeExprAnn te
 
 -- -----------------------------------------------------------------------------
 -- Functions for interfacing with the unification module
@@ -203,7 +258,8 @@ toTypeExpr (TermVar [x] v)         = teVar v x
 toTypeExpr (TermCons (x:xs) qn ts)
   | snd qn == "->" && two ts
     = FuncType x (toTypeExpr (head ts)) (toTypeExpr (ts !! 1))
-  | one xs = TCons x (qn, head xs) (map toTypeExpr ts)
+  | one xs
+    = TCons x (qn, head xs) (map toTypeExpr ts)
 toTypeExpr _
   = error "The given term can not be converted into a type expression!"
 
@@ -276,6 +332,8 @@ extendTypeEnv ms
 freshVariant :: TypeExpr a -> TIMonad a (TypeExpr a)
 freshVariant te = snd <$> rename DM.empty te
   where
+    rename :: DM.Map Int (TypeExpr a) -> TypeExpr a
+           -> TIMonad a (DM.Map Int (TypeExpr a), TypeExpr a)
     rename sub (TVar ((v, _), x))
       = case DM.lookup v sub of
           Just v' -> return (sub, v')
@@ -296,9 +354,9 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                                       Just te -> return te
                          Just te -> freshVariant te
   where
-    err = TIError ("There is no type expression for \""
-                     ++ showQName defaultAHOptions qn
-                     ++ "\"!")
+    err = TIError ("There is no type expression for "
+                     ++ bquotes (showQName defaultAHOptions qn)
+                     ++ "!")
 
 -- -----------------------------------------------------------------------------
 -- Functions for type annotation of abstract Haskell programs
@@ -311,10 +369,16 @@ annProg (Prog mn is tds fds) = do fds' <- mapM annFunc fds
 
 -- | Annotates the given function declaration with fresh type variables.
 annFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
-annFunc (Func x y@(qn, _) a v _ rs) = do initVarTypes
-                                         te <- getTypeVariant qn
-                                         rs' <- annRules rs
-                                         return (Func x y a v (TypeSig te) rs')
+annFunc (Func x y@(qn, _) a v ts rs) = do initVarTypes
+                                          te <- getTypeVariant qn
+                                          rs' <- annRules rs
+                                          return (Func x y a v (TypeSig te) rs')
+
+-- | Returns the type expression of a typed function declaration or a type
+--   variable if the function declaration is untyped.
+funcDeclType :: FuncDecl a -> TypeExpr a
+funcDeclType (Func _ (_, x) _ _ Untyped _) = teVar 0 x
+funcDeclType (Func _ _ _ _ (TypeSig te) _) = te
 
 -- | Annotates the given group of function declarations with fresh type
 --   variables.
@@ -360,6 +424,15 @@ annStatement (SPat x p e) = do p' <- annPattern p
 annStatement (SLet x lds) = do lds' <- mapM annLocalDecl lds
                                return (SLet x lds')
 
+-- | Replaces the annotation of the given type expression with the given
+--   annotation.
+replaceTEAnn :: a -> TypeExpr a -> TypeExpr a
+replaceTEAnn x (TVar (qn, _))        = TVar (qn, x)
+replaceTEAnn x (FuncType _ te1 te2)
+  = FuncType x (replaceTEAnn x te1) (replaceTEAnn x te2)
+replaceTEAnn x (TCons _ (qn, _) tes)
+  = TCons x (qn, x) (map (replaceTEAnn x) tes)
+
 -- | Annotates the given pattern with fresh type variables.
 annPattern :: Pattern a -> TIMonad a (Pattern a)
 annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
@@ -367,9 +440,10 @@ annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
                                             return (PVar (TypeAnn te) y)
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
-annPattern (PComb x _ y@(qn, _) ps)    = do te <- getTypeVariant qn
-                                            ps' <- mapM annPattern ps
-                                            return (PComb x (TypeAnn te) y ps')
+annPattern (PComb x _ y@(qn, z) ps)
+  = do te <- getTypeVariant qn
+       ps' <- mapM annPattern ps
+       return (PComb x (TypeAnn (replaceTEAnn z te)) y ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
                                             insertVarType v te
                                             p' <- annPattern p
@@ -391,60 +465,76 @@ annExpr (Var _ x@(vn@(v, _), _))
   = lookupVarType v
       >>= maybe (throwError err) (\te -> return (Var (TypeAnn te) x))
   where
-    err = TIError ("There is no type variable for \"" ++ showVarName vn
-                                                      ++ "\"!")
-annExpr (Lit _ l@(_, x))          = do te <- nextTVar x
-                                       return (Lit (TypeAnn te) l)
-annExpr (Symbol _ x@(qn, _))      = do te <- getTypeVariant qn
-                                       return (Symbol (TypeAnn te) x)
-annExpr (Apply x _ e1 e2)         = do te <- nextTVar x
-                                       e1' <- annExpr e1
-                                       e2' <- annExpr e2
-                                       return (Apply x (TypeAnn te) e1' e2')
-annExpr (InfixApply x _ e1 qn e2)
-  = do te <- getTypeVariant (fst qn)
+    err = TIError ("There is no type variable for " ++ bquotes (showVarName vn)
+                                                    ++ "!")
+annExpr (Lit _ l@(_, x))
+  = do te <- nextTVar x
+       return (Lit (TypeAnn te) l)
+annExpr (Symbol _ x@(qn, y))
+  = do te <- getTypeVariant qn
+       return (Symbol (TypeAnn (replaceTEAnn y te)) x)
+annExpr (Apply x _ e1 e2)
+  = do te <- nextTVar x
        e1' <- annExpr e1
        e2' <- annExpr e2
-       return (InfixApply x (TypeAnn te) e1' qn e2')
-annExpr (Lambda x _ ps e)         = do te <- nextTVar x
-                                       ps' <- mapM annPattern ps
-                                       e' <- annExpr e
-                                       return (Lambda x (TypeAnn te) ps' e')
-annExpr (Let x _ lds e)           = do te <- nextTVar x
-                                       lds' <- mapM annLocalDecl lds
-                                       e' <- annExpr e
-                                       return (Let x (TypeAnn te) lds' e')
-annExpr (DoExpr x _ sts)          = do te <- nextTVar x
-                                       sts' <- mapM annStatement sts
-                                       return (DoExpr x (TypeAnn te) sts')
-annExpr (ListComp x _ e sts)      = do te <- nextTVar x
-                                       e' <- annExpr e
-                                       sts' <- mapM annStatement sts
-                                       return (ListComp x (TypeAnn te) e' sts')
-annExpr (Case x _ e bes)          = do te <- nextTVar x
-                                       e' <- annExpr e
-                                       bes' <- mapM annBranchExpr bes
-                                       return (Case x (TypeAnn te) e' bes')
-annExpr (Typed x ta e te)         = do tae <- nextTVar x
-                                       e' <- annExpr e
-                                       te' <- freshVariant te
-                                       return (Typed x (TypeAnn tae) e' te')
+       return (Apply x (TypeAnn te) e1' e2')
+annExpr (InfixApply x _ e1 z@(qn, y) e2)
+  = do te <- getTypeVariant qn
+       e1' <- annExpr e1
+       e2' <- annExpr e2
+       return (InfixApply x (TypeAnn (replaceTEAnn y te)) e1' z e2')
+annExpr (Lambda x _ ps e)
+  = do te <- nextTVar x
+       ps' <- mapM annPattern ps
+       e' <- annExpr e
+       return (Lambda x (TypeAnn te) ps' e')
+annExpr (Let x _ lds e)
+  = do te <- nextTVar x
+       lds' <- mapM annLocalDecl lds
+       e' <- annExpr e
+       return (Let x (TypeAnn te) lds' e')
+annExpr (DoExpr x _ sts)
+  = do te <- nextTVar x
+       sts' <- mapM annStatement sts
+       return (DoExpr x (TypeAnn te) sts')
+annExpr (ListComp x _ e sts)
+  = do te <- nextTVar x
+       e' <- annExpr e
+       sts' <- mapM annStatement sts
+       return (ListComp x (TypeAnn te) e' sts')
+annExpr (Case x _ e bes)
+  = do te <- nextTVar x
+       e' <- annExpr e
+       bes' <- mapM annBranchExpr bes
+       return (Case x (TypeAnn te) e' bes')
+annExpr (Typed x ta e te)
+  = do tae <- nextTVar x
+       e' <- annExpr e
+       te' <- freshVariant te
+       return (Typed x (TypeAnn tae) e' te')
 annExpr (IfThenElse x _ e1 e2 e3)
   = do te <- nextTVar x
        e1' <- annExpr e1
        e2' <- annExpr e2
        e3' <- annExpr e3
        return (IfThenElse x (TypeAnn te) e1' e2' e3')
-annExpr (Tuple x _ es)            = do te <- nextTVar x
-                                       es' <- mapM annExpr es
-                                       return (Tuple x (TypeAnn te) es')
-annExpr (List x _ es)             = do te <- nextTVar x
-                                       es' <- mapM annExpr es
-                                       return (List x (TypeAnn te) es')
+annExpr (Tuple x _ es)
+  = do te <- nextTVar x
+       es' <- mapM annExpr es
+       return (Tuple x (TypeAnn te) es')
+annExpr (List x _ es)
+  = do te <- nextTVar x
+       es' <- mapM annExpr es
+       return (List x (TypeAnn te) es')
 
 -- -----------------------------------------------------------------------------
 -- Functions for creation of type expression equations
 -- -----------------------------------------------------------------------------
+
+-- | Returns the list of type expressions from the given right-hand side.
+rhsTypes' :: Rhs a -> [Maybe (TypeExpr a)]
+rhsTypes' (SimpleRhs e)      = [exprType' e]
+rhsTypes' (GuardedRhs _ eqs) = map (exprType' . snd) eqs
 
 -- | Returns the annotated type from the given expression or 'Nothing' if no
 --   type is annotated. Returns the return type for the 'InfixApply'
@@ -470,7 +560,7 @@ eqsRules _  _                          = return []
 --   given function type expression.
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
 eqsRule te (Rule x (TypeAnn tae) ps rhs _)
-  = let rhstes = catMaybes (rhsTypes rhs)
+  = let rhstes = catMaybes (rhsTypes' rhs)
         ptes = mapMaybe patternType' ps
         eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
      in return ((te =.= tae) : map (tae =.=) eqs)
@@ -488,7 +578,7 @@ eqsGuard e = let x = exprAnn e
 eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
 eqsRhs (GuardedRhs _ eqs)
-  = concatMapM (eqsExpr . snd) eqs ++= concatMapM (eqsGuard . fst) eqs
+  = concatMapM (eqsGuard . fst) eqs ++= concatMapM (eqsExpr . snd) eqs
 
 -- | Returns the type expression equations for the given branch expression and
 --   the given case type expression and case expression type expression.
@@ -501,10 +591,11 @@ eqsBranch te' te (Branch _ p e) = return [te' =.= fromJust (exprType' e)]
 -- | Returns the type expression equations for the given pattern with the given
 --   type expression.
 eqsPattern :: TypeExpr a -> Pattern a -> TIMonad a (TypeExprEqs a)
-eqsPattern te (PVar (TypeAnn tae) _)       = return [te =.= tae]
+eqsPattern te (PVar (TypeAnn tae) _)
+  = return [te =.= tae]
 eqsPattern te (PLit (TypeAnn tae) (l, x))
   = return [te =.= tae, tae =.= literalType l x x]
-eqsPattern te (PComb x (TypeAnn tae) _ ps)
+eqsPattern te (PComb _ (TypeAnn tae) (_, x) ps)
   = let ptes = mapMaybe patternType' ps
         rtae = returnType tae
      in return [te =.= rtae, tae =.= foldr (FuncType x) rtae ptes]
@@ -523,15 +614,29 @@ eqsPattern te (PList x (TypeAnn tae) ps)
                  in return ([te =.= tae, tae =.= listType (head ptes) x x]
                               ++ map (head ptes =.=) (tail ptes))
                       ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
-eqsPattern _  _                            = return []
+eqsPattern _  _
+  = return []
+
+-- | Returns the annotated type of a function symbol within the given expression
+--   or 'Nothing' if no type is annotated.
+funType :: Expr a -> Maybe (TypeExpr a)
+funType (Apply _ _ e _) = funType e
+funType e               = exprType' e
+
+-- | Returns all annotated types of the arguments applied to a function symbol
+--   within the given expression.
+funArgs :: Expr a -> [Maybe (TypeExpr a)]
+funArgs (Apply _ _ e1 e2) = funArgs e1 ++ [exprType' e2]
+funArgs _                 = []
 
 -- | Returns the type expression equations for the given expression.
 eqsExpr :: Expr a -> TIMonad a (TypeExprEqs a)
-eqsExpr (Lit (TypeAnn te) (l, x))            = return [te =.= literalType l x x]
-eqsExpr (Apply _ (TypeAnn te) e1 e2)
-  = let lte = fromJust (exprType' e1)
-     in return [leftFuncType lte =.= fromJust (exprType' e2),
-                te =.= rightFuncType lte]
+eqsExpr (Lit (TypeAnn te) (l, x))
+  = return [te =.= literalType l x x]
+eqsExpr (Apply x (TypeAnn te) e1 e2)
+  = let args = catMaybes (funArgs e1 ++ [exprType' e2])
+        fType = fromJust (funType e1)
+     in return [fType =.= foldr (FuncType x) te args]
           ++= eqsExpr e1
           ++= eqsExpr e2
 eqsExpr (InfixApply _ (TypeAnn te) e1 _ e2)
@@ -554,7 +659,7 @@ eqsExpr ListComp{}
 eqsExpr (Case _ (TypeAnn te) e bs)
   = eqsExpr e ++= concatMapM (eqsBranch te (fromJust (exprType' e))) bs
 eqsExpr (Typed _ (TypeAnn tae) e te)
-  = return [tae =.= fromJust (exprType' e), tae =.= te] ++= eqsExpr e
+  = return [tae =.= fromJust (exprType' e), te =.= tae] ++= eqsExpr e
 eqsExpr (IfThenElse _ (TypeAnn te) e1 e2 e3)
   = let ate = fromJust (exprType' e1)
         bte = fromJust (exprType' e2)
@@ -575,42 +680,19 @@ eqsExpr (List x (TypeAnn te) es)
                  in return ((te =.= listType (head etes) x x)
                              : map (head etes =.=) (tail etes))
                       ++= concatMapM eqsExpr es
-eqsExpr _                                    = return []
+eqsExpr _
+  = return []
 
 -- -----------------------------------------------------------------------------
 -- Functions for type inference of abstract Haskell programs
 -- -----------------------------------------------------------------------------
 
--- | Returns the type expression of a typed function declaration or a type
---   variable if the function declaration is untyped.
-funcDeclType :: FuncDecl a -> TypeExpr a
-funcDeclType (Func x _ _ _ Untyped _)      = teVar 0 x
-funcDeclType (Func _ _ _ _ (TypeSig te) _) = te
-
--- | Infers the given function declaration with the given list of programs. The
---   function declaration may not be contained in the given programs.
-inferFuncDecl :: [Prog a] -> FuncDecl a -> Either (TIError a) (FuncDecl a)
-inferFuncDecl ps = inferFuncDeclEnv (getTypeEnv ps)
-
--- | Infers the given function declaration with the given type environment.
-inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
-inferFuncDeclEnv tenv fd
-  | DM.member (funcName fd) tenv = Left (TIError err)
-  | otherwise
-    = evalState (runExceptT (insertFunType (funcName fd) (funcDeclType fd)
-                               >> annFunc fd >>= inferFunc))
-                (initTIState tenv)
-  where
-    err = "Function already defined in the given program!"
-
--- | Infers the given already annotated function declaration.
-inferFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
-inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
-  = do eqs <- eqsRules te rs
-       sub <- solve eqs
-       let fd' = normalize normFuncDecl (applyTESubstFD sub fd)
-       checkTooGeneral fd'
-       return fd'
+-- | Infers the given expression with the 'Language.Haskell.Exts.Syntax'
+--   representation using the given list of programs.
+inferHSEExp :: [Prog a] -> Exp a -> Either (TIError a) (Expr a)
+inferHSEExp ps e = let tenv = getTypeEnv ps
+                       e' = hseExpToAHExpr tenv e
+                    in inferExprEnv tenv e'
 
 -- | Infers the given expression with the given list of programs.
 inferExpr :: [Prog a] -> Expr a -> Either (TIError a) (Expr a)
@@ -627,12 +709,38 @@ inferExpr' e = do e' <- annExpr e
                   sub <- solve eqs
                   return (normalize normExpr (applyTESubstE sub e'))
 
+-- | Infers the given function declaration with the given list of programs. The
+--   function declaration may not be contained in the given programs.
+inferFuncDecl :: [Prog a] -> FuncDecl a -> Either (TIError a) (FuncDecl a)
+inferFuncDecl ps = inferFuncDeclEnv (getTypeEnv ps)
+
+-- | Infers the given function declaration with the given type environment.
+inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
+inferFuncDeclEnv tenv fd
+  | DM.member (funcName fd) tenv
+    = Left (TIError err)
+  | otherwise
+    = evalState (runExceptT (insertFunType (funcName fd) (funcDeclType fd)
+                               >> annFunc fd >>= inferFunc))
+                (initTIState tenv)
+  where
+    err = "Function already defined in the given program!"
+
+-- | Infers the given already annotated function declaration.
+inferFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
+inferFunc fd@(Func _ _ _ _ (TypeSig te) rs)
+  = do eqs <- eqsRules te rs
+       sub <- solve eqs
+       let fd' = normalize normFuncDecl (applyTESubstFD sub fd)
+       checkTooGeneral fd'
+       return fd'
+
 -- | Infers the given program with the 'Language.Haskell.Exts.Syntax'
 --   representation using the given list of programs.
 inferHSE :: [Prog a] -> Module a -> Either (TIError a) (Prog a)
 inferHSE ps m = let tenv = getTypeEnv ps
                     p = hseToAH tenv m
-                 in inferProgEnv (DM.union tenv (getTypeEnv [p])) p
+                 in inferProgEnv (composeTypeEnv tenv (getTypeEnv [p])) p
 
 -- | Infers the given program with the given list of programs.
 inferProg :: [Prog a] -> Prog a -> Either (TIError a) (Prog a)
@@ -675,22 +783,28 @@ inferFuncGroup fds
        extendTypeEnv [(qn, te) | Func _ (qn, _) _ _ (TypeSig te) _ <- nfds]
        return nfds
 
--- | Returns the part of the type expressions where the first type expression is
---   a too general variant of the second type expression or 'Nothing' if no such
---   part exists.
-typeTooGeneral :: TypeExpr a -> TypeExpr a -> Maybe (TypeExpr a, TypeExpr a)
-typeTooGeneral x@(TVar _)         y@FuncType{}         = Just (x, y)
-typeTooGeneral x@(TVar _)         y@TCons{}            = Just (x, y)
-typeTooGeneral (FuncType _ t1 t2) (FuncType _ t1' t2')
-  = typeTooGeneral' [(t1, t1'), (t2, t2')]
-typeTooGeneral (TCons _ _ tes)    (TCons _ _ tes')
-  = typeTooGeneral' (zip tes tes')
-typeTooGeneral _                  _                    = Nothing
+-- -----------------------------------------------------------------------------
+-- Functions for detection of too general type expressions
+-- -----------------------------------------------------------------------------
 
--- | Iterates 'typeTooGeneral' over a list of type expression pairs.
-typeTooGeneral' :: [(TypeExpr a, TypeExpr a)] -> Maybe (TypeExpr a, TypeExpr a)
-typeTooGeneral' []          = Nothing
-typeTooGeneral' ((x, y):xs) = typeTooGeneral x y <|> typeTooGeneral' xs
+-- | Returns the part of the type expressions where the left type expression is
+--   a too general variant of the right type expression or 'Nothing' if no such
+--   part exists.
+typeTooGeneral :: TypeExprEq a -> Maybe (TypeExprEq a)
+typeTooGeneral (x@(TVar (vn1, _)), y@(TVar (vn2, _)))
+  | fst vn1 == fst vn2                                = Nothing
+  | otherwise                                         = Just (x, y)
+typeTooGeneral (x@(TVar _), y@FuncType{})             = Just (x, y)
+typeTooGeneral (x@(TVar _), y@TCons{})                = Just (x, y)
+typeTooGeneral (FuncType _ t1 t2, FuncType _ t1' t2')
+  = typeTooGeneral' [(t1, t1'), (t2, t2')]
+typeTooGeneral (TCons _ _ tes, TCons _ _ tes')
+  = typeTooGeneral' (zip tes tes')
+typeTooGeneral _                                      = Nothing
+
+-- | Iterates 'typeTooGeneral' over a list of type expression equations.
+typeTooGeneral' :: TypeExprEqs a -> Maybe (TypeExprEq a)
+typeTooGeneral' = foldr ((<|>) . typeTooGeneral) Nothing
 
 -- | Checks whether the given function declaration has a too general type
 --   signature compared to the infered type.
@@ -699,6 +813,9 @@ checkTooGeneral (Func _ (qn, _) _ _ _ rs)
   = do (tenv, _, _, _) <- get
        case lookupType qn tenv of
          Nothing -> return ()
-         Just te -> maybe (return ())
-                          (\(x, y) -> throwError (TITooGeneral x y))
-                          (typeTooGeneral te (head (catMaybes (rulesTypes rs))))
+         Just te ->
+           let te' = normalize normTypeExpr te
+               rsts = catMaybes (rulesTypes rs)
+            in maybe (return ())
+                     (\(x, y) -> throwError (TITooGeneral x y))
+                     (typeTooGeneral' (map (te' =.=) rsts))

@@ -8,11 +8,15 @@ module TypeInference.AbstractHaskell
   , TypeAnn (..), FuncDecl (..), Rules (..), Rule (..), Rhs (..), LocalDecl (..)
   , Expr (..), Statement (..), Pattern (..), BranchExpr (..), Literal (..)
   , AHOptions (..)
-  , varToString, defaultAHOptions, showQName, showVarName, showTypeExpr
-  , showTypeSig, showTypeAnn, showLiteral
+  , varToString, defaultAHOptions, showQName, showInfixQName, showVarName
+  , showTypeExprEq, showTypeExprEqs, showProg, showImport, showTypeDecl
+  , showConsDecl, showTypeExpr, showTypeSig, showTypeAnn, showFuncDecl
+  , showRules, showRule, showRhs, showExpr, showPattern, showBranchExpr
+  , showLiteral, isOperator, isOperatorStr, isEmptyListCons, isListCons
+  , isTupleCons
   ) where
 
-import Goodies (one, parensIf, tupled)
+import Goodies (bquotes, indent, list, one, parens, parensIf, tuple, two, vsep)
 
 -- -----------------------------------------------------------------------------
 -- Representation of Haskell programs
@@ -71,7 +75,7 @@ data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
 data TypeExpr a = TVar (VarName, a)
                 | FuncType a (TypeExpr a) (TypeExpr a)
                 | TCons a (QName, a) [TypeExpr a]
-  deriving Show
+  deriving (Show, Eq, Ord)
 
 -- | Representation of a type signature for a function. The entities can be
 --   annotated with any data type.
@@ -187,31 +191,99 @@ defaultAHOptions = AHOptions { currentModule = ""
 
 -- | Transforms a qualified name into a string representation.
 showQName :: AHOptions -> QName -> String
-showQName opts (mn, n) | mn == currentModule opts  = n
+showQName opts qn
+  | isTupleCons qn || isEmptyListCons qn || isListCons qn = snd qn
+  | isOperator qn
+    = parens (filter (`notElem` "()") (showQName' qn))
+  | otherwise                                             = showQName' qn
+  where
+    showQName' :: QName -> String
+    showQName' (mn, n) | mn == currentModule opts  = n
                        | mn `elem` unqModules opts = n
                        | otherwise                 = mn ++ "." ++ n
+
+-- | Transforms a qualified name into an infix style string representation.
+showInfixQName :: AHOptions -> QName -> String
+showInfixQName opts qn | isOperator qn = tail (init (showQName opts qn))
+                       | otherwise     = bquotes (showQName opts qn)
 
 -- | Transforms a variable name into a string representation.
 showVarName :: VarName -> String
 showVarName = snd
 
+-- | Transforms a type expression equation into a string representation.
+showTypeExprEq :: AHOptions -> TypeExprEq a -> String
+showTypeExprEq opts (l, r) = showTypeExpr opts l ++ " = " ++ showTypeExpr opts r
+
+-- | Transforms a list of type expression equations into a string
+--   representation.
+showTypeExprEqs :: AHOptions -> TypeExprEqs a -> String
+showTypeExprEqs opts = vsep . map (showTypeExprEq opts)
+
+-- | Transforms a Haskell module into a string representation.
+showProg :: AHOptions -> Prog a -> String
+showProg opts (Prog (mn, _) is tds fds)
+  = let opts' = opts { currentModule = mn }
+        mn' = if null mn then mn else unwords ["module", mn, "where"]
+        is' = gsep (vsep (map (showImport opts . fst) is))
+        tds' = concatMap (gsep . showTypeDecl opts') tds
+        fds' = concatMap (gsep . showFuncDecl opts') fds
+     in dropWhile (== '\n') (mn' ++ is' ++ tds' ++ fds')
+  where
+    gsep :: String -> String
+    gsep s = if null s then s else "\n\n" ++ s
+
+-- | Transforms an imported module name into a string representation.
+showImport :: AHOptions -> MName -> String
+showImport opts mn | mn `elem` unqModules opts = "import " ++ mn
+                   | otherwise                 = "import qualified " ++ mn
+
+-- | Transforms an algebraic data type or type synonym declaration into a string
+--   representation.
+showTypeDecl :: AHOptions -> TypeDecl a -> String
+showTypeDecl opts (TypeSyn _ (qn, _) _ vns te)
+  = unwords (["type", showQName opts qn] ++ map (showVarName . fst) vns
+                                         ++ ["=", showTypeExpr opts te])
+showTypeDecl opts (Type _ (qn, _) _ vns cds)
+  | null cds  = tdl
+  | otherwise
+    = vsep ((tdl ++ " = " ++ showConsDecl opts (head cds))
+              : map showCD (tail cds))
+  where
+    tdl = unwords (["data", showQName opts qn] ++ map (showVarName . fst) vns)
+    showCD :: ConsDecl a -> String
+    showCD cd = indent (length tdl) (" | " ++ showConsDecl opts cd)
+
+-- | Transforms a type constructor declaration into a string representation.
+showConsDecl :: AHOptions -> ConsDecl a -> String
+showConsDecl opts (Cons _ (qn, _) _ _ tes)
+  = unwords (showQName opts qn : map (showTypeExpr' opts 2) tes)
+
 -- | Transforms a type expression into a string representation.
 showTypeExpr :: AHOptions -> TypeExpr a -> String
-showTypeExpr opts = showTypeExpr' 0
+showTypeExpr opts = showTypeExpr' opts 0
+
+-- | Transforms a type expression into a string representation. The integer
+--   value is used to add parentheses at the highest level if needed. Possible
+--   values are zero (no parentheses), one (parentheses for the left function
+--   type expression) and two (parentheses also for type constructors with at
+--   least one argument).
+showTypeExpr' :: AHOptions -> Int -> TypeExpr a -> String
+showTypeExpr' opts = showTypeExpr''
   where
-    showTypeExpr' :: Int -> TypeExpr a -> String
-    showTypeExpr' _ (TVar (v, _))         = showVarName v
-    showTypeExpr' p (FuncType _ t1 t2)
-      = parensIf (p > 0) (showTypeExpr' 1 t1 ++ " -> " ++ showTypeExpr opts t2)
-    showTypeExpr' p (TCons _ (qn, _) tes)
-      | snd qn == "[]" && one tes
-        = '[' : showTypeExpr opts (head tes) ++ "]"
+    showTypeExpr'' :: Int -> TypeExpr a -> String
+    showTypeExpr'' _ (TVar (v, _))         = showVarName v
+    showTypeExpr'' p (FuncType _ t1 t2)
+      = parensIf (p > 0) (showTypeExpr'' 1 t1 ++ " -> " ++ showTypeExpr'' 0 t2)
+    showTypeExpr'' p (TCons _ (qn, _) tes)
+      | isEmptyListCons qn && one tes
+        = list [showTypeExpr'' 0 (head tes)]
       | isTupleCons qn
-        = tupled (map (showTypeExpr opts) tes)
+        = tuple (map (showTypeExpr'' 0) tes)
       | otherwise
         = parensIf
             (p > 1 && not (null tes))
-            (unwords (showQName opts qn : map (showTypeExpr' 2) tes))
+            (unwords (showQName opts qn : map (showTypeExpr'' 2) tes))
 
 -- | Transforms a type signature for the function with the given qualified name
 --   into a string representation.
@@ -225,6 +297,100 @@ showTypeAnn :: AHOptions -> TypeAnn a -> String
 showTypeAnn _    NoTypeAnn    = ""
 showTypeAnn opts (TypeAnn te) = showTypeExpr opts te
 
+-- | Transforms a function declaration into a string representation.
+showFuncDecl :: AHOptions -> FuncDecl a -> String
+showFuncDecl opts (Func _ (qn, _) _ _ ts rs)
+  = let ts' = showTypeSig opts qn ts
+        rs' = showRules opts qn rs
+     in if null ts' then rs' else ts' ++ "\n" ++ rs'
+
+-- | Transforms a rules declaration for the function with the given qualified
+--   name into a string representation.
+showRules :: AHOptions -> QName -> Rules a -> String
+showRules opts qn (Rules rs)     = vsep (map (showRule opts qn) rs)
+showRules opts qn (External _ _) = showQName opts qn ++ " external"
+
+-- | Transforms a function rule for the function with the given qualified name
+--   into a string representation.
+showRule :: AHOptions -> QName -> Rule a -> String
+showRule opts qn (Rule _ _ ps rhs _)
+  = unwords (showQName opts qn : map (showPattern opts) ps) ++ showRhs opts rhs
+
+-- | Transforms a right-hand side into a string representation.
+showRhs :: AHOptions -> Rhs a -> String
+showRhs opts (SimpleRhs e)     = " = " ++ showExpr' opts 2 e
+showRhs opts (GuardedRhs _ gs) = "\n" ++ vsep (map showGuard gs)
+  where
+    showGuard :: (Expr a, Expr a) -> String
+    showGuard (g, e) = "  | " ++ showExpr' opts 4 g
+                              ++ " = "
+                              ++ showExpr' opts 4 e
+
+-- | Transforms an expression into a string representation.
+showExpr :: AHOptions -> Expr a -> String
+showExpr opts = showExpr' opts 0
+
+-- | Transforms an expression into a string representation. The integer value
+--   represents the indentation level.
+showExpr' :: AHOptions -> Int -> Expr a -> String
+showExpr' opts = showExpr'' 0
+  where
+    showExpr'' :: Int -> Int -> Expr a -> String
+    showExpr'' _ _ (Var _ (vn, _))                = showVarName vn
+    showExpr'' _ _ (Lit _ (l, _))                 = showLiteral l
+    showExpr'' _ _ (Symbol _ (qn, _))             = showQName opts qn
+    showExpr'' p n (Apply _ _ e1 e2)
+      = parensIf (p > 1) (showExpr'' 1 n e1 ++ " " ++ showExpr'' 2 n e2)
+    showExpr'' p n (InfixApply _ _ e1 (qn, _) e2)
+      = parensIf (p > 1) (unwords [showExpr'' 1 n e1,
+                                   showInfixQName opts qn,
+                                   showExpr'' 1 n e2])
+    showExpr'' p n (Lambda _ _ ps e)
+      = parensIf (p > 0) ("\\" ++ unwords (map (showPattern opts) ps)
+                               ++ " -> "
+                               ++ showExpr'' 0 n e)
+    showExpr'' p n (Case _ _ e bs)
+      = parensIf (p > 0) ("case " ++ showExpr'' 0 n e
+                                  ++ " of\n"
+                                  ++ vsep (map (showBranchExpr opts n) bs))
+    showExpr'' p n (Typed _ _ e te)
+      = parensIf (p > 0) (showExpr'' 0 n e ++ " :: " ++ showTypeExpr opts te)
+    showExpr'' p n (IfThenElse _ _ e1 e2 e3)
+      = parensIf (p > 0) (unwords ["if", showExpr'' 0 n e1,
+                                   "then", showExpr'' 0 n e2,
+                                   "else", showExpr'' 0 n e3])
+    showExpr'' _ n (Tuple _ _ es)
+      = tuple (map (showExpr'' 0 n) es)
+    showExpr'' _ n (List _ _ es)
+      = list (map (showExpr'' 0 n) es)
+    showExpr'' _ _ _
+      = error "The expression can not be shown yet!"
+
+-- | Transforms a pattern into a string representation.
+showPattern :: AHOptions -> Pattern a -> String
+showPattern opts = showPattern' True
+  where
+    showPattern' :: Bool -> Pattern a -> String
+    showPattern' _ (PVar _ (vn, _))       = showVarName vn
+    showPattern' _ (PLit _ (l, _))        = showLiteral l
+    showPattern' c (PComb _ _ (qn, _) ps)
+      | isOperator qn && two ps
+        = parensIf c (unwords [showPattern' True (head ps),
+                               showInfixQName opts qn,
+                               showPattern' True (ps !! 1)])
+      | otherwise
+        = parensIf (c && not (null ps))
+                   (unwords (showQName opts qn : map (showPattern' True) ps))
+    showPattern' _ (PAs _ _ (vn, _) p)
+      = showVarName vn ++ ('@' : showPattern' True p)
+    showPattern' _ (PTuple _ _ ps)        = tuple (map (showPattern' False) ps)
+    showPattern' _ (PList _ _ ps)         = list (map (showPattern' False) ps)
+
+-- | Transforms a branch expression into a string representation.
+showBranchExpr :: AHOptions -> Int -> BranchExpr a -> String
+showBranchExpr opts n (Branch _ p e)
+  = indent n (showPattern opts p ++ " -> " ++ showExpr' opts (n + 2) e)
+
 -- | Transforms a literal into a string representation.
 showLiteral :: Literal -> String
 showLiteral (Intc i)    = show i
@@ -236,7 +402,28 @@ showLiteral (Stringc s) = show s
 -- Definition of auxiliary functions
 -- -----------------------------------------------------------------------------
 
--- | Checks whether the given qualified name is the tuple type constructor.
+-- | Checks whether the given qualified name represents a Haskell operator.
+isOperator :: QName -> Bool
+isOperator (_, "")         = False
+isOperator (_, n@('(':cs)) = last n == ')' && isOperatorStr (init cs)
+isOperator (_, n)          = isOperatorStr n
+
+-- | Checks whether the given string represents a Haskell operator.
+isOperatorStr :: String -> Bool
+isOperatorStr s = not (null s) && all (`elem` "~!@#$%^&*+-=<>?./|\\:") s
+
+-- | Checks whether the given qualified name represents the empty list type
+--   constructor.
+isEmptyListCons :: QName -> Bool
+isEmptyListCons = (== "[]") . snd
+
+-- | Checks whether the given qualified name represents the list type
+--   constructor.
+isListCons :: QName -> Bool
+isListCons = (== "(:)") . snd
+
+-- | Checks whether the given qualified name represents the tuple type
+--   constructor.
 isTupleCons :: QName -> Bool
 isTupleCons (_, "")   = False
 isTupleCons (_, c:cs) = c == '(' && isTupleCons' cs
