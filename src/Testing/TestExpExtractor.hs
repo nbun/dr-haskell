@@ -14,19 +14,19 @@ import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
 import           Paths_drhaskell
+import           System.FilePath
 import           StaticAnalysis.Messages.StaticErrors
 import           Util.ModifyAst
+import           TypeInference.Main
+import           TypeInference.AbstractHaskell (defaultAHOptions, showTypeExpr)
+import qualified TypeInference.AbstractHaskell        as AH
+import           TypeInference.AbstractHaskellGoodies (exprType)
 
 
 --module for extracting tests specified in comments
 
-infixr <.>
-
-(<.>) :: Functor m => (b -> c) -> (a -> m b) -> a -> m c
-(<.>) f g x = f <$> g x
-
 parseFile' :: FilePath -> IO (Module SrcSpanInfo, [Comment])
-parseFile' = fromParseResult <.> parseFileWithComments defaultParseMode
+parseFile' p = fromParseResult <$> parseFileWithComments defaultParseMode p
 
 extractComments :: (a, [Comment]) -> [Comment]
 extractComments = snd
@@ -91,18 +91,18 @@ checkTest a = case a of
 
 
 -- try to parse and validate a test
-parseTest :: (Int,String) -> Either (Error Int) (Exp ())
-parseTest (l, s) = case parseExp s of
-                        ParseFailed _ _ -> Left $ InvalidTest l s
-                        ParseOk       e -> if checkTest e
-                                         then Right $ qualifyTests $ annotateTest l s $ void e
-                                         else Left $ InvalidTest l s
+parseTest :: (Exp () -> Exp ()) -> (Int,String) -> Either (Error Int) (Exp ())
+parseTest f (l, s) = case parseExp s of
+                          ParseFailed _ _ -> Left $ InvalidTest l s
+                          ParseOk       e -> if checkTest e
+                                           then Right $ qualifyTests $ annotateTest l s $ f $ void e
+                                           else Left $ InvalidTest l s
 
-extractTests :: (a, [Comment]) -> [Either (Error Int) (Exp ())]
-extractTests = map parseTest .
-               filterCommentLines .
-               commentsLines .
-               extractComments
+extractTests :: (Exp () -> Exp ()) -> (a, [Comment]) -> [Either (Error Int) (Exp ())]
+extractTests f = map (parseTest f) .
+                 filterCommentLines .
+                 commentsLines .
+                 extractComments
 
 makeTestsNode :: [Exp ()] -> Exp ()
 makeTestsNode = List ()
@@ -145,13 +145,44 @@ transformErrors (InvalidTest l t) =
   let s = SrcLoc "" l 0
   in  InvalidTest (infoSpan (mkSrcSpan s s) []) t
 
+-- use the type inference to explicitly type polymorphic tests
+prepareTI :: Module a
+          -> IO (Maybe (AH.Prog ()))
+prepareTI m
+  = do datadir <- getDataDir
+       let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
+       pre <- void <$> prelude myPreludePath
+       return $ case (inferHSE [pre] (void m)) of
+                     Right a -> Just a
+                     Left _  -> Nothing
+
+explicitlyTypeTest :: Maybe (AH.Prog ()) -> Exp () -> Exp ()
+explicitlyTypeTest Nothing  e = e
+explicitlyTypeTest (Just p) e = tt 2 e
+  where
+    tt :: Int -> Exp () -> Exp ()
+    tt 0 e = e
+    tt i (App _ e1 e2)        = App () (tt (i-1) e1) (wrapSignature e2)
+    tt i (InfixApp _ e1 q e2) = InfixApp () (tt (i-1) e1) q (wrapSignature e2)
+    tt _ e = e
+    wrapSignature :: Exp () -> Exp ()
+    wrapSignature e = case inferHSEExp [p] e of
+      Left _   -> e
+      Right e' -> ExpTypeSig () e $
+                  void <$> fromParseResult $ parseType $ showTypeExpr defaultAHOptions $ replaceTyVars $ fromJust $ exprType e'
+    replaceTyVars :: AH.TypeExpr () -> AH.TypeExpr ()
+    replaceTyVars (AH.TVar _)             = AH.TCons () (("Prelude","Int"), ()) []
+    replaceTyVars (AH.FuncType _ te1 te2) = AH.FuncType () (replaceTyVars te1) (replaceTyVars te2)
+    replaceTyVars (AH.TCons _ n tes)      = AH.TCons () n $ map replaceTyVars tes
+
 -- does all of the above:
 -- extracts all test expressions from comments, collects them in a list,
 -- pushes this list into the template-loaded test method, adds this method
 -- to the module and finally adds the needed modules
 transformModule :: ModifiedModule -> IO (ModifiedModule, [Error SrcSpanInfo])
 transformModule m = do
-  let testsAndErrors = extractTests ((),modifiedComments m)
+  mp <- prepareTI $ modifiedModule m
+  let testsAndErrors = extractTests (explicitlyTypeTest mp) ((),modifiedComments m)
       tests          = rights testsAndErrors
       errors         = lefts testsAndErrors
   testDeclAST <- buildTestMethod tests

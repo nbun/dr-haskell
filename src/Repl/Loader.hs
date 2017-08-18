@@ -6,7 +6,8 @@ module Repl.Loader (
   determineLevel,
   transformModule,
   loadModule,
-  loadInitialModules
+  loadInitialModules,
+  inferModule
 ) where
 
 import           Control.Lens                         hiding (Level)
@@ -23,6 +24,7 @@ import           System.FilePath
 import           Language.Haskell.Exts                as Exts
 import           Repl.Types
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Level                 (useOwnTI)
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
 import qualified Testing.ArbitGen                     as AG
@@ -95,11 +97,6 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           return [CheckError Nothing $
                              SyntaxError (infoSpan (mkSrcSpan l l) []) e]
         ParseOk modLoad -> do
-          tires <- liftIO $ inferModule (modifiedModule modLoad)
-          let (tiErrors, tiprog) = case tires of
-                Left e  -> ([DirectMessage $ show e], Nothing)
-                Right p -> ([], Just p)
-          tiProg .= tiprog
           let (dir, base) = splitFileName fn
               cdir        = dir </> ".drhaskell"
               cfn         = cdir </> base
@@ -114,16 +111,24 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                         ("No valid level selection "++
                                          "found. Using Level 1")]
 
+          tires <- liftIO $ inferModule (modifiedModule modLoad)
+          let (tiErrors, tiprog) =
+                case (useOwnTI level, tires) of
+                  (False,      _)  -> ([], Nothing)
+                  (True,  Left e)  -> let pos = posOfTIError e
+                                      in ([TypeError pos e], Nothing)
+                  (True,  Right p) -> ([], Just p)
+          tiProg .= tiprog
+
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
           (transModule, transErrors) <- transformModuleS duplDecls modLoad
           liftIO $ writeFile cfn $ printModified transModule
 
-          let errors' = checkErrors' ++ transErrors
-              errors  = tiErrors ++ map (CheckError (Just level)) errors'
+          let errors' = checkErrors' ++ transErrors ++ tiErrors
+              errors  = map (CheckError (Just level)) errors'
 
-          if null tiErrors &&
-              (null errors || (nonstrict && not (any isCritical errors')))
+          if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ displayException e
                      handler' e = return $ levelSelectErrors ++
                                            errors ++

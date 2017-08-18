@@ -4,22 +4,25 @@
 module DrHaskellLint (module DrHaskellLint) where
 
 import           CodeCoverage.Coverage
-import           Control.Lens                        hiding (Level)
+import           Control.Lens                         hiding (Level)
 import           Data.List
 import           Data.List.Utils
 import           Data.Maybe
 import           Language.Haskell.Exts
-import qualified Language.Haskell.HLint3             as Hlint
+import qualified Language.Haskell.HLint3              as Hlint
 import           Repl.CmdOptions
 import           Repl.Loader
 import           Repl.Types
 import           StaticAnalysis.CheckState
+import           StaticAnalysis.Level
 import           StaticAnalysis.Messages.ErrorToLint
 import           StaticAnalysis.Messages.Prettify
+import           StaticAnalysis.Messages.StaticErrors
 import           System.Console.GetOpt
 import           System.Environment
 import           System.Exit
 import           System.IO
+import           TypeInference.AbstractHaskell
 import           TypeInference.Main
 import           Util.ModifyAst
 
@@ -65,9 +68,15 @@ runWithRepl hlintHints file lvl format = do
       ParseOk m1 -> do
         (m2, errs) <- transformModule [] state m1 -- "
         errs' <- runCheckLevel lvl file -- run checks
+        tires <- inferModule (modifiedModule m1)
+        let tiErrors =
+              case (useOwnTI lvl, tires) of -- run type inference
+                (True, Left e)  -> let pos = posOfTIError e
+                                    in [TypeError pos e]
+                (_,         _) -> []
         coverage <- getConverageOutput m2 -- run coverage
         putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
-                                 (errs ++ errs')) -- build output
+                                 (errs ++ errs' ++ tiErrors)) -- build output
       ParseFailed pos m ->
         putStrLn $ lintErrorHlint [buildParseError pos m] format (Just lvl) []
 
