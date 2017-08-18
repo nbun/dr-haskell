@@ -54,6 +54,7 @@ hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 hseExprToAhExpr :: Map AH.QName a -> Exp a1 -> Expr a1
 hseExprToAhExpr mapTE expr = evalState (astExprToAbstractHaskellExpr mapTE expr) initialState
 
+-- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astExprToAbstractHaskellExpr :: MonadState AHState m => Map AH.QName a -> Exp a1 -> m (Expr a1)
 astExprToAbstractHaskellExpr mapTE expr =
   do
@@ -63,6 +64,7 @@ astExprToAbstractHaskellExpr mapTE expr =
     exprNew <- parseExpr "" [] expr
     return exprNew
 
+-- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astToAbstractHaskell ::
   MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
 astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
@@ -722,8 +724,14 @@ parseQName (Qual l mdn name) = parsename name
 parseQName (UnQual l name)   = parsename name
 parseQName _                 = ""
 
-parseQNameNew modu (Qual l (ModuleName d mdn) name) = (mdn, parsename name)
-parseQNameNew modu (UnQual l name)   = (modu,parsename name)
+parseQNameNew modu x@(Qual l (ModuleName d mdn) name) =
+  case isOperator(mdn, parsename name) of
+    True -> (mdn, "(" ++ parsename name ++ ")")
+    False -> (mdn, parsename name)
+parseQNameNew modu (UnQual l name)   =
+  case isOperator(modu,parsename name) of
+    True -> (modu, "(" ++ parsename name ++ ")")
+    False -> (modu, parsename name)
 parseQNameNew modu _                 = ("","")
 
 -- | Parses a match name
