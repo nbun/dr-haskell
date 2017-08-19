@@ -1,11 +1,11 @@
 -- | Defintions of error and entity
 module StaticAnalysis.Messages.StaticErrors
-  (module StaticAnalysis.Messages.StaticErrors) where
+  (Error (..), Entity (..), isCritical) where
 
-import           Control.Exception hiding (TypeError (..))
-import           Data.Typeable
-import           Language.Haskell.Exts
-import           TypeInference.Main
+import Control.Exception     (Exception)
+import Data.Typeable         (Typeable (..))
+import Language.Haskell.Exts (ModuleName, Name, QName)
+import TypeInference.Main    (TIError)
 
 -- | Describes the kind of a declaration
 data Entity = Signature | Definition | Function | Datatype
