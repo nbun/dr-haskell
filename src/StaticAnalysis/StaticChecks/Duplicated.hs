@@ -29,12 +29,13 @@ definedIn n (m:ms) = defined n m `mplus` definedIn n ms
        exported m'  = map (nameString .qNameName) $
                          mapMaybe exportSpecQName (exports m')
 
-
+-- | Returns the list of exported entities of a module
 exports :: Module l -> [ExportSpec l]
 exports (Module _ (Just (ModuleHead _ _ _ (Just (ExportSpecList _ especs)))) _ _ _)
   = especs
 exports _ = []
 
+-- | Returns the qualified name of an ExportSpec if possible
 exportSpecQName :: ExportSpec l -> Maybe (QName l)
 exportSpecQName e = case e of
                       EVar _ qn           -> Just qn
