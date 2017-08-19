@@ -1,11 +1,9 @@
 -- | Check if a type variable is applied to something
-module StaticAnalysis.StaticChecks.TypeVarApplication (
-  typeVarApplication
-) where
+module StaticAnalysis.StaticChecks.TypeVarApplication (typeVarApplication) where
 
-import           AstChecks.Check
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
+import AstChecks.Check                      (mapOverTyTypesRec, mapOverTypes)
+import Language.Haskell.Exts                (Module (..), Name, Type (..))
+import StaticAnalysis.Messages.StaticErrors (Error (..))
 
 -- | Checks if a type variable is applied to something
 typeVarApplication :: Module l -> [Error l]

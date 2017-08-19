@@ -1,15 +1,19 @@
 -- | Utility functions to work with names, modules, etc.
-module StaticAnalysis.StaticChecks.Select (
-  module StaticAnalysis.StaticChecks.Select
-) where
+module StaticAnalysis.StaticChecks.Select
+  (declName, defFuncs, defNames, expsOfDecl, getNameOfQName, importedModules
+  , modName, namePos, nameOfModule, nameString, typeSigs, qNameName, qNamesOfExps
+  , similar3, varsOfDecl
+  ) where
 
-import AstChecks.Check
-import Data.Char
-import Data.List
-import Data.Maybe
+import AstChecks.Check                      (mapOverDecls, mapOverExp,
+                                             mapOverExpRec)
+import Data.Char                            (ord)
+import Data.List                            (sortBy)
+import Data.Maybe                           (catMaybes)
 import Language.Haskell.Exts
 import StaticAnalysis.Messages.StaticErrors (Entity (..))
-import Text.EditDistance
+import Text.EditDistance                    (defaultEditCosts,
+                                             levenshteinDistance)
 
 --------------------------------------------------------------------------------
 -- Find and modify (qualified) names
@@ -21,9 +25,8 @@ defFuncs _          = []
 
 -- | Returns names of definitions of a module
 defNames :: Module l -> [(Name l, Entity)]
-defNames m@Module{} =concatMap declName $ funBinds m ++ patBinds m
-                                                     ++ dataDecls m
-defNames _ = []
+defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m ++ dataDecls m
+defNames _          = []
 
 -- | Returns name and type of a declaration
 declName :: Decl l -> [(Name l, Entity)]
@@ -120,6 +123,7 @@ dataDecls = declFilter isFunBind
     isFunBind :: Decl l -> Bool
     isFunBind DataDecl{} = True
     isFunBind _          = False
+
 --------------------------------------------------------------------------------
 -- Find similar names
 
