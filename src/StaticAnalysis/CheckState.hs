@@ -1,8 +1,5 @@
 -- | Contains level definitions and functions to run checks comfortably
-module StaticAnalysis.CheckState (
-  runCheckLevel,
-  Level(..)
-) where
+module StaticAnalysis.CheckState (runCheckLevel, Level(..)) where
 
 import AstChecks.Check                                (cId, checkAST,
                                                        checkASTv2, getAST)

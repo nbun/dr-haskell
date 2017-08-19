@@ -1,13 +1,14 @@
 -- | Check if a module contains duplicated definitions
-module StaticAnalysis.StaticChecks.Duplicated (
-    duplicated
-) where
+module StaticAnalysis.StaticChecks.Duplicated (duplicated) where
 
-import           Control.Monad
-import           Data.Maybe
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
+import Control.Monad                        (guard, mplus)
+import Data.Maybe                           (isJust, mapMaybe)
+import Language.Haskell.Exts                (ExportSpec (..),
+                                             ExportSpecList (..), Module (..),
+                                             ModuleHead (..), Name, QName)
+import StaticAnalysis.Messages.StaticErrors (Error (..))
+import StaticAnalysis.StaticChecks.Select   (defNames, nameOfModule, nameString,
+                                             qNameName)
 
 -- | Checks if a module defines a function or data type that is already imported
 duplicated :: Module l -> [Module l] -> [Error l]
