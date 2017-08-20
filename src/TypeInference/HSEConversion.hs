@@ -431,9 +431,12 @@ parseExpr mn  _ (HSE.Var l qn)                    =
                            False -> do
                              case elem ("Prelude",parsename name) (fctNames ahs) of
                                True -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
-                               False -> do
-                                         y <- getidx (parseQName qn)
-                                         return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
+                               False ->
+                                 case (parsename name) of
+                                   "otherwise" -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
+                                   _ -> do
+                                          y <- getidx (parseQName qn)
+                                          return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
    return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew mn qn,l)
 parseExpr _  _ (HSE.Lit l lit)                   =
@@ -570,7 +573,7 @@ parseSpecialQNameNew mn a@(UnQual l (Ident _ "False"))= parseQNameNew "Prelude" 
 parseSpecialQNameNew mn a@(UnQual l (Ident _ "Nothing"))=parseQNameNew "Prelude" a
 parseSpecialQNameNew mn a@(UnQual l (Ident _"Just"))    =parseQNameNew "Prelude" a
 parseSpecialQNameNew mn a@(UnQual l (Ident _ "Left"))   = parseQNameNew "Prelude" a
-parseSpecialQNameNew mn a@(UnQual l (Ident _ "Right"))  = parseQNameNew "Prelude" a  
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "Right"))  = parseQNameNew "Prelude" a
 parseSpecialQNameNew mn (Special l (HSE.Cons g))        = ("Prelude","(:)")
 parseSpecialQNameNew mn (Special l (UnboxedSingleCon g)) = (tupleName 2)
 parseSpecialQNameNew mn (Special l (TupleCon g b i))     = (tupleName i)

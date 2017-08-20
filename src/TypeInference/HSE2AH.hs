@@ -46,7 +46,70 @@ nlahToAH p@(Prog m q t fs) =
    v@(Prog n i t fd) <- abstrProg p1
    let list = transFormLocalProg [] v
    let newProg = Prog n i t (fd ++ list)
-   return newProg
+   let rProg = removeLocals newProg
+   return rProg
+
+removeLocals :: Prog a -> Prog a
+removeLocals (Prog a b c funcs) = Prog a b c $ Prelude.map removeLocalsFuncs funcs
+
+removeLocalsFuncs :: FuncDecl a -> FuncDecl a
+removeLocalsFuncs (Func a b c d e rules) = Func a b c d e $ removeLocalsRules rules
+
+removeLocalsRules :: Rules a -> Rules a
+removeLocalsRules (Rules rules) = Rules $ Prelude.map removeLocalsRule rules
+
+removeLocalsRule :: AH.Rule a -> AH.Rule a
+removeLocalsRule (AH.Rule h g pat rhs _) = AH.Rule h  g (Prelude.map removeLocalsPatter pat) (removeLocalsRhs rhs) []
+
+removeLocalsPatter :: Pattern a -> Pattern a
+removeLocalsPatter x@(AH.PVar _ _) = x
+removeLocalsPatter x@(AH.PLit _ _) = x
+removeLocalsPatter x@(PComb a b c pats) = PComb a b c $ Prelude.map removeLocalsPatter pats
+removeLocalsPatter x@(PAs a b c d) = PAs a b c $ removeLocalsPatter d
+removeLocalsPatter x@(AH.PTuple a b pats) = AH.PTuple a b $ Prelude.map removeLocalsPatter pats
+removeLocalsPatter x@(AH.PList a b pats) = AH.PList a b $ Prelude.map removeLocalsPatter pats
+
+removeLocalsRhs :: AH.Rhs a -> AH.Rhs a
+removeLocalsRhs (SimpleRhs e) = SimpleRhs (removeLocalsExpr e)
+removeLocalsRhs (AH.GuardedRhs b a) = AH.GuardedRhs b (removeLocalsExprTupel a)
+
+removeLocalsExpr :: Expr a -> Expr a
+removeLocalsExpr x@(AH.Var _ _) = x
+removeLocalsExpr x@(AH.Lit _ _) = x
+removeLocalsExpr x@(AH.Symbol _ _) = x
+removeLocalsExpr x@(Apply a b e1 e2) =
+  Apply a b (removeLocalsExpr e1) (removeLocalsExpr e2)
+removeLocalsExpr x@(InfixApply a b e1 c e2) =
+  InfixApply a b (removeLocalsExpr e1) c (removeLocalsExpr e2)
+removeLocalsExpr x@(AH.Lambda a b pats expr)=
+  AH.Lambda a b (Prelude.map removeLocalsPatter pats) (removeLocalsExpr expr)
+removeLocalsExpr x@(AH.Let _ _ _ _) = x
+removeLocalsExpr x@(DoExpr a b sts) = DoExpr a b (Prelude.map removeLocalsSt sts)
+removeLocalsExpr x@(AH.ListComp a b expr stmst) =
+  AH.ListComp a b (removeLocalsExpr expr) (Prelude.map removeLocalsSt stmst)
+removeLocalsExpr x@(AH.Case a b expr bexprs) =
+  AH.Case a b (removeLocalsExpr expr) (Prelude.map removeLocalsBExpr bexprs)
+removeLocalsExpr x@(Typed a b expr d) =
+  Typed a b (removeLocalsExpr expr) d
+removeLocalsExpr x@(IfThenElse a b e1 e2 e3) =
+  IfThenElse a b (removeLocalsExpr e1) (removeLocalsExpr e2) (removeLocalsExpr e3)
+removeLocalsExpr x@(AH.Tuple a b exprs) =
+  AH.Tuple a b (Prelude.map removeLocalsExpr exprs)
+removeLocalsExpr (AH.List a b exprs) =
+  AH.List a b (Prelude.map removeLocalsExpr exprs)
+
+removeLocalsExprTupel :: [(Expr a,Expr a)] -> [(Expr a,Expr a)]
+removeLocalsExprTupel [] = []
+removeLocalsExprTupel ((a,b):xs) =
+  (((removeLocalsExpr a),(removeLocalsExpr b)): removeLocalsExprTupel xs)
+
+removeLocalsSt :: Statement a -> Statement a
+removeLocalsSt (SExpr expr) = SExpr (removeLocalsExpr expr)
+removeLocalsSt (SPat a pat expr) = SPat a (removeLocalsPatter pat) (removeLocalsExpr expr)
+removeLocalsSt x@(SLet a l) = x
+
+removeLocalsBExpr :: BranchExpr a -> BranchExpr a
+removeLocalsBExpr (Branch a pat expr) = Branch a (removeLocalsPatter pat) (removeLocalsExpr expr)
 
 -------------------------------------------------------------------------------
 -- LIFTING TO TOPLEVEL --------------------------------------------------------
@@ -112,7 +175,8 @@ transFormLocalExpr list (AH.List a tyanno exprs)                =
 transFormLocalExpr list (AH.Lambda a tyanno pats expr)          =
   list ++ transFormLocalExpr list expr
 transFormLocalExpr list (AH.Let a tyanno locals expr)           =
-  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
+--  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
+  list ++ transFormLocalExpr list expr
 transFormLocalExpr list (DoExpr a tyanno stmts)                 =
   list ++ concatMap (transFormLocalStmt list) stmts
 transFormLocalExpr list (AH.ListComp a tyanno expr stmts)       =

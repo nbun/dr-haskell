@@ -229,7 +229,9 @@ extendParameters a name x                          =
     lds <- get
     let values = frees lds ! name
     let exprVars = transformVars a values [x]
-    return $ AH.List a NoTypeAnn exprVars
+    case length exprVars of
+      1 -> return $ head exprVars
+      _ -> return $ AH.List a NoTypeAnn exprVars
 
 -- | Tranforms variablenames into a variable(-expr) and adds them to a list of
 --   exprs
