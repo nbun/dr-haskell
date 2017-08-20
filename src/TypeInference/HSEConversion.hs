@@ -724,14 +724,14 @@ parseQName (Qual l mdn name) = parsename name
 parseQName (UnQual l name)   = parsename name
 parseQName _                 = ""
 
-parseQNameNew modu x@(Qual l (ModuleName d mdn) name) =
-  case isOperator(mdn, parsename name) of
-    True -> (mdn, "(" ++ parsename name ++ ")")
-    False -> (mdn, parsename name)
-parseQNameNew modu (UnQual l name)   =
-  case isOperator(modu,parsename name) of
-    True -> (modu, "(" ++ parsename name ++ ")")
-    False -> (modu, parsename name)
+parseQNameNew modu x@(Qual l (ModuleName d mdn) name) =(mdn, parsename name)
+  --case isOperator(mdn, parsename name) of
+--    True -> (mdn, "(" ++ parsename name ++ ")")
+--    False -> (mdn, parsename name)
+parseQNameNew modu (UnQual l name)   =(modu, parsename name)
+--  case isOperator(modu,parsename name) of
+--    True -> (modu, "(" ++ parsename name ++ ")")
+--    False -> (modu, parsename name)
 parseQNameNew modu _                 = ("","")
 
 -- | Parses a match name
