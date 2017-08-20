@@ -1,10 +1,8 @@
 -- | Check if a module head is used
-module StaticAnalysis.StaticChecks.ModuleHeadUsed (
-  moduleHeadUsed
-) where
+module StaticAnalysis.StaticChecks.ModuleHeadUsed (moduleHeadUsed) where
 
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
+import Language.Haskell.Exts                (Module (..), ModuleHead (..))
+import StaticAnalysis.Messages.StaticErrors (Error (..))
 
 -- | Checks if a module head is used
 moduleHeadUsed :: Module l -> [Error l]

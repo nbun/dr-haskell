@@ -237,7 +237,9 @@ addMyPrelude hideDefs = addImport ImportDecl
   , importSpecs = Just $ ImportSpecList
                            noSrcSpan
                            False
-                           [IVar noSrcSpan $ Ident noSrcSpan "IO"]}
+                           [IVar noSrcSpan $ Ident noSrcSpan "IO",
+                            IVar noSrcSpan $ Ident noSrcSpan "(==)",
+                            IVar noSrcSpan $ Ident noSrcSpan "(/=)"]}
 
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude

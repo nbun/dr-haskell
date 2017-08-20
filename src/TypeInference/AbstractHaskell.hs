@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveFunctor #-}
+
 {-|
   This library contains data types for representing Haskell programs in Haskell.
 -}
@@ -55,19 +57,19 @@ data Visibility = Private | Public
 --   imported modules, a list of type declarations and a list of function
 --   declarations. The entities can be annotated with any data type.
 data Prog a = Prog (MName, a) [(MName, a)] [TypeDecl a] [FuncDecl a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of an algebraic data type or type synonym declaration. The
 --   entities can be annotated with any data type.
 data TypeDecl a = Type a (QName, a) Visibility [(VarName, a)] [ConsDecl a]
                 | TypeSyn a (QName, a) Visibility [(VarName, a)] (TypeExpr a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a type constructor declaration consisting of a type
 --   constructor name, the arity and visibility of the type constructor and a
 --   list of argument types. The entities can be annotated with any data type.
 data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a type expression. A type expression is either a type
 --   variable, a function type or a type constructor application. The entities
@@ -75,49 +77,49 @@ data ConsDecl a = Cons a (QName, a) Arity Visibility [TypeExpr a]
 data TypeExpr a = TVar (VarName, a)
                 | FuncType a (TypeExpr a) (TypeExpr a)
                 | TCons a (QName, a) [TypeExpr a]
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Functor)
 
 -- | Representation of a type signature for a function. The entities can be
 --   annotated with any data type.
 data TypeSig a = Untyped
                | TypeSig (TypeExpr a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a type annotation used to annotate the type of
 --   expressions. The entities can be annotated with any data type.
 data TypeAnn a = NoTypeAnn
                | TypeAnn (TypeExpr a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a function declaration consisting of a function name, the
 --   arity and visibility of the function, a type signature and a list of rules.
 --   The entities can be annotated with any data type.
 data FuncDecl a = Func a (QName, a) Arity Visibility (TypeSig a) (Rules a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Rules are either a list of single rules or no rule at all if the function
 --   is defined externally. The entities can be annotated with any data type.
 data Rules a = Rules [Rule a]
              | External a (TypeAnn a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a function rule consisting of a type annotation, a list
 --   of patterns, a right-hand side and a list of local declarations. The
 --   entities can be annotated with any data type.
 data Rule a = Rule a (TypeAnn a) [Pattern a] (Rhs a) [LocalDecl a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of a rules right-hand side as either guarded or unguarded.
 --   The entities can be annotated with any data type.
 data Rhs a = SimpleRhs (Expr a)
            | GuardedRhs a [(Expr a, Expr a)]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of local @let@ or @where@ declarations. The entities can be
 --   annotated with any data type.
 data LocalDecl a = LocalFunc (FuncDecl a)
                  | LocalPat a (Pattern a) (Expr a) [LocalDecl a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of expressions. The entities can be annotated with any data
 --   type.
@@ -135,14 +137,14 @@ data Expr a = Var (TypeAnn a) (VarName, a)
             | IfThenElse a (TypeAnn a) (Expr a) (Expr a) (Expr a)
             | Tuple a (TypeAnn a) [Expr a]
             | List a (TypeAnn a) [Expr a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of statements in @do@ expressions or list comprehensions.
 --   The entities can be annotated with any data type.
 data Statement a = SExpr (Expr a)
                  | SPat a (Pattern a) (Expr a)
                  | SLet a [LocalDecl a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of pattern expressions. The entities can be annotated with
 --   any data type.
@@ -152,12 +154,12 @@ data Pattern a = PVar (TypeAnn a) (VarName, a)
                | PAs a (TypeAnn a) (VarName, a) (Pattern a)
                | PTuple a (TypeAnn a) [Pattern a]
                | PList a (TypeAnn a) [Pattern a]
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of branches in @case@ expressions. The entities can be
 --   annotated with any data type.
 data BranchExpr a = Branch a (Pattern a) (Expr a)
-  deriving Show
+  deriving (Show, Functor)
 
 -- | Representation of literals occurring in expressions. It is either an
 --   integer, a float, a character, or a string constant.

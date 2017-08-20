@@ -424,7 +424,7 @@ annStatement (SPat x p e) = do p' <- annPattern p
 annStatement (SLet x lds) = do lds' <- mapM annLocalDecl lds
                                return (SLet x lds')
 
--- | Replaces the annotation of the given type expression with the given
+-- | Replaces all annotations of the given type expression with the given
 --   annotation.
 replaceTEAnn :: a -> TypeExpr a -> TypeExpr a
 replaceTEAnn x (TVar (qn, _))        = TVar (qn, x)
@@ -461,9 +461,10 @@ annBranchExpr (Branch x p e) = Branch x <$> annPattern p <*> annExpr e
 
 -- | Annotates the given expression with fresh type variables.
 annExpr :: Expr a -> TIMonad a (Expr a)
-annExpr (Var _ x@(vn@(v, _), _))
+annExpr (Var _ x@(vn@(v, _), vx))
   = lookupVarType v
-      >>= maybe (throwError err) (\te -> return (Var (TypeAnn te) x))
+      >>= maybe (throwError err)
+                (\te -> return (Var (TypeAnn (replaceTEAnn vx te)) x))
   where
     err = TIError ("There is no type variable for " ++ bquotes (showVarName vn)
                                                     ++ "!")
