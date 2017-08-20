@@ -126,7 +126,7 @@ prettyErrorWithInfoSwitchAndLevel s level e =
       infoLinePos l
       ++ appendLevelTag level e
       ++ showTIError defaultAHOptions tiError
-    InstDecl l ->
+    InstanceDecl l ->
       infoLinePos l
       ++ appendLevelTag level e
       ++ "Use of TypeInstance at line " ++ prettyLineNum l ++ "."
@@ -173,7 +173,7 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
       "Usage of the do construct is forbidden on " --level...
     appendLevelErrorTag' (Pragma _ _) =
       "Usage of Pragma is forbidden on " --level...
-    appendLevelErrorTag' (InstDecl _) =
+    appendLevelErrorTag' (InstanceDecl _) =
       "Usage of TypeInstance is forbidden on " --level...
     appendLevelErrorTag' (ClassDecl _) =
       "Usage of TypeClass is forbidden on " --level...

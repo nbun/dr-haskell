@@ -47,7 +47,7 @@ data Error l = NoFunDef (Name l) [Name l]
              | TypeError l (TIError l)
              --          position, formatted output
              | ClassDecl l
-             | InstDecl l
+             | InstanceDecl l
   deriving (Show, Typeable, Ord, Eq)
 
 instance (Show l, Typeable l) => Exception (Error l)
