@@ -136,10 +136,16 @@ replaceAllTests _ a = a
 -- reads the template that contains the test method
 buildTestMethod :: [Exp ()] -> IO (Decl ())
 buildTestMethod es = do
+  runAllTestDecl <- getFunction "runAllTests"
+  return $ replaceAllTests (makeTestsNode es) runAllTestDecl
+
+-- reads a function from the template
+getFunction :: String -> IO (Decl ())
+getFunction name = do
   templateLoc <- getDataFileName "Testing/templates.hs"
   templateAST <- void . fst <$> parseFile' templateLoc
-  let Just runAllTestDecl = getPatBind "runAllTests" templateAST
-  return $ replaceAllTests (makeTestsNode es) runAllTestDecl
+  let Just f = getPatBind name templateAST
+  return f
 
 transformErrors :: Error Int -> Error SrcSpanInfo
 transformErrors (InvalidTest l t) =
@@ -187,6 +193,7 @@ transformModule m = do
       tests          = rights testsAndErrors
       errors         = lefts testsAndErrors
   testDeclAST <- buildTestMethod tests
+  mainf <- getFunction "main"
   let
     impAdded = addImport ImportDecl {importAnn = (),
                                      importModule = ModuleName () "Tests",
@@ -197,5 +204,6 @@ transformModule m = do
                                      importAs = Nothing,
                                      importSpecs = Nothing} m
     m' = appendDecl testDeclAST impAdded
-  return (m', transformErrors <$> errors)
+    m''= appendDecl mainf m'
+  return (m'', transformErrors <$> errors)
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod
