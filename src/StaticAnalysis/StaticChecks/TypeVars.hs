@@ -12,4 +12,3 @@ checkForTypVar (TyFun _ x _) =
         (TyVar _ n) -> [TypeVar n]
         _           -> []
 checkForTypVar _ = []
-

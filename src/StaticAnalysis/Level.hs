@@ -9,4 +9,3 @@ data Level = Level1 | Level2 | Level3 | LevelFull
 useOwnTI :: Level -> Bool
 useOwnTI LevelFull = False
 useOwnTI _         = True
-

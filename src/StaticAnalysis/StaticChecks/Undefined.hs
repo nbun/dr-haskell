@@ -32,4 +32,3 @@ undef _ _ = []
 
 flip2 :: (a -> b -> c -> d) -> b -> c -> a -> d
 flip2 f b c a = f a b c
-

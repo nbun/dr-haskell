@@ -2,11 +2,11 @@ module Repl.CmdOptions (
     handleCmdArgs
 ) where
 
-import           Control.Lens              as L
-import           Repl.Types
-import           StaticAnalysis.CheckState
-import           System.Console.GetOpt
-import           System.Environment
+import Control.Lens              as L
+import Repl.Types
+import StaticAnalysis.CheckState
+import System.Console.GetOpt
+import System.Environment
 
 handleCmdArgs :: IO ReplState
 handleCmdArgs = do
@@ -44,4 +44,3 @@ readLevel "4"    = forceLevel .~ Just LevelFull
 readLevel "full" = forceLevel .~ Just LevelFull
 readLevel "FULL" = forceLevel .~ Just LevelFull
 readLevel _      = error "invalid level" --TODO: improve this...
-

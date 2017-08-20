@@ -13,4 +13,3 @@ noFunDef m@Module{} = [NoFunDef sig (similar3 m (map fst . defNames) sig)
   where sigNames = concatMap (map fst . declName) $ typeSigs m
         defStrs  = map (nameString . fst) $ defFuncs m
 noFunDef _ = []
-
