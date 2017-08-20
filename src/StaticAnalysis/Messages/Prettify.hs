@@ -175,11 +175,7 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
       "Usage of Pragma is forbidden on " --level...
     appendLevelErrorTag' (InstDeclUsed _) =
       "Usage of TypeInstance is forbidden on " --level...
-<<<<<<< HEAD
     appendLevelErrorTag' (TypeClassDecl _) =
-=======
-    appendLevelErrorTag' (ClassDeclUsed _) =
->>>>>>> 53544fa280f52262881072b455714e610d5d491e
       "Usage of TypeClass is forbidden on " --level...
     appendLevelErrorTag' _ = ""
 
