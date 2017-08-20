@@ -9,6 +9,6 @@ import StaticAnalysis.Messages.StaticErrors
 
 -- | Checks if a lambda function is used
 typeinstanceCheck :: DeclCheck l (Error l)
-typeinstanceCheck (InstDecl info _ _ _)    = [ClassInstance info]
-typeinstanceCheck (ClassDecl info _ _ _ _) = [Class info]
-typeinstanceCheck _                        = []
+typeinstanceCheck (InstDecl  info _ _ _)    = [InstDeclUsed info]
+typeinstanceCheck (ClassDecl info _ _ _ _)  = [ClassDeclUsed info]
+typeinstanceCheck _                         = []
