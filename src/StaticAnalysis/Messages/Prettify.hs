@@ -130,7 +130,7 @@ prettyErrorWithInfoSwitchAndLevel s level e =
       infoLinePos l
       ++ appendLevelTag level e
       ++ "Use of TypeInstance at line " ++ prettyLineNum l ++ "."
-    ClassDecl l ->
+    TypeClassDecl l ->
       infoLinePos l
       ++ appendLevelTag level e
       ++ "Use of TypeClass at line " ++ prettyLineNum l ++ "."
@@ -175,7 +175,7 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
       "Usage of Pragma is forbidden on " --level...
     appendLevelErrorTag' (InstanceDecl _) =
       "Usage of TypeInstance is forbidden on " --level...
-    appendLevelErrorTag' (ClassDecl _) =
+    appendLevelErrorTag' (TypeClassDecl _) =
       "Usage of TypeClass is forbidden on " --level...
     appendLevelErrorTag' _ = ""
 

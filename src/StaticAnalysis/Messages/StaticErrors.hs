@@ -46,7 +46,7 @@ data Error l = NoFunDef (Name l) [Name l]
              --      pos pragmaname
              | TypeError l (TIError l)
              --          position, formatted output
-             | ClassDecl l
+             | TypeClassDecl l
              | InstanceDecl l
   deriving (Show, Typeable, Ord, Eq)
 
