@@ -26,6 +26,7 @@ import StaticAnalysis.StaticChecks.NoTypeDef          (noTypeDef)
 import StaticAnalysis.StaticChecks.OwnDataDecl        (ownDataDecl)
 import StaticAnalysis.StaticChecks.Pragma             (pragmaCheck)
 import StaticAnalysis.StaticChecks.Shadowing          (shadowing)
+import StaticAnalysis.StaticChecks.TypeInstance       (typeinstanceCheck)
 import StaticAnalysis.StaticChecks.TypeVarApplication (typeVarApplication)
 import StaticAnalysis.StaticChecks.TypeVars           (checkForTypVar)
 import StaticAnalysis.StaticChecks.Undefined          (undef)
@@ -85,6 +86,7 @@ levelOne p = do
   check $ checkAST cId shadowing cId cId
   check $ checkAST cId cId cId checkForTypVar
   check $ checkASTv2 cId cId cId cId pragmaCheck
+  check $ checkASTv2 cId typeinstanceCheck cId cId cId
 
 {- Level 2
 Implemented:
@@ -111,6 +113,7 @@ levelTwo p = do
   check $ checkAST cId shadowing cId cId
   check $ checkAST cId cId cId checkForTypVar
   check $ checkASTv2 cId cId cId cId pragmaCheck
+  check $ checkASTv2 cId typeinstanceCheck cId cId cId
 
 {- Level 3
 Implemented:
@@ -132,6 +135,7 @@ levelThree p = do
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
   check $ checkASTv2 cId cId cId cId pragmaCheck
+  check $ checkASTv2 cId typeinstanceCheck cId cId cId
 
 levelFull :: LevelT
 levelFull _ = return ()

@@ -3,8 +3,8 @@ module AstChecks.Check (
     module AstChecks.Check
 ) where
 
-import           Control.Monad
-import           Language.Haskell.Exts
+import Control.Monad
+import Language.Haskell.Exts
 
 -- | Interface for the patternmatching on the AST parts
 type ImportDeclCheck l a = ImportDecl l -> [a]
