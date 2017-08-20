@@ -99,25 +99,37 @@ parseTypDecls str (HSE.TypeDecl l declhead typ)               =
      return $ TypeSyn l (parseTypeName str declhead,l) Public tv t
 parseTypDecls str (DataDecl l (DataType _) Nothing declhead qualcondecls _) =
   do
-    etv <- mapM  extractTypvariables $ filterqual qualcondecls
-    let he = concat etv
+    --etv <- mapM  extractTypvariables $ filterqual qualcondecls
+    ev <- evt declhead
+  --  let he = concat etv
     qcd <- mapM (parseQualConDecl str) qualcondecls
-    return $ Type l (parseTypeName str declhead,l) Public he qcd
+    return $ Type l (parseTypeName str declhead,l) Public ev qcd
+
+
+evt :: MonadState AHState m => DeclHead a -> m ([(VarName,a)])
+evt (DHead l name)              = return []
+evt (DHInfix l tyVarBind name)  = parseTVB tyVarBind
+evt (DHParen l declhead)        = evt declhead
+evt (DHApp l declhead tyVarBind) =
+  do
+    e1 <- evt declhead
+    e2 <- parseTVB tyVarBind
+    return $ e1 ++ e2
 
 -- | Extracts the typevariables out of a qualified constructor declaration
-extractTypvariables ::
-  MonadState AHState m => QualConDecl l -> m [(VarName, l)]
-extractTypvariables (QualConDecl _ (Just tvb) _ _) =
-  mapM parseTVB tvb
+--extractTypvariables ::
+--  MonadState AHState m => QualConDecl l -> m [(VarName, l)]
+--extractTypvariables (QualConDecl _ (Just tvb) _ _) =
+--  mapM parseTVB tvb
 
 -- | Parses a typevariable
-parseTVB :: MonadState AHState m => TyVarBind l -> m (VarName, l)
+--parseTVB :: MonadState AHState m => TyVarBind l -> m (VarName, l)
 parseTVB (KindedVar l name _) = do
                                   y <- getidx (parsename name)
-                                  return ((y, parsename name),l)
+                                  return [((y, parsename name),l)]
 parseTVB (UnkindedVar l name) = do
                                   y <- getidx (parsename name)
-                                  return ((y, parsename name),l)
+                                  return [((y, parsename name),l)]
 
 -- | Parses a qualified constructer name
 parseQualConDecl ::
@@ -680,13 +692,32 @@ parseTyp modu (TyApp l t1 t2)            =
   do
     t1p <- parseTyp modu t1
     t2p <- parseTyp modu t2
-    return $ FuncType l t1p t2p
+    return $ TCons l ((parseTypName modu t1),l) [t2p]
+    --return $ FuncType l t1p t2p
 parseTyp modu (TyWildCard l (Just name)) =
   return $ TCons l ((modu,parsename name), l) []
 parseTyp modu (TyWildCard l Nothing) =
   return $ TCons l ((modu,""), l) []
 parseTyp modu (TyForall l mtv mc t) = do
   parseTyp modu t
+
+parseTypName :: String -> Type a -> AH.QName
+parseTypName modu (TyVar l name)  = (modu,parsename name)
+parseTypName modu (TyTuple l Boxed types) =  (tupleName (length types))
+parseTypName modu (TyList l typ)          = ("Prelude","[]")
+parseTypName modu (TyCon l qname)         =
+   case parseQName qname of
+     "Int"   -> ("Prelude","Int")
+     "Maybe" -> ("Prelude", "Maybe")
+     "Bool"  -> ("Prelude","Bool")
+     "String"->("Prelude", "String")
+     "Char"  -> ("Prelude", "Char")
+     "Float" -> ("Prelude","Float")
+     _ -> (parseSpecialQNameNew modu qname)
+parseTypName modu (TyParen l t)           =
+  parseTypName modu t
+parseTypName modu (TyApp l t1 t2) = parseTypName modu t1 
+
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
