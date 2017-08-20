@@ -1,11 +1,11 @@
 -- | Defintions of error and entity
 module StaticAnalysis.Messages.StaticErrors
-  (module StaticAnalysis.Messages.StaticErrors) where
+  (Error (..), Entity (..), isCritical) where
 
-import           Control.Exception hiding (TypeError (..))
-import           Data.Typeable
-import           Language.Haskell.Exts
-import           TypeInference.Main
+import Control.Exception     (Exception)
+import Data.Typeable         (Typeable (..))
+import Language.Haskell.Exts (ModuleName, Name, QName)
+import TypeInference.Main    (TIError)
 
 -- | Describes the kind of a declaration
 data Entity = Signature | Definition | Function | Datatype
@@ -46,6 +46,8 @@ data Error l = NoFunDef (Name l) [Name l]
              --      pos pragmaname
              | TypeError l (TIError l)
              --          position, formatted output
+             | ClassDecl l
+             | InstDecl l
   deriving (Show, Typeable, Ord, Eq)
 
 instance (Show l, Typeable l) => Exception (Error l)
@@ -53,7 +55,7 @@ instance (Show l, Typeable l) => Exception (Error l)
 -- | Errors that make further usage of a module impossible
 isCritical :: Error l -> Bool
 isCritical (NoFunDef _ _)    = True
-isCritical (Undefined _ _)   = True
+-- isCritical (Undefined _ _)   = True
 isCritical (SyntaxError _ _) = True
 isCritical (Pragma _ _)      = True
 isCritical (TypeError _ _)   = True

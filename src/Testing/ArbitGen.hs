@@ -8,13 +8,13 @@ module Testing.ArbitGen (
 
 --Module for automatic generation of arbitrary instances
 
-import           Control.Arrow
-import           Data.Char
-import           Data.Functor
-import           Data.List
-import           Data.Maybe
-import           Language.Haskell.Exts
-import           Util.ModifyAst
+import Control.Arrow
+import Data.Char
+import Data.Functor
+import Data.List
+import Data.Maybe
+import Language.Haskell.Exts
+import Util.ModifyAst
 
 extractDataDecls :: Module a -> [Decl a]
 extractDataDecls (Module _ _ _ _ ds) = filter isDataDecl ds
@@ -40,7 +40,7 @@ typeToInstance (DataDecl _ _ _ h qds _) =
     deconstructHead (DHParen _ h)            = deconstructHead h
     deconstructHead (DHApp _ h (UnkindedVar _ (Ident _ tv)))   = (tv:) `second` deconstructHead h
     deconstructHead (DHInfix _ (UnkindedVar _ (Ident _ tv)) (Ident _ name)) = (name, [tv])
-    irule = (IRule () Nothing context (IHApp () (IHCon () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary"))) instHead))
+    irule = IRule () Nothing context (IHApp () (IHCon () (Qual () (ModuleName () "Tests") (Ident () "Arbitrary"))) instHead)
     context = buildContext tyvars
     buildContext [] = Nothing
     buildContext xs = Just $ CxTuple () $ map buildContext' xs

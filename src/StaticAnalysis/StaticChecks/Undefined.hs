@@ -1,14 +1,12 @@
 -- | Check if an entity is not defined
-module StaticAnalysis.StaticChecks.Undefined (
-  undef
-  ) where
+module StaticAnalysis.StaticChecks.Undefined (undef) where
 
-import           Control.Monad
-import           Data.List
-import           Data.Maybe
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
+import Control.Monad                        (guard)
+import Data.List                            (nub)
+import Data.Maybe                           (mapMaybe)
+import Language.Haskell.Exts                (Module (..))
+import StaticAnalysis.Messages.StaticErrors (Error (..))
+import StaticAnalysis.StaticChecks.Select
 
 -- | Checks if an entity is not defined in the module or the given imported
 --   modules
@@ -34,4 +32,3 @@ undef _ _ = []
 
 flip2 :: (a -> b -> c -> d) -> b -> c -> a -> d
 flip2 f b c a = f a b c
-

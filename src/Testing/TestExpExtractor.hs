@@ -14,13 +14,14 @@ import           Data.List
 import           Data.Maybe
 import           Language.Haskell.Exts
 import           Paths_drhaskell
-import           System.FilePath
 import           StaticAnalysis.Messages.StaticErrors
-import           Util.ModifyAst
-import           TypeInference.Main
-import           TypeInference.AbstractHaskell (defaultAHOptions, showTypeExpr)
+import           System.FilePath
+import           TypeInference.AbstractHaskell        (defaultAHOptions,
+                                                       showTypeExpr)
 import qualified TypeInference.AbstractHaskell        as AH
 import           TypeInference.AbstractHaskellGoodies (exprType)
+import           TypeInference.Main
+import           Util.ModifyAst
 
 
 --module for extracting tests specified in comments
@@ -49,11 +50,11 @@ filterCommentLines = map (second (dropWhile (\x ->
 -- expressions do use the qualification.
 qualifyTests :: Exp () -> Exp()
 qualifyTests (Var _ (UnQual _ (Ident _ nm))) =
-             (Var () (Qual () (ModuleName () "Tests") (Ident () nm)))
+             Var () (Qual () (ModuleName () "Tests") (Ident () nm))
 qualifyTests (App _ e1 e2)                   =
-             (App () (qualifyTests e1) e2)
+             App () (qualifyTests e1) e2
 qualifyTests (InfixApp _ e1 q e2)            =
-             (InfixApp () (qualifyTests e1) q e2)
+             InfixApp () (qualifyTests e1) q e2
 
 -- this adds the test expression's string representation to the test expression
 -- for pretty printing of failed tests
@@ -152,7 +153,7 @@ prepareTI m
   = do datadir <- getDataDir
        let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
        pre <- void <$> prelude myPreludePath
-       return $ case (inferHSE [pre] (void m)) of
+       return $ case inferHSE [pre] (void m) of
                      Right a -> Just a
                      Left _  -> Nothing
 
@@ -161,10 +162,10 @@ explicitlyTypeTest Nothing  e = e
 explicitlyTypeTest (Just p) e = tt 2 e
   where
     tt :: Int -> Exp () -> Exp ()
-    tt 0 e = e
+    tt 0 e                    = e
     tt i (App _ e1 e2)        = App () (tt (i-1) e1) (wrapSignature e2)
     tt i (InfixApp _ e1 q e2) = InfixApp () (tt (i-1) e1) q (wrapSignature e2)
-    tt _ e = e
+    tt _ e                    = e
     wrapSignature :: Exp () -> Exp ()
     wrapSignature e = case inferHSEExp [p] e of
       Left _   -> e

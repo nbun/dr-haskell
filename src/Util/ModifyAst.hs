@@ -12,9 +12,9 @@ module Util.ModifyAst (
   translateLine,
 ) where
 
-import           Data.Char
-import           Data.Maybe
-import           Language.Haskell.Exts
+import Data.Char
+import Data.Maybe
+import Language.Haskell.Exts
 
 {-
   Module for modifying modules while preserving positional information.

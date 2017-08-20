@@ -3,15 +3,15 @@
 
 module TypeInference.HSE2AH (hseToAH,preludeToAH,parseFile',hseExpToAHExpr) where
 
-import           Control.Monad.State.Lazy
-import           Data.Functor
-import           Data.Map.Lazy                 as DML
-import           Language.Haskell.Exts         as HSE
-import           TypeInference.AbstractHaskell as AH
-import           TypeInference.HSEConversion
-import           TypeInference.AHAbstract
-import           TypeInference.AHAddVariables
-import           TypeInference.TypeSig
+import Control.Monad.State.Lazy
+import Data.Functor
+import Data.Map.Lazy                 as DML
+import Language.Haskell.Exts         as HSE
+import TypeInference.AbstractHaskell as AH
+import TypeInference.AHAbstract
+import TypeInference.AHAddVariables
+import TypeInference.HSEConversion
+import TypeInference.TypeSig
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do

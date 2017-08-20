@@ -1,8 +1,8 @@
 module TypeInference.TypeSig
   (parseTypeSig, parseTypeSignatur) where
 
-import           Data.Functor
-import           Language.Haskell.Exts
+import Data.Functor
+import Language.Haskell.Exts
 
 --------------------------------------------------------------------------------
 --------------------------------------------------------------------------------

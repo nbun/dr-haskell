@@ -4,19 +4,19 @@ module CodeCoverage.Coverage (
     getConverageOutput
 ) where
 
-import           Control.Exception
-import           Language.Haskell.Exts
-import           Paths_drhaskell
-import           StaticAnalysis.Messages.ErrorToLint
-import           StaticAnalysis.Messages.Prettify
-import           System.Directory
-import           System.IO
-import           System.IO.Temp
-import           System.Process
-import           Trace.Hpc.Mix
-import           Trace.Hpc.Tix
-import           Trace.Hpc.Util
-import           Util.ModifyAst
+import Control.Exception
+import Language.Haskell.Exts
+import Paths_drhaskell
+import StaticAnalysis.Messages.ErrorToLint
+import StaticAnalysis.Messages.Prettify
+import System.Directory
+import System.IO
+import System.IO.Temp
+import System.Process
+import Trace.Hpc.Mix
+import Trace.Hpc.Tix
+import Trace.Hpc.Util
+import Util.ModifyAst
 
 -- | Main interface for running the coverage analysis
 getConverageOutput :: ModifiedModule -> IO [Lint]

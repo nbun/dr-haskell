@@ -2,26 +2,25 @@
 
 module Repl.Main (module Repl.Main) where
 
-import           Control.Lens                 hiding (Level)
-import           Control.Monad.Catch          as MC
-import           Control.Monad.State
-import           Data.Char
-import           Data.List
-import           Data.Maybe                   (fromJust)
-import           Data.Version                 (showVersion)
-import           Paths_drhaskell
-import           System.FilePath
-
-import           Language.Haskell.Exts.Parser
-import           Language.Haskell.Interpreter
-import           Repl.CmdOptions
-import           Repl.Loader
-import           Repl.Types
-import           StaticAnalysis.CheckState
-import           System.Console.Haskeline
-import           TypeInference.Main
-import           TypeInference.AbstractHaskell (defaultAHOptions, showTypeExpr)
-import           TypeInference.AbstractHaskellGoodies (exprType)
+import Control.Lens                         hiding (Level)
+import Control.Monad.Catch                  as MC
+import Control.Monad.State
+import Data.Char
+import Data.List
+import Data.Maybe                           (fromJust)
+import Data.Version                         (showVersion)
+import Language.Haskell.Exts.Parser
+import Language.Haskell.Interpreter
+import Paths_drhaskell
+import Repl.CmdOptions
+import Repl.Loader
+import Repl.Types
+import StaticAnalysis.CheckState
+import System.Console.Haskeline
+import System.FilePath
+import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr)
+import TypeInference.AbstractHaskellGoodies (exprType)
+import TypeInference.Main
 
 {-
 Current Limitations:

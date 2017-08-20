@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveFunctor #-}
+
 {-|
   This library contains data types for representing Haskell programs in Haskell.
 -}

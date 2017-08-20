@@ -18,15 +18,14 @@ module Repl.Types (
   printLevel,
 ) where
 
-import           Control.Lens                 hiding (Level)
-import           Control.Monad.Catch
-import           Control.Monad.State
-import           Language.Haskell.Exts
-import           Language.Haskell.Interpreter
-import           StaticAnalysis.CheckState
-import           System.Console.Haskeline
-
-import           TypeInference.AbstractHaskell
+import Control.Lens                  hiding (Level)
+import Control.Monad.Catch
+import Control.Monad.State
+import Language.Haskell.Exts
+import Language.Haskell.Interpreter
+import StaticAnalysis.CheckState
+import System.Console.Haskeline
+import TypeInference.AbstractHaskell
 
 -- includes all state that may be needed in the REPL
 data ReplState = ReplState {

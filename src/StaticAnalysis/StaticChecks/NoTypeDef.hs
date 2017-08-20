@@ -1,13 +1,12 @@
 -- | Check if a definition misses an accompanying type signature
-module StaticAnalysis.StaticChecks.NoTypeDef (
-    noTypeDef
-) where
+module StaticAnalysis.StaticChecks.NoTypeDef (noTypeDef) where
 
-import           AstChecks.Check
-import           Data.List
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
-import           StaticAnalysis.StaticChecks.Select
+import AstChecks.Check                      (ModuleCheck)
+import Data.List                            ((\\))
+import Language.Haskell.Exts                (Name)
+import StaticAnalysis.Messages.StaticErrors (Error (..))
+import StaticAnalysis.StaticChecks.Select   (declName, defFuncs, nameString,
+                                             typeSigs)
 
 -- | Checks if a definition misses an accompanying type signature
 noTypeDef :: ModuleCheck l (Error l)

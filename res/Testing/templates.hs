@@ -14,3 +14,5 @@ runAllTests = do
                  Tests.Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
                                      ++ pexp ++ "\n" ++ o)
     ztests :: Prelude.IO [Prelude.String]
+
+main = runAllTests

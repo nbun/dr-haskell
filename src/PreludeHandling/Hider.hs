@@ -1,8 +1,8 @@
 module PreludeHandling.Hider (module PreludeHandling.Hider) where
 
-import           Data.List
-import           Language.Haskell.Exts
-import           Util.ModifyAst
+import Data.List
+import Language.Haskell.Exts
+import Util.ModifyAst
 
 extractDefinedFun :: ModifiedModule -> [String]
 extractDefinedFun (ModifiedModule _ (Module _ _ _ _ ds) _) =

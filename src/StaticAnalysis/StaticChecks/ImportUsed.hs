@@ -1,10 +1,8 @@
 -- | Check if a module is imported
-module StaticAnalysis.StaticChecks.ImportUsed (
-  importUsed
-) where
+module StaticAnalysis.StaticChecks.ImportUsed (importUsed) where
 
-import           Language.Haskell.Exts
-import           StaticAnalysis.Messages.StaticErrors
+import Language.Haskell.Exts                (ImportDecl (..), Module (..))
+import StaticAnalysis.Messages.StaticErrors (Error (..))
 
 -- | Checks if a module has import declarations
 importUsed :: Module l -> [Error l]
