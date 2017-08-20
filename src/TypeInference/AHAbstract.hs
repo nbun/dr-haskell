@@ -157,10 +157,10 @@ abstrExpr name x@(Apply a tyanno z@(AH.Symbol tanno qname) expr2)         =
                  exprN2 <- abstrExpr name expr2
                  return $ Apply a tyanno z' exprN2
       Just y -> do
-                  expr2Ext <- extendParameters a (snd $ fst qname)  expr2
-                  ex2 <- abstrExpr name expr2Ext
-                  z' <-  abstrExpr name z
-                  return $ Apply a tyanno z' ex2
+                  e1n <- abstrExpr name z
+                  e2n <- abstrExpr name expr2
+                  expr2Ext <- ePara (snd $ fst qname) (Apply a tyanno e1n e2n) a
+                  return $ expr2Ext
 abstrExpr name x@(Apply a tyanno expr1 expr2)                             =
   do
     exprN1 <- abstrExpr name expr1
@@ -175,7 +175,7 @@ abstrExpr name x@(InfixApply a ty z@(AH.Symbol tanno qname) qname' expr2) =
                    exprN2 <- abstrExpr name expr2
                    return $ InfixApply a ty z' qname exprN2
       Just y -> do
-                  expr2Ext <- extendParameters a (snd $ fst qname)  expr2
+                  expr2Ext <- ePara (snd $ fst qname) z a
                   ex2 <- abstrExpr name expr2Ext
                   z' <-  abstrExpr name z
                   return $ InfixApply a ty z' qname ex2
@@ -213,25 +213,18 @@ abstrBranch name (Branch a pat expr) =
 -- EXTENSION OF PARAMETERS ----------------------------------------------------
 -------------------------------------------------------------------------------
 
--- | Extends parameters to a expr
---   for list : add parameter at the end of the list
---   for an single expr : build a list and add fist the expr and then the
---   parameters
-extendParameters :: MonadState LState m => a -> String -> Expr a -> m (Expr a)
-extendParameters b name x@(AH.List a tyanno exprs) =
+ePara :: MonadState LState m => String -> Expr a -> a -> m (Expr a)
+ePara str e1 a=
   do
-    lds <- get
-    let  values = frees lds ! name
-    let eprVars = transformVars a values exprs
-    return $ AH.List a tyanno eprVars
-extendParameters a name x                          =
-  do
-    lds <- get
-    let values = frees lds ! name
-    let exprVars = transformVars a values [x]
-    case length exprVars of
-      1 -> return $ head exprVars
-      _ -> return $ AH.List a NoTypeAnn exprVars
+     lds <- get
+     let  values = frees lds ! str
+     let eprVars = transformVars a values []
+     let newExpr = extendParameters2 a e1 eprVars
+     return newExpr
+
+--extendParameters2 :: a -> Expr a -> [Expr a] -> Expr a
+extendParameters2 a e1 [] = e1
+extendParameters2 a e1 (x:xs) = extendParameters2 a (Apply a NoTypeAnn e1 x) xs
 
 -- | Tranforms variablenames into a variable(-expr) and adds them to a list of
 --   exprs
