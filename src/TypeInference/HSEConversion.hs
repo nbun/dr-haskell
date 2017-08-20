@@ -435,11 +435,7 @@ parseExpr mn  _ (HSE.Var l qn)                    =
                                          y <- getidx (parseQName qn)
                                          return $  AH.Var NoTypeAnn ((y,parseQName qn),l)
 parseExpr mn _ (Con l qn)                        =
-  do
-    case qn of
-      (UnQual _ (Ident _ "True")) -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
-      (UnQual _ (Ident _ "False")) -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew "Prelude" qn,l)
-      _ -> return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew mn qn,l)
+   return $ AH.Symbol NoTypeAnn (parseSpecialQNameNew mn qn,l)
 parseExpr _  _ (HSE.Lit l lit)                   =
   return $ AH.Lit NoTypeAnn (parseLiteral lit, l)
 parseExpr mn t (InfixApp l exp1 qop exp2)        =
@@ -569,7 +565,13 @@ parsePatterns _  _                              =
   error "parsePatterns"
 
 parseSpecialQNameNew :: String -> HSE.QName a -> AH.QName
-parseSpecialQNameNew mn (Special l (HSE.Cons g))             = ("Prelude","(:)")
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "True")) = parseQNameNew "Prelude" a
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "False"))= parseQNameNew "Prelude" a
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "Nothing"))=parseQNameNew "Prelude" a
+parseSpecialQNameNew mn a@(UnQual l (Ident _"Just"))    =parseQNameNew "Prelude" a
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "Left"))   = parseQNameNew "Prelude" a
+parseSpecialQNameNew mn a@(UnQual l (Ident _ "Right"))  = parseQNameNew "Prelude" a  
+parseSpecialQNameNew mn (Special l (HSE.Cons g))        = ("Prelude","(:)")
 parseSpecialQNameNew mn (Special l (UnboxedSingleCon g)) = (tupleName 2)
 parseSpecialQNameNew mn (Special l (TupleCon g b i))     = (tupleName i)
 parseSpecialQNameNew mn (Special l (UnitCon g))          = ("Prelude", "()")
