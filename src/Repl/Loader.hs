@@ -14,7 +14,10 @@ import           Control.Lens                         hiding (Level)
 import           Control.Monad.Catch                  as MC
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
+import           Data.Char                            (isDigit)
 import           Data.Maybe
+import           Data.List                            (intercalate, findIndex)
+import           Data.List.Split                      (splitOn)
 import           Language.Haskell.Interpreter
 import           Paths_drhaskell
 import           StaticAnalysis.StaticChecks.Select
@@ -88,7 +91,7 @@ loadModule :: FilePath -> Repl [LoadMessage]
 loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
   where
     -- handles IO errors thrown by parseModified
-    handler e = return [DirectMessage (displayException e)]
+    handler e = return [DirectMessage $ displayException e]
     loadModule' fn = do
       nonstrict <- use nonStrict
       pr <- liftIO $ parseModified fn
@@ -129,7 +132,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
               errors  = map (CheckError (Just level)) errors'
 
           if null errors || (nonstrict && not (any isCritical errors'))
-            then let dm e = DirectMessage $ displayException e
+            then let dm e = DirectMessage $ adjustGHCerror transModule $ displayException e
                      handler' e = return $ levelSelectErrors ++
                                            errors ++
                                            [dm e]
@@ -262,3 +265,13 @@ transformModuleS :: (MonadIO m, MonadState ReplState m) =>
                     -> ModifiedModule
                     -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModuleS hide m = MS.get >>= flip (transformModule hide) m
+
+adjustGHCerror :: ModifiedModule -> String -> String
+adjustGHCerror m e = unlines $ map adjust $ lines e
+  where
+    adjust a@(' ':' ':' ':' ':_) = a
+    adjust p = intercalate ":" $ adjNums $ splitOn ":" p
+    adjNums xs = take i xs ++ adjNum (xs !! i) : drop (i+1) xs
+      where
+        Just i = findIndex (\n -> not (null n) && all isDigit n) xs
+    adjNum n = show $ translateLine m $ read n
