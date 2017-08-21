@@ -1,4 +1,8 @@
 -- function to run all defined tests
+main :: Prelude.IO ()
+main = do runAllTests
+          Prelude.return ()
+
 runAllTests :: Prelude.IO [Prelude.String]
 runAllTests = do
   let tests = __allTests__
