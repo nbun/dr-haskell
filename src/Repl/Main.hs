@@ -162,19 +162,19 @@ commandTypeof args = do
     commandTypeofTI = do
       p' <- use tiProg
       case p' of
-           Nothing -> return (Nothing, True)
-           Just p  -> case parseExp expression of
-                           ParseFailed _ f -> return (Just f, True)
-                           ParseOk e       ->
-                             case inferHSEExp [p] e of
-                                  Left e -> return (Just $ show e, True)
-                                  Right e -> return (Just
-                                                      (expression ++
-                                                       " :: "     ++
-                                                      (showTypeExpr
-                                                        defaultAHOptions $
-                                                        fromJust         $
-                                                        exprType e)), True)
+           [] -> return (Nothing, True)
+           ps -> case parseExp expression of
+                      ParseFailed _ f -> return (Just f, True)
+                      ParseOk e       ->
+                        case inferHSEExp ps e of
+                             Left e -> return (Just $ show e, True)
+                             Right e -> return (Just
+                                                 (expression ++
+                                                  " :: "     ++
+                                                  (showTypeExpr
+                                                    defaultAHOptions $
+                                                    fromJust         $
+                                                    exprType e)), True)
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType         "Num a => a"         = "Int"

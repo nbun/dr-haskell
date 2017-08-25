@@ -64,12 +64,12 @@ loadInitialModules = do
 --todo: better path handling
 
 inferModule :: Exts.Module Exts.SrcSpanInfo
-            -> IO (Either (TIError Exts.SrcSpanInfo) (AH.Prog Exts.SrcSpanInfo))
+            -> IO (Either (TIError Exts.SrcSpanInfo) [AH.Prog Exts.SrcSpanInfo])
 inferModule m
   = do datadir <- getDataDir
        let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
        pre <- prelude myPreludePath
-       return (inferHSE [pre] m)
+       return $ (:[pre]) <$> inferHSE [pre] m
 
 {-
 loadModule does the following:
@@ -117,10 +117,10 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           tires <- liftIO $ inferModule (modifiedModule modLoad)
           let (tiErrors, tiprog) =
                 case (useOwnTI level, tires) of
-                  (False,      _)  -> ([], Nothing)
+                  (False,      _)  -> ([], [])
                   (True,  Left e)  -> let pos = posOfTIError e
-                                      in ([TypeError pos e], Nothing)
-                  (True,  Right p) -> ([], Just p)
+                                      in ([TypeError pos e], [])
+                  (True,  Right p) -> ([], p)
           tiProg .= tiprog
 
           checkErrors <- liftIO $ runCheckLevel level fn
