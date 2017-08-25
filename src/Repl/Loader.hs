@@ -7,7 +7,8 @@ module Repl.Loader (
   transformModule,
   loadModule,
   loadInitialModules,
-  inferModule
+  inferModule,
+  initEmptyTI,
 ) where
 
 import           Control.Lens                         hiding (Level)
@@ -70,6 +71,12 @@ inferModule m
        let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
        pre <- prelude myPreludePath
        return $ (:[pre]) <$> inferHSE [pre] m
+
+initEmptyTI :: IO [AH.Prog Exts.SrcSpanInfo]
+initEmptyTI = do
+  datadir <- getDataDir
+  let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
+  (:[]) <$> prelude myPreludePath
 
 {-
 loadModule does the following:
