@@ -18,7 +18,7 @@ import Repl.Types
 import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
-import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr)
+import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..))
 import TypeInference.AbstractHaskellGoodies (exprType)
 import TypeInference.Main
 
@@ -174,7 +174,12 @@ commandTypeof args = do
                                                  (expression ++
                                                   " :: "     ++
                                                   (showTypeExpr
-                                                    defaultAHOptions $
+                                                    defaultAHOptions {
+                                                      unqModules =
+                                                        "Prelude" :
+                                                        unqModules
+                                                          defaultAHOptions
+                                                    } $
                                                     fromJust         $
                                                     exprType e)), True)
     expression = unwords $ tail args
