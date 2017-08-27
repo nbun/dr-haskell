@@ -19,7 +19,7 @@ import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
 import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..))
-import TypeInference.AbstractHaskellGoodies (exprType)
+import TypeInference.AbstractHaskellGoodies (exprType')
 import TypeInference.Main
 
 {-
@@ -181,7 +181,7 @@ commandTypeof args = do
                                                           defaultAHOptions
                                                     } $
                                                     fromJust         $
-                                                    exprType e)), True)
+                                                    exprType' e)), True)
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType         "Num a => a"         = "Int"

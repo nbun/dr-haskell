@@ -537,13 +537,6 @@ rhsTypes' :: Rhs a -> [Maybe (TypeExpr a)]
 rhsTypes' (SimpleRhs e)      = [exprType' e]
 rhsTypes' (GuardedRhs _ eqs) = map (exprType' . snd) eqs
 
--- | Returns the annotated type from the given expression or 'Nothing' if no
---   type is annotated. Returns the return type for the 'InfixApply'
---   constructor.
-exprType' :: Expr a -> Maybe (TypeExpr a)
-exprType' (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
-exprType' e                       = exprType e
-
 -- | Returns the annotated type from the given pattern or 'Nothing' if no type
 --   is annotated. Returns the return type for the 'PComb' constructor.
 patternType' :: Pattern a -> Maybe (TypeExpr a)

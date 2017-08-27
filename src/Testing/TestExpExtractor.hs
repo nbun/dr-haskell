@@ -19,7 +19,7 @@ import           System.FilePath
 import           TypeInference.AbstractHaskell        (defaultAHOptions,
                                                        showTypeExpr)
 import qualified TypeInference.AbstractHaskell        as AH
-import           TypeInference.AbstractHaskellGoodies (exprType)
+import           TypeInference.AbstractHaskellGoodies (exprType')
 import           TypeInference.Main
 import           Util.ModifyAst
 
@@ -176,7 +176,7 @@ explicitlyTypeTest ps e = tt 2 e
     wrapSignature e = case inferHSEExp ps e of
       Left _   -> e
       Right e' -> ExpTypeSig () e $
-                  void <$> fromParseResult $ parseType $ showTypeExpr defaultAHOptions $ replaceTyVars $ fromJust $ exprType e'
+                  void <$> fromParseResult $ parseType $ showTypeExpr defaultAHOptions $ replaceTyVars $ fromJust $ exprType' e'
     replaceTyVars :: AH.TypeExpr () -> AH.TypeExpr ()
     replaceTyVars (AH.TVar _)             = AH.TCons () (("Prelude","Int"), ()) []
     replaceTyVars (AH.FuncType _ te1 te2) = AH.FuncType () (replaceTyVars te1) (replaceTyVars te2)
