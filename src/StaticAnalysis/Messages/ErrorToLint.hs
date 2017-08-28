@@ -136,6 +136,7 @@ transformError l e@(InstanceDecl info)             = buildForInfo info e Error l
 transformError l e@(TypeClassDecl info)            = buildForInfo info e Error l
 transformError l e                             = buildUnknownError e Warning l
 
+-- TODO: replace tmp path in filename if needed
 -- | Plain Lintoutput Generator
 lintPlain :: Lint -> String
 lintPlain (Lint filename position messageClass message) =
@@ -152,6 +153,7 @@ lintPlain (Lint filename position messageClass message) =
         ++ " "
         ++ message
 
+-- TODO: replace tmp path in filename if needed
 -- | Json Lintoutput Generator
 buildJson :: Lint -> Json.JSValue
 buildJson (Lint filename position messageClass message) =
