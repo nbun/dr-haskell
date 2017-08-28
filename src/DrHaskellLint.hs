@@ -62,8 +62,9 @@ runWithRepl hlintHints file format = do
     parseRes <- parseModified file -- Parse input file with repl impl
     case parseRes of
       ParseOk m1 -> do
-        Just lvl <- foldr (liftM2 mplus) (return $ Just Level1)
-                    [use forceLevel, return $ determineLevel m1]
+        lvl <- case determineLevel m1 of
+                    Just l -> return l
+                    _      -> return Level1
         (m2, errs) <- transformModule [] state m1 -- "
         errs' <- runCheckLevel lvl file -- run checks
         tires <- inferModule (modifiedModule m1)
