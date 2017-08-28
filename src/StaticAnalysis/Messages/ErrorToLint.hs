@@ -169,3 +169,18 @@ buildJson (Lint filename position messageClass message) =
 --   inside Haskell
 toJSString :: String -> Json.JSValue
 toJSString = Json.JSString . Json.toJSString
+
+manipulatePathWithHostvar :: String -> IO String
+manipulatePathWithHostvar file = do
+    hostpath <- lookupEnv "DRHASKELLHOSTPATH"
+    case hostpath of
+        Nothing   -> return file
+        Just path -> return $ replace path "/tmp/drhaskell-src" file
+
+
+manipulatePathWithHostvarREV :: String -> IO String
+manipulatePathWithHostvarREV file = do
+    hostpath <- lookupEnv "DRHASKELLHOSTPATH"
+    case hostpath of
+        Nothing   -> return file
+        Just path -> return $ replace path "/tmp/drhaskell-src" file

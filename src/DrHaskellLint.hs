@@ -40,13 +40,6 @@ main = do
             file' <- manipulatePathWithHostvar file --for dockerised running
             run file' format -- the running, testing and linting
 
-manipulatePathWithHostvar :: String -> IO String
-manipulatePathWithHostvar file = do
-    hostpath <- lookupEnv "DRHASKELLHOSTPATH"
-    case hostpath of
-        Nothing   -> return file
-        Just path -> return $ replace path "/tmp/drhaskell-src" file
-
 -- | Determines from the level the correct levelCode and invokes hlint
 --   (including conversion of linting datastructures).
 run :: String -> LinterOutput -> IO ()
