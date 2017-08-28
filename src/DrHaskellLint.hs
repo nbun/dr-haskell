@@ -5,6 +5,7 @@ module DrHaskellLint (module DrHaskellLint) where
 
 import           CodeCoverage.Coverage
 import           Control.Lens                         hiding (Level)
+import           Control.Monad
 import           Data.List
 import           Data.List.Utils
 import           Data.Maybe
@@ -30,14 +31,14 @@ import           Util.ModifyAst
 main :: IO ()
 main = do
     args <- getArgs
-    if length args < 2 -- check if we have enough parameters to run
+    if length args < 1 -- check if we have enough parameters to run
         then exitFailure
         else do
-            (level, file, format) <- parseArgs args
+            (file, format) <- parseArgs args
             -- parse the cli parameters for level,
             -- filename and the output format (plain,json)
             file' <- manipulatePathWithHostvar file --for dockerised running
-            run level file' format -- the running, testing and linting
+            run file' format -- the running, testing and linting
 
 manipulatePathWithHostvar :: String -> IO String
 manipulatePathWithHostvar file = do
@@ -48,24 +49,21 @@ manipulatePathWithHostvar file = do
 
 -- | Determines from the level the correct levelCode and invokes hlint
 --   (including conversion of linting datastructures).
-run :: Integer -> String -> LinterOutput -> IO ()
-run level file format = do
+run :: String -> LinterOutput -> IO ()
+run file format = do
     hlintIdeas <- pushToHlint file -- run hlint
     let hlintHints = hLintToLint file hlintIdeas -- convert hlint to lint
-    let lvl = case level of -- determine levelcode
-                    1 -> Level1
-                    2 -> Level2
-                    3 -> Level3
-                    _ -> LevelFull
-    runWithRepl hlintHints file lvl format -- run the rest of the linting
+    runWithRepl hlintHints file format -- run the rest of the linting
 
 -- | Calls the analysis used in our Repl and attaches coverage and hlint results
-runWithRepl :: [Lint] -> String -> Level -> LinterOutput -> IO ()
-runWithRepl hlintHints file lvl format = do
-    let state = forceLevel .~ Just lvl $ initialLintReplState -- get Repl state
+runWithRepl :: [Lint] -> String -> LinterOutput -> IO ()
+runWithRepl hlintHints file format = do
+    let state = initialLintReplState -- get Repl state
     parseRes <- parseModified file -- Parse input file with repl impl
     case parseRes of
       ParseOk m1 -> do
+        Just lvl <- foldr (liftM2 mplus) (return $ Just Level1)
+                    [use forceLevel, return $ determineLevel m1]
         (m2, errs) <- transformModule [] state m1 -- "
         errs' <- runCheckLevel lvl file -- run checks
         tires <- inferModule (modifiedModule m1)
@@ -78,7 +76,7 @@ runWithRepl hlintHints file lvl format = do
         putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
                                  (errs ++ errs' ++ tiErrors)) -- build output
       ParseFailed pos m ->
-        putStrLn $ lintErrorHlint [buildParseError pos m] format (Just lvl) []
+        putStrLn $ lintErrorHlint [buildParseError pos m] format (Just Level1) []
 
 -- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]
@@ -105,25 +103,16 @@ severityToMessageClass Hlint.Ignore     = Suggestion
 
 -- | Naive implementation of parameter parsing
 -- simple occurence check and some pattern matching for file extraction
-parseArgs :: [String] -> IO (Integer, String, LinterOutput)
+parseArgs :: [String] -> IO (String, LinterOutput)
 parseArgs argv = do
-    let x = fromMaybe 0 (hasLevelHint argv) -- get level
     let format = if "--json" `elem` argv -- json or plain
                  then json
                  else plain {- --plain -}
     let y = findFile argv -- get file
-    return (x, y, format)
+    return (y, format)
 
 -- | Simple implementation to get the filename
 findFile :: [String] -> String
 findFile []               = ""
 findFile (('-':'-':_):xs) = findFile xs
 findFile (x:_)            = x
-
--- | Get leve from hint-Parameter (since most of the default linter
---   implementations provide the hint-Parameter in there config gui)
-hasLevelHint :: [String] -> Maybe Integer
-hasLevelHint [] = Nothing
-hasLevelHint (('-':'-':'h':'i':'n':'t':'=':'l':level):_) =
-    Just (read level :: Integer)
-hasLevelHint (_:xs) = hasLevelHint xs
