@@ -84,9 +84,17 @@ abstrTupel name (expr1,expr2) =
 
 -- | Builds the abstract representation of a local declaration
 abstrLocal :: MonadState LState m => String -> LocalDecl a -> m (LocalDecl a)
-abstrLocal name (LocalFunc funcdecls) = do
-  x <- abstrFuncDef name funcdecls
-  return $ LocalFunc x
+abstrLocal name (LocalFunc (Func a qn ar v t rls)) =
+  do
+    newName <- abstrFuncName name qn
+    rulesN <- abstrRules name rls
+    return $ LocalFunc (Func a newName ar v t rulesN)
+--  x <- abstrFuncDef name funcdecls
+-- - return $ LocalFunc x--
+--    do
+--      newName <- abstrFuncName name fname
+--      rulesN <- abstrRules (snd $ fst fname) rules
+--      return $ Func a newName arity visibility tsig rulesN
 abstrLocal name (LocalPat a pat expr locals) = do
   exprN <- abstrExpr name expr
   localsN <- mapM (abstrLocal name) locals

@@ -18,8 +18,8 @@ import Repl.Types
 import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
-import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr)
-import TypeInference.AbstractHaskellGoodies (exprType)
+import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..))
+import TypeInference.AbstractHaskellGoodies (exprType')
 import TypeInference.Main
 
 {-
@@ -54,6 +54,8 @@ initInterpreter = do
   datadir <- liftIO getDataDir
   liftInterpreter $ Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
+  ps <- liftIO initEmptyTI
+  tiProg .= ps
   loadInitialModules
 
 main :: IO ()
@@ -162,19 +164,24 @@ commandTypeof args = do
     commandTypeofTI = do
       p' <- use tiProg
       case p' of
-           Nothing -> return (Nothing, True)
-           Just p  -> case parseExp expression of
-                           ParseFailed _ f -> return (Just f, True)
-                           ParseOk e       ->
-                             case inferHSEExp [p] e of
-                                  Left e -> return (Just $ show e, True)
-                                  Right e -> return (Just
-                                                      (expression ++
-                                                       " :: "     ++
-                                                      (showTypeExpr
-                                                        defaultAHOptions $
-                                                        fromJust         $
-                                                        exprType e)), True)
+           [] -> return (Nothing, True)
+           ps -> case parseExp expression of
+                      ParseFailed _ f -> return (Just f, True)
+                      ParseOk e       ->
+                        case inferHSEExp ps e of
+                             Left e -> return (Just $ show e, True)
+                             Right e -> return (Just
+                                                 (expression ++
+                                                  " :: "     ++
+                                                  (showTypeExpr
+                                                    defaultAHOptions {
+                                                      unqModules =
+                                                        "Prelude" :
+                                                        unqModules
+                                                          defaultAHOptions
+                                                    } $
+                                                    fromJust         $
+                                                    exprType' e)), True)
     expression = unwords $ tail args
     fixType "Prelude.Num a => a"         = "Int"
     fixType         "Num a => a"         = "Int"

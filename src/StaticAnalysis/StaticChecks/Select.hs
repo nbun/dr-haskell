@@ -196,7 +196,7 @@ varsOfDecl _                         = []
 
 -- | Returns variable names of a match
 varsOfMatch :: Match l -> [Name l]
-varsOfMatch (Match _ _ pats rhs mbind) =
+varsOfMatch (Match _ name pats rhs mbind) = [name] ++
   concatMap varsOfPat pats ++ varsOfMaybeBind mbind ++ varsOfRhs rhs
 varsOfMatch (InfixMatch _ pat _ pats rhs mbind) =
   concatMap varsOfPat (pat:pats) ++ varsOfMaybeBind mbind ++ varsOfRhs rhs
@@ -212,9 +212,20 @@ varsOfGRhs (GuardedRhs _ _ e) = varsOfExp e
 
 -- | Returns variable names of an expression
 varsOfExp :: Exp l -> [Name l]
-varsOfExp (Let _ bind e)    = varsOfBind bind ++ varsOfExp e
-varsOfExp (Lambda _ pats e) = concatMap varsOfPat pats ++ varsOfExp e
-varsOfExp e                 = mapOverExpRec False varsOfExp e
+varsOfExp (Let _ bind e)        = varsOfBind bind ++ varsOfExp e
+varsOfExp (Lambda _ pats e)     = concatMap varsOfPat pats ++ varsOfExp e
+varsOfExp (ListComp _ e qstmts) = concatMap varsOfQStmt qstmts
+  where -- These functions are intended to find variables that are defined
+        -- in list comprehensions and don't necessarily work for other
+        -- QualStmts or Stmts!
+        varsOfQStmt :: QualStmt l -> [Name l]
+        varsOfQStmt (QualStmt _ stmt) = varsOfStmt stmt
+        varsOfQStmt _                 = []
+
+        varsOfStmt :: Stmt l -> [Name l]
+        varsOfStmt (Generator _ pat _) = varsOfPat pat
+        varsOfStmt _                   = []
+varsOfExp e                     = mapOverExpRec False varsOfExp e
 
 -- | Returns variable names of a pattern
 varsOfPat :: Pat l -> [Name l]

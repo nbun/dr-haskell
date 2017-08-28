@@ -1,4 +1,8 @@
 -- function to run all defined tests
+main :: Prelude.IO ()
+main = do runAllTests
+          Prelude.return ()
+
 runAllTests :: Prelude.IO [Prelude.String]
 runAllTests = do
   let tests = __allTests__
@@ -14,5 +18,3 @@ runAllTests = do
                  Tests.Failure l pexp o -> "(Line " ++ show l ++ ") failed: "
                                      ++ pexp ++ "\n" ++ o)
     ztests :: Prelude.IO [Prelude.String]
-
-main = runAllTests

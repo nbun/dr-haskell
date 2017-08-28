@@ -36,7 +36,7 @@ data ReplState = ReplState {
   _customPrelude :: Bool,
   _currentLevel  :: Level,
   _promptModule  :: String,
-  _tiProg        :: Maybe (Prog SrcSpanInfo)
+  _tiProg        :: [Prog SrcSpanInfo]
 }
   deriving (Show)
 
@@ -50,7 +50,7 @@ initialReplState = ReplState {
   _customPrelude = True,
   _currentLevel  = Level1,
   _promptModule  = "DrHaskell",
-  _tiProg        = Nothing
+  _tiProg        = []
 }
 
 -- some sane defaults
@@ -63,7 +63,7 @@ initialLintReplState = ReplState {
   _customPrelude = False,
   _currentLevel  = Level1,
   _promptModule  = "DrHaskell",
-  _tiProg        = Nothing
+  _tiProg        = []
 }
 
 makeLenses ''ReplState

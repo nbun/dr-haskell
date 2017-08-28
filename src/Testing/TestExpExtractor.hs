@@ -19,7 +19,7 @@ import           System.FilePath
 import           TypeInference.AbstractHaskell        (defaultAHOptions,
                                                        showTypeExpr)
 import qualified TypeInference.AbstractHaskell        as AH
-import           TypeInference.AbstractHaskellGoodies (exprType)
+import           TypeInference.AbstractHaskellGoodies (exprType')
 import           TypeInference.Main
 import           Util.ModifyAst
 
@@ -136,10 +136,16 @@ replaceAllTests _ a = a
 -- reads the template that contains the test method
 buildTestMethod :: [Exp ()] -> IO (Decl ())
 buildTestMethod es = do
+  runAllTestDecl <- getFunction "runAllTests"
+  return $ replaceAllTests (makeTestsNode es) runAllTestDecl
+
+-- reads a function from the template
+getFunction :: String -> IO (Decl ())
+getFunction name = do
   templateLoc <- getDataFileName "Testing/templates.hs"
   templateAST <- void . fst <$> parseFile' templateLoc
-  let Just runAllTestDecl = getPatBind "runAllTests" templateAST
-  return $ replaceAllTests (makeTestsNode es) runAllTestDecl
+  let Just f = getPatBind name templateAST
+  return f
 
 transformErrors :: Error Int -> Error SrcSpanInfo
 transformErrors (InvalidTest l t) =
@@ -148,18 +154,18 @@ transformErrors (InvalidTest l t) =
 
 -- use the type inference to explicitly type polymorphic tests
 prepareTI :: Module a
-          -> IO (Maybe (AH.Prog ()))
+          -> IO [AH.Prog ()]
 prepareTI m
   = do datadir <- getDataDir
        let myPreludePath = datadir </> "TargetModules" </> "MyPrelude.hs"
        pre <- void <$> prelude myPreludePath
        return $ case inferHSE [pre] (void m) of
-                     Right a -> Just a
-                     Left _  -> Nothing
+                     Right a -> [a] --TODO: make this [a,pre] once TI works correctly
+                     Left _  -> []
 
-explicitlyTypeTest :: Maybe (AH.Prog ()) -> Exp () -> Exp ()
-explicitlyTypeTest Nothing  e = e
-explicitlyTypeTest (Just p) e = tt 2 e
+explicitlyTypeTest :: [AH.Prog ()] -> Exp () -> Exp ()
+explicitlyTypeTest [] e = e
+explicitlyTypeTest ps e = tt 2 e
   where
     tt :: Int -> Exp () -> Exp ()
     tt 0 e                    = e
@@ -167,10 +173,10 @@ explicitlyTypeTest (Just p) e = tt 2 e
     tt i (InfixApp _ e1 q e2) = InfixApp () (tt (i-1) e1) q (wrapSignature e2)
     tt _ e                    = e
     wrapSignature :: Exp () -> Exp ()
-    wrapSignature e = case inferHSEExp [p] e of
+    wrapSignature e = case inferHSEExp ps e of
       Left _   -> e
       Right e' -> ExpTypeSig () e $
-                  void <$> fromParseResult $ parseType $ showTypeExpr defaultAHOptions $ replaceTyVars $ fromJust $ exprType e'
+                  void <$> fromParseResult $ parseType $ showTypeExpr defaultAHOptions $ replaceTyVars $ fromJust $ exprType' e'
     replaceTyVars :: AH.TypeExpr () -> AH.TypeExpr ()
     replaceTyVars (AH.TVar _)             = AH.TCons () (("Prelude","Int"), ()) []
     replaceTyVars (AH.FuncType _ te1 te2) = AH.FuncType () (replaceTyVars te1) (replaceTyVars te2)
@@ -187,6 +193,7 @@ transformModule m = do
       tests          = rights testsAndErrors
       errors         = lefts testsAndErrors
   testDeclAST <- buildTestMethod tests
+  mainf <- getFunction "main"
   let
     impAdded = addImport ImportDecl {importAnn = (),
                                      importModule = ModuleName () "Tests",
@@ -197,5 +204,6 @@ transformModule m = do
                                      importAs = Nothing,
                                      importSpecs = Nothing} m
     m' = appendDecl testDeclAST impAdded
-  return (m', transformErrors <$> errors)
+    m''= appendDecl mainf m'
+  return (m'', transformErrors <$> errors)
   --writeFile (fn++".transformed.hs") $ prettyPrint modifiedMod

@@ -225,8 +225,9 @@ parseFunDecls modu ts (FunBind l mas@(m:matches)) =
 parseFunDecls modu ts (PatBind l pat rhs mbinds)  =
   do
     let pn = parseNameOutOfPattern pat
-    rl <- parseRulesOutOfPats modu ts pat rhs
-    case (searchForType pn ts) of
+    let s = searchForType pn ts
+    rl <- parseRulesOutOfPats modu ts pat rhs mbinds
+    case s of
       Nothing -> return $ Func l ((modu,pn),l) 0 Public Untyped rl
       Just z -> do
                   btd <- buildType l modu z
@@ -237,12 +238,18 @@ parseFunDecls modu ts  _                          =
     return $ Func undefined fname 0 Public Untyped (Rules [])
 
 -- | parses rules out of patterns
-parseRulesOutOfPats ::
-  MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
-parseRulesOutOfPats  modu ts pat rhs  =
+--parseRulesOutOfPats ::
+--  MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
+parseRulesOutOfPats modu ts pat rhs mbinds =
   do
-    rs <- parseRule modu ts [] rhs
-    return $ Rules [rs]
+    case mbinds of
+      Nothing -> do
+                   rs <- parseRule modu ts [] rhs
+                   return $ Rules [rs]
+      Just x@(BDecls _ decs) -> do
+                                (AH.Rule a b c d e) <- parseRule modu ts [] rhs
+                                ls <- parseBinds modu ts x
+                                return $ Rules [AH.Rule a b c d ls]
 
 -- | Parses rules
 parseRules ::
@@ -533,6 +540,31 @@ parseExpr mn t (EnumFromThenTo l exp1 exp2 exp3) =
     expr3 <- parseExpr mn t exp3
     return $ Apply l NoTypeAnn (AH.Lit NoTypeAnn (Stringc "enumFromThenTo",l))
                    (Apply l NoTypeAnn  expr1 (Apply l NoTypeAnn expr2 expr3))
+parseExpr mn t (TupleSection l b xs)             =
+  do
+    exprs <- parseMaybeExpr mn t xs
+    return $ AH.Tuple l NoTypeAnn  exprs
+parseExpr mn t (LeftSection l expr qop)          =
+  do
+    e1 <- parseExpr mn t expr
+    q <- parseQOp mn qop
+    let e2 =  AH.Var NoTypeAnn ((-1,"error"), l)
+    return $ AH.Lambda l NoTypeAnn [AH.PVar NoTypeAnn ((-1,"error"), l)] (InfixApply l NoTypeAnn e1 (q,l) e2)
+parseExpr mn t (RightSection l qop expr)         =
+  do
+    e1 <- parseExpr mn t expr
+    q <- parseQOp mn qop
+    let e2 =  AH.Var NoTypeAnn ((-1,"error"), l)
+    return $ AH.Lambda l NoTypeAnn [AH.PVar NoTypeAnn ((-1,"error"), l)] (InfixApply l NoTypeAnn e2 (q,l) e1)
+
+--parseMaybeExpr :: MonadState AHState m => MName -> TypeS l -> [Maybe (Exp l)] -> [Expr l]
+parseMaybeExpr mn t [] = return []
+parseMaybeExpr mn t (Nothing:xs) = parseMaybeExpr mn t xs
+parseMaybeExpr mn t ((Just x):xs)=
+  do
+    f <- parseMaybeExpr mn t xs
+    l <- parseExpr mn t x
+    return (l:f)
 
 -- | Transforms a right hand side to an expr
 rightHandtoExp ::
@@ -626,7 +658,7 @@ parseAlternatives str t (Alt l pat rhs _) =
     return $ Branch l patt rh
 
 -- | Parses an QOp
---parseQOp :: String -> QOp l -> AH.QName
+parseQOp :: MonadState AHState m => MName -> QOp a -> m AH.QName
 parseQOp mn (QVarOp l qn) =
    do
      ahs <- get
@@ -716,7 +748,7 @@ parseTypName modu (TyCon l qname)         =
      _ -> (parseSpecialQNameNew modu qname)
 parseTypName modu (TyParen l t)           =
   parseTypName modu t
-parseTypName modu (TyApp l t1 t2) = parseTypName modu t1 
+parseTypName modu (TyApp l t1 t2) = parseTypName modu t1
 
 
 -- | Parses the arity
@@ -761,13 +793,7 @@ parseQName (UnQual l name)   = parsename name
 parseQName _                 = ""
 
 parseQNameNew modu x@(Qual l (ModuleName d mdn) name) =(mdn, parsename name)
-  --case isOperator(mdn, parsename name) of
---    True -> (mdn, "(" ++ parsename name ++ ")")
---    False -> (mdn, parsename name)
 parseQNameNew modu (UnQual l name)   =(modu, parsename name)
---  case isOperator(modu,parsename name) of
---    True -> (modu, "(" ++ parsename name ++ ")")
---    False -> (modu, parsename name)
 parseQNameNew modu _                 = ("","")
 
 -- | Parses a match name
