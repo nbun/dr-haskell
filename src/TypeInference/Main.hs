@@ -354,9 +354,8 @@ getTypeVariant qn = do (tenv, _, tsenv, _) <- get
                                       Just te -> return te
                          Just te -> freshVariant te
   where
-    err = TIError ("There is no type expression for "
-                     ++ bquotes (showQName defaultAHOptions qn)
-                     ++ "!")
+    err = TIError ("The function " ++ bquotes (showQName defaultAHOptions qn)
+                                   ++ " is not defined!")
 
 -- -----------------------------------------------------------------------------
 -- Functions for type annotation of abstract Haskell programs
@@ -412,7 +411,8 @@ annRhs (GuardedRhs x eqs) = do eqs' <- mapM (bothM annExpr) eqs
 
 -- | Annotates the given local declaration with fresh type variables.
 annLocalDecl :: LocalDecl a -> TIMonad a (LocalDecl a)
-annLocalDecl _ = throwError (TIError "Local declarations can not be annotated!")
+annLocalDecl _
+  = throwError (TIError "Local declarations are not supported yet!")
 
 -- | Annotates the given statement with fresh type variables.
 annStatement :: Statement a -> TIMonad a (Statement a)
@@ -466,8 +466,8 @@ annExpr (Var _ x@(vn@(v, _), vx))
       >>= maybe (throwError err)
                 (\te -> return (Var (TypeAnn (replaceTEAnn vx te)) x))
   where
-    err = TIError ("There is no type variable for " ++ bquotes (showVarName vn)
-                                                    ++ "!")
+    err = TIError ("The variable " ++ bquotes (showVarName vn)
+                                   ++ " is not defined!")
 annExpr (Lit _ l@(_, x))
   = do te <- nextTVar x
        return (Lit (TypeAnn te) l)
@@ -536,13 +536,6 @@ annExpr (List x _ es)
 rhsTypes' :: Rhs a -> [Maybe (TypeExpr a)]
 rhsTypes' (SimpleRhs e)      = [exprType' e]
 rhsTypes' (GuardedRhs _ eqs) = map (exprType' . snd) eqs
-
--- | Returns the annotated type from the given expression or 'Nothing' if no
---   type is annotated. Returns the return type for the 'InfixApply'
---   constructor.
-exprType' :: Expr a -> Maybe (TypeExpr a)
-exprType' (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
-exprType' e                       = exprType e
 
 -- | Returns the annotated type from the given pattern or 'Nothing' if no type
 --   is annotated. Returns the return type for the 'PComb' constructor.

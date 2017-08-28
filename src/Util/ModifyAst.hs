@@ -276,7 +276,7 @@ printModified :: ModifiedModule -> String
 printModified m = exactPrint (modifiedModule m) (modifiedComments m)
 
 translateLine :: ModifiedModule -> Int -> Int
-translateLine = translateLine' . modifications
+translateLine m l = translateLine' (modifications m) l - 1
   where
     translateLine' []         q = q
     translateLine' ((p,l):ms) q = translateLine' ms q'

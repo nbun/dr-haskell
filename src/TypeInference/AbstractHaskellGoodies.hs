@@ -7,8 +7,9 @@ module TypeInference.AbstractHaskellGoodies
   ( pre, preName, tupleName, baseType, boolType, charType, stringType, intType
   , floatType, orderingType, listType, ioType, maybeType, eitherType, tupleType
   , literalType, typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes
-  , exprType, patternType, typeExprAnn, exprAnn, teVar, (=.=), hasTypeSig
-  , funcName, modName, leftFuncType, rightFuncType, returnType, depGraph
+  , exprType, exprType', patternType, typeExprAnn, exprAnn, teVar, (=.=)
+  , hasTypeSig, funcName, modName, leftFuncType, rightFuncType, returnType
+  , depGraph
   ) where
 
 import SCC                           (scc)
@@ -141,6 +142,13 @@ exprType (Typed _ ta _ _)        = typeAnnType ta
 exprType (IfThenElse _ ta _ _ _) = typeAnnType ta
 exprType (Tuple _ ta _)          = typeAnnType ta
 exprType (List _ ta _)           = typeAnnType ta
+
+-- | Returns the annotated type from the given expression or 'Nothing' if no
+--   type is annotated. Returns the return type for the 'InfixApply'
+--   constructor.
+exprType' :: Expr a -> Maybe (TypeExpr a)
+exprType' (InfixApply _ ta _ _ _) = fmap returnType (typeAnnType ta)
+exprType' e                       = exprType e
 
 -- | Returns the annotated type from the given pattern or 'Nothing' if no type
 --   is annotated.
