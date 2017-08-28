@@ -16,9 +16,9 @@ import           Control.Monad.Catch                  as MC
 import           Control.Monad.IO.Class
 import           Control.Monad.State.Lazy             as MS
 import           Data.Char                            (isDigit)
-import           Data.Maybe
-import           Data.List                            (intercalate, findIndex)
+import           Data.List                            (findIndex, intercalate)
 import           Data.List.Split                      (splitOn)
+import           Data.Maybe
 import           Language.Haskell.Interpreter
 import           Paths_drhaskell
 import           StaticAnalysis.StaticChecks.Select
@@ -121,6 +121,11 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                         ("No valid level selection "++
                                          "found. Using Level 1")]
 
+          checkErrors <- liftIO $ runCheckLevel level fn
+          let (checkErrors', duplDecls) = duplPrelImps checkErrors
+          (transModule, transErrors) <- transformModuleS duplDecls modLoad
+          liftIO $ writeFile cfn $ printModified transModule
+
           tires <- liftIO $ inferModule (modifiedModule modLoad)
           let (tiErrors, tiprog) =
                 case (useOwnTI level, tires) of
@@ -130,12 +135,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                   (True,  Right p) -> ([], p)
           tiProg .= tiprog
 
-          checkErrors <- liftIO $ runCheckLevel level fn
-          let (checkErrors', duplDecls) = duplPrelImps checkErrors
-          (transModule, transErrors) <- transformModuleS duplDecls modLoad
-          liftIO $ writeFile cfn $ printModified transModule
-
-          let errors' = checkErrors' ++ transErrors ++ tiErrors
+          let errors' = checkErrors' ++ transErrors ++ if null checkErrors'
+                                                       then tiErrors else []
               errors  = map (CheckError (Just level)) errors'
 
           if null errors || (nonstrict && not (any isCritical errors'))
@@ -277,7 +278,7 @@ adjustGHCerror :: ModifiedModule -> String -> String
 adjustGHCerror m e = unlines $ map adjust $ lines e
   where
     adjust a@(' ':' ':' ':' ':_) = a
-    adjust p = intercalate ":" $ adjNums $ splitOn ":" p
+    adjust p                     = intercalate ":" $ adjNums $ splitOn ":" p
     adjNums xs = take i xs ++ adjNum (xs !! i) : drop (i+1) xs
       where
         Just i = findIndex (\n -> not (null n) && all isDigit n) xs
