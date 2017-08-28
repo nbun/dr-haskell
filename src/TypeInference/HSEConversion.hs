@@ -320,10 +320,8 @@ parseStmtsToExpr str t (Qualifier l expr) =
 
 -- | Parses functions and pattern bindings
 parseFuncPatDecls ::
-  MonadState AHState m => String -> TypeS a -> [Decl a] -> m [LocalDecl a]
-parseFuncPatDecls _ _ []                                      =
-  return []
-parseFuncPatDecls str t ((FunBind l matches@(m:ms)):xs)       =
+  MonadState AHState m => String -> TypeS a -> Decl a -> m (LocalDecl a)
+parseFuncPatDecls str t (FunBind l matches@(m:ms))       =
   do
     let fn = parseMatchName  m
     case (searchForType fn t) of
@@ -332,28 +330,28 @@ parseFuncPatDecls str t ((FunBind l matches@(m:ms)):xs)       =
                    let r = Rules rl
                    let fname = ((str,fn),l)
                    let ar = parseArity matches
-                   return $ [LocalFunc $ Func l fname ar Public Untyped r]
+                   return $ LocalFunc $ Func l fname ar Public Untyped r
       Just z -> do
                   btd <- buildType l str z
                   rl <- mapM (parseRules str t) matches
                   let r = Rules rl
                   let fname = ((str,fn),l)
                   let ar = parseArity matches
-                  return $ [LocalFunc $ Func l fname ar Public btd r]
+                  return $ LocalFunc $ Func l fname ar Public btd r
 parseFuncPatDecls str t
-  (PatBind l pat rhs@(UnGuardedRhs a expr) (Just wbind) : xs) =
+  (PatBind l pat rhs@(UnGuardedRhs a expr) (Just wbind)) =
    do
     rh <- parseExprOutOfRhs str t rhs
     patt <- parsePatterns str pat
     bnd <- parseBinds str t wbind
-    return [LocalPat l patt rh bnd]
+    return $ LocalPat l patt rh bnd
 parseFuncPatDecls str t
-  ((PatBind l pat rhs@(GuardedRhss a gds) (Just b)):xs) |length gds <= 1 =
+  (PatBind l pat rhs@(GuardedRhss a gds) (Just b)) |length gds <= 1 =
    do
      rh <- parseExprOutOfGrd str t (head gds)
      patt <- parsePatterns str pat
      bnd <- parseBinds str t b
-     return $ [LocalPat l patt rh bnd]
+     return $ LocalPat l patt rh bnd
                                                         |otherwise      =
    do
      let name = parseNameOutOfPattern pat
@@ -363,9 +361,28 @@ parseFuncPatDecls str t
      rules <- mapM (parseRulesOutOfGuarded str t) gds
      let rulesR = makeRules rules
      let n = newRule l patt rulesR bnd
-     return $ [LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])]
-parseFuncPatDecls _  _  _                                     =
-  return []
+     return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
+parseFuncPatDecls str t
+  (PatBind l pat rhs@(GuardedRhss a gds) Nothing) |length gds <= 1 =
+   do
+     rh <- parseExprOutOfGrd str t (head gds)
+     patt <- parsePatterns str pat
+     return $ LocalPat l patt rh []
+                                                        |otherwise      =
+   do
+     let name = parseNameOutOfPattern pat
+     rh <- parseExprOutOfGrd str t (head gds)
+     patt <- parsePatterns str pat
+     rules <- mapM (parseRulesOutOfGuarded str t) gds
+     let rulesR = makeRules rules
+     let n = newRule l patt rulesR []
+     return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
+parseFuncPatDecls str t
+  (PatBind l pat rhs@(UnGuardedRhs a expr) Nothing) =
+   do
+    rh <- parseExprOutOfRhs str t rhs
+    patt <- parsePatterns str pat
+    return $ LocalPat l patt rh []
 
 -- | Builds a new Rule
 newRule :: a -> Pattern a -> AH.Rhs a -> [LocalDecl a] -> AH.Rule a
@@ -645,7 +662,7 @@ parseStms str t (LetStmt l binds)   =
 -- | Parses a binding
 parseBinds ::
   MonadState AHState m => String -> TypeS a -> Binds a -> m [LocalDecl a]
-parseBinds str t (BDecls _ decls) = parseFuncPatDecls str t decls
+parseBinds str t (BDecls _ decls) = mapM (parseFuncPatDecls str t) decls
 parseBinds _ _ _                  = return []
 
 -- | Parses an alternative
