@@ -225,8 +225,9 @@ parseFunDecls modu ts (FunBind l mas@(m:matches)) =
 parseFunDecls modu ts (PatBind l pat rhs mbinds)  =
   do
     let pn = parseNameOutOfPattern pat
-    rl <- parseRulesOutOfPats modu ts pat rhs
-    case (searchForType pn ts) of
+    let s = searchForType pn ts
+    rl <- parseRulesOutOfPats modu ts pat rhs mbinds
+    case s of
       Nothing -> return $ Func l ((modu,pn),l) 0 Public Untyped rl
       Just z -> do
                   btd <- buildType l modu z
@@ -237,12 +238,18 @@ parseFunDecls modu ts  _                          =
     return $ Func undefined fname 0 Public Untyped (Rules [])
 
 -- | parses rules out of patterns
-parseRulesOutOfPats ::
-  MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
-parseRulesOutOfPats  modu ts pat rhs  =
+--parseRulesOutOfPats ::
+--  MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
+parseRulesOutOfPats modu ts pat rhs mbinds =
   do
-    rs <- parseRule modu ts [] rhs
-    return $ Rules [rs]
+    case mbinds of
+      Nothing -> do
+                   rs <- parseRule modu ts [] rhs
+                   return $ Rules [rs]
+      Just x@(BDecls _ decs) -> do
+                                (AH.Rule a b c d e) <- parseRule modu ts [] rhs
+                                ls <- parseBinds modu ts x
+                                return $ Rules [AH.Rule a b c d ls]
 
 -- | Parses rules
 parseRules ::
@@ -716,7 +723,7 @@ parseTypName modu (TyCon l qname)         =
      _ -> (parseSpecialQNameNew modu qname)
 parseTypName modu (TyParen l t)           =
   parseTypName modu t
-parseTypName modu (TyApp l t1 t2) = parseTypName modu t1 
+parseTypName modu (TyApp l t1 t2) = parseTypName modu t1
 
 
 -- | Parses the arity
