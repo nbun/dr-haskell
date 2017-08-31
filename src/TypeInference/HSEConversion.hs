@@ -64,25 +64,6 @@ astExprToAbstractHaskellExpr mapTE expr =
     exprNew <- parseExpr "" [] expr
     return exprNew
 
-hse :: DML.Map AH.QName (TypeExpr a) -> Module a -> [AH.QName]
-hse mapTe modu = evalState (hsetest mapTe modu) initialState
-
-hsetest mapTE modu@(Module l modh mp imps declas) =
-  do
-    let mn = parseModuleHead modh
-    getFunctionNames mn modu
-    st <- get
-    let qNamesMap = keys mapTE
-    let allFunctionNames = qNamesMap ++ fctNames st
-    --put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
-    let ts = parseTypeSignatur modu
-    let il = parseImportList imps
-    tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
-    fdcl <- mapM (parseFunDecls mn ts) $ filterFunDecls declas
-    x <- get
-    return $ fctNames x--allFunctionNames
-
-
 -- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astToAbstractHaskell ::
   MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
@@ -134,12 +115,6 @@ evt (DHApp l declhead tyVarBind) =
     e1 <- evt declhead
     e2 <- parseTVB tyVarBind
     return $ e1 ++ e2
-
--- | Extracts the typevariables out of a qualified constructor declaration
---extractTypvariables ::
---  MonadState AHState m => QualConDecl l -> m [(VarName, l)]
---extractTypvariables (QualConDecl _ (Just tvb) _ _) =
---  mapM parseTVB tvb
 
 -- | Parses a typevariable
 --parseTVB :: MonadState AHState m => TyVarBind l -> m (VarName, l)

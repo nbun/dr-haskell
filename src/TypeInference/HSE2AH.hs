@@ -84,7 +84,7 @@ removeLocalsExpr x@(InfixApply a b e1 c e2) =
   InfixApply a b (removeLocalsExpr e1) c (removeLocalsExpr e2)
 removeLocalsExpr x@(AH.Lambda a b pats expr)=
   AH.Lambda a b (Prelude.map removeLocalsPatter pats) (removeLocalsExpr expr)
-removeLocalsExpr x@(AH.Let _ _ _ _) = x
+removeLocalsExpr x@(AH.Let a ty lcs e) = e
 removeLocalsExpr x@(DoExpr a b sts) = DoExpr a b (Prelude.map removeLocalsSt sts)
 removeLocalsExpr x@(AH.ListComp a b expr stmst) =
   AH.ListComp a b (removeLocalsExpr expr) (Prelude.map removeLocalsSt stmst)
@@ -176,8 +176,8 @@ transFormLocalExpr list (AH.List a tyanno exprs)                =
 transFormLocalExpr list (AH.Lambda a tyanno pats expr)          =
   list ++ transFormLocalExpr list expr
 transFormLocalExpr list (AH.Let a tyanno locals expr)           =
---  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
-  list ++ transFormLocalExpr list expr
+  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
+  --list ++ transFormLocalExpr list expr
 transFormLocalExpr list (DoExpr a tyanno stmts)                 =
   list ++ concatMap (transFormLocalStmt list) stmts
 transFormLocalExpr list (AH.ListComp a tyanno expr stmts)       =
