@@ -190,7 +190,9 @@ addFreeVariablesInLocals (LocalPat a pat expr locals) =
   do
     newLocals <- mapM addFreeVariablesInLocals locals
     newExpr <- addFreeVariablesInExpr expr
-    return $ LocalPat a pat newExpr newLocals
+    let f = LocalPat a pat newExpr newLocals
+    res <- addFreeVariablesAsParametersForPattern f
+    return $ res --LocalPat a pat newExpr newLocals
 
 -- | Adds the found free variables out of local definitions in a local
 --   functiondefinition
@@ -202,17 +204,18 @@ addFreeVariablesAsParametersForFuncDecl (Func a name arity _ t rules) =
    newArity <- countNewArity (snd $ fst name) arity
    return $ LocalFunc $ Func a name newArity Public t newRules
 
- -- | Adds the found free variables out of local definitions in a pattern
 
-addFreeVariablesAsParametersForPattern :: LocalDecl a -> [LocalDecl a]
+-- | Adds the found free variables out of local definitions in a pattern
+addFreeVariablesAsParametersForPattern :: MonadState LState m => LocalDecl a -> m (LocalDecl a)
 addFreeVariablesAsParametersForPattern x@(LocalPat l pat expr locals) = do
   let ev  =  extractFreeVariablesExpr expr
-  let f = addToPatterns ev [pat] l
+  let pn = parseNamePattern pat
+  insertFrees (snd pn) ev--varsToAdd
+  let f = addToPatterns ev [] l--[pat] l
   let t = AH.Rule l NoTypeAnn f (SimpleRhs expr) locals
   let r = Rules [t]
-  let pn = parseNamePattern pat
   case length(ev) of
-    0 -> return x
+  --  0 -> return x
     _ -> return $ LocalFunc $ Func l (pn,l) (length ev) Public Untyped r
 
 -------------------------------------------------------------------------------

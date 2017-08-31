@@ -64,6 +64,25 @@ astExprToAbstractHaskellExpr mapTE expr =
     exprNew <- parseExpr "" [] expr
     return exprNew
 
+hse :: DML.Map AH.QName (TypeExpr a) -> Module a -> [AH.QName]
+hse mapTe modu = evalState (hsetest mapTe modu) initialState
+
+hsetest mapTE modu@(Module l modh mp imps declas) =
+  do
+    let mn = parseModuleHead modh
+    getFunctionNames mn modu
+    st <- get
+    let qNamesMap = keys mapTE
+    let allFunctionNames = qNamesMap ++ fctNames st
+    --put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
+    let ts = parseTypeSignatur modu
+    let il = parseImportList imps
+    tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
+    fdcl <- mapM (parseFunDecls mn ts) $ filterFunDecls declas
+    x <- get
+    return $ fctNames x--allFunctionNames
+
+
 -- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astToAbstractHaskell ::
   MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
@@ -74,7 +93,7 @@ astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
     st <- get
     let qNamesMap = keys mapTE
     let allFunctionNames = qNamesMap ++ fctNames st
-    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
+    --put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
     tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
@@ -359,7 +378,7 @@ parseFuncPatDecls str t
      patt <- parsePatterns str pat
      bnd <- parseBinds str t b
      rules <- mapM (parseRulesOutOfGuarded str t) gds
-     let rulesR = makeRules rules
+     let rulesR = makeRules l rules
      let n = newRule l patt rulesR bnd
      return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
 parseFuncPatDecls str t
@@ -374,7 +393,7 @@ parseFuncPatDecls str t
      rh <- parseExprOutOfGrd str t (head gds)
      patt <- parsePatterns str pat
      rules <- mapM (parseRulesOutOfGuarded str t) gds
-     let rulesR = makeRules rules
+     let rulesR = makeRules l rules
      let n = newRule l patt rulesR []
      return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
 parseFuncPatDecls str t
@@ -389,9 +408,9 @@ newRule :: a -> Pattern a -> AH.Rhs a -> [LocalDecl a] -> AH.Rule a
 newRule l pat rhs b = AH.Rule l NoTypeAnn [pat] rhs b
 
 -- | Makes one right hand side out of a list of right hand sides
-makeRules :: [AH.Rhs a] -> AH.Rhs a
-makeRules xs = let r =  makeRules' xs
-                  in SimpleRhs $ AH.List undefined NoTypeAnn r
+-- makeRules :: [AH.Rhs a] -> AH.Rhs a
+makeRules l xs = let r =  makeRules' xs
+                  in SimpleRhs $ AH.List l NoTypeAnn r
 
 -- | transforms tupel into a list
 toExprList :: [(t, t)] -> [t]
@@ -766,7 +785,6 @@ parseTypName modu (TyCon l qname)         =
 parseTypName modu (TyParen l t)           =
   parseTypName modu t
 parseTypName modu (TyApp l t1 t2) = parseTypName modu t1
-
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
