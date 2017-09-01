@@ -54,24 +54,26 @@ runWithRepl hlintHints file format = do
     let state = initialLintReplState -- get Repl state
     parseRes <- parseModified file -- Parse input file with repl impl
     case parseRes of
-      ParseOk m1 -> do
-        lvl <- case determineLevel m1 of
-                    Just l -> return l
-                    _      -> return Level1
-        (m2, errs) <- transformModule [] state m1 -- "
-        errs' <- runCheckLevel lvl file -- run checks
-        tires <- inferModule (modifiedModule m1)
-        let tiErrors =
-              case (useOwnTI lvl, tires) of -- run type inference
-                (True, Left e)  -> let pos = posOfTIError e
-                                    in [TypeError pos e]
-                (_,         _) -> []
-        coverage <- getConverageOutput m2 -- run coverage
-        putStrLn (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
-                   (errs ++ errs' ++ if null errs' then tiErrors else []))
-        -- build output
-      ParseFailed pos m ->
-        putStrLn $ lintErrorHlint [buildParseError pos m] format (Just Level1) []
+        ParseOk m1 -> do
+            lvl <- case determineLevel m1 of
+                        Just l -> return l
+                        _      -> return Level1
+            (m2, errs) <- transformModule [] state m1 -- "
+            errs' <- runCheckLevel lvl file -- run checks
+            tires <- inferModule (modifiedModule m1)
+            let tiErrors = case (useOwnTI lvl, tires) of -- run type inference
+                            (True, Left e)  -> let pos = posOfTIError e
+                                                in [TypeError pos e]
+                            (_,         _) -> []
+            coverage <- getConverageOutput m2 -- run coverage
+            output <- manipulatePathWithHostvarREV
+                        (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
+                            (errs ++ errs' ++ if null errs' then tiErrors else []))
+            putStrLn output
+        ParseFailed pos m -> do
+            output <- manipulatePathWithHostvarREV $
+                        lintErrorHlint [buildParseError pos m] format (Just Level1) []
+            putStrLn output
 
 -- | Invokes hlint via hlint module
 pushToHlint :: String -> IO [Hlint.Idea]

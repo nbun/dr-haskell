@@ -4,10 +4,15 @@ module StaticAnalysis.Messages.ErrorToLint (
     module StaticAnalysis.Messages.ErrorToLint
 ) where
 
+import           Data.List
+import           Data.List.Utils
 import           Language.Haskell.Exts
 import           StaticAnalysis.Level
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
+import           System.Environment
+import           System.Exit
+import           System.IO
 import qualified Text.JSON                            as Json
 
 -- | MessageClass
