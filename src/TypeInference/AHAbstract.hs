@@ -114,7 +114,7 @@ abstrExpr name x@(AH.Symbol tyanno qname)                                 =
     case DML.lookup realName (frees lds) of
       Nothing ->  return x
       Just y ->
-        return $ AH.Symbol tyanno ((fst $ fst qname , newName),snd qname)
+         return $ AH.Symbol tyanno ((fst $ fst qname , newName),snd qname)
 abstrExpr name x@(AH.Lambda a tyanno pats expr)                           =
   do
     exprN <- abstrExpr name expr

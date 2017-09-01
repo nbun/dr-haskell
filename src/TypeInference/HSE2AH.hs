@@ -12,6 +12,7 @@ import TypeInference.AHAbstract
 import TypeInference.AHAddVariables
 import TypeInference.HSEConversion
 import TypeInference.TypeSig
+import TypeInference.AbstractHaskellGoodies
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do
@@ -39,7 +40,7 @@ hseToAH tenv m = evalState (nlahToAH (hseToNLAH tenv m)) initialStateLambda
 --   2. builds a abstract representations with new names for the localdecls
 --      functions
 --   3. lifts the local functions on top level
---nlahToAH :: MonadState LState m => Prog l -> m (Prog l )
+nlahToAH :: MonadState LState m => Prog l -> m (Prog l )
 nlahToAH p@(Prog m q t fs) =
   do
    p1 <- addFreeVariablesInProg p
@@ -47,7 +48,7 @@ nlahToAH p@(Prog m q t fs) =
    let list = transFormLocalProg [] v
    let newProg = Prog n i t (fd ++ list)
    let rProg = removeLocals newProg
-   return rProg
+   return $ rProg
 
 removeLocals :: Prog a -> Prog a
 removeLocals (Prog a b c funcs) = Prog a b c $ Prelude.map removeLocalsFuncs funcs
@@ -83,7 +84,7 @@ removeLocalsExpr x@(InfixApply a b e1 c e2) =
   InfixApply a b (removeLocalsExpr e1) c (removeLocalsExpr e2)
 removeLocalsExpr x@(AH.Lambda a b pats expr)=
   AH.Lambda a b (Prelude.map removeLocalsPatter pats) (removeLocalsExpr expr)
-removeLocalsExpr x@(AH.Let _ _ _ _) = x
+removeLocalsExpr x@(AH.Let a ty lcs e) = e
 removeLocalsExpr x@(DoExpr a b sts) = DoExpr a b (Prelude.map removeLocalsSt sts)
 removeLocalsExpr x@(AH.ListComp a b expr stmst) =
   AH.ListComp a b (removeLocalsExpr expr) (Prelude.map removeLocalsSt stmst)
@@ -175,8 +176,8 @@ transFormLocalExpr list (AH.List a tyanno exprs)                =
 transFormLocalExpr list (AH.Lambda a tyanno pats expr)          =
   list ++ transFormLocalExpr list expr
 transFormLocalExpr list (AH.Let a tyanno locals expr)           =
---  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
-  list ++ transFormLocalExpr list expr
+  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
+  --list ++ transFormLocalExpr list expr
 transFormLocalExpr list (DoExpr a tyanno stmts)                 =
   list ++ concatMap (transFormLocalStmt list) stmts
 transFormLocalExpr list (AH.ListComp a tyanno expr stmts)       =
@@ -201,8 +202,23 @@ transFormLocalExprBranches list (Branch a pat expr) =
 transFormLocal :: LocalDecl l -> [FuncDecl l]
 transFormLocal (LocalFunc (Func a b c _ d e)) = [(Func a b c Public d e)]
 transFormLocal (LocalPat l pat expr lcs) =
-  [Func l (("",""),l) undefined Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
+  [Func l (getNameLocalPat pat,l) 0 Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
   ++ (concatMap transFormLocal lcs)
+
+
+getNameLocalPat :: Pattern a -> AH.QName
+getNameLocalPat (AH.PVar _ ((x,y),_))   = ("",y)
+getNameLocalPat (AH.PLit _ (x,_) )      = ("",getLitName x)
+getNameLocalPat (PComb _ _ (x, _) _) = x
+getNameLocalPat (PAs _ _ ((x,y),_) _) = ("",y)
+getNameLocalPat (AH.PTuple _ _ p) = tupleName $ length p
+getNameLocalPat (AH.PList _ _ _) = ("","")
+
+getLitName :: AH.Literal -> String
+getLitName (Intc x) = "x"
+getLitName (Floatc c) = "c"
+getLitName (Charc c) = "c"
+getLitName (Stringc s) = s
 
 -------------------------------------------------------------------------------
 -- HELPING FUNCTIONS ----------------------------------------------------------

@@ -74,7 +74,7 @@ astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
     st <- get
     let qNamesMap = keys mapTE
     let allFunctionNames = qNamesMap ++ fctNames st
-    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
+    --put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
     tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
@@ -115,12 +115,6 @@ evt (DHApp l declhead tyVarBind) =
     e1 <- evt declhead
     e2 <- parseTVB tyVarBind
     return $ e1 ++ e2
-
--- | Extracts the typevariables out of a qualified constructor declaration
---extractTypvariables ::
---  MonadState AHState m => QualConDecl l -> m [(VarName, l)]
---extractTypvariables (QualConDecl _ (Just tvb) _ _) =
---  mapM parseTVB tvb
 
 -- | Parses a typevariable
 --parseTVB :: MonadState AHState m => TyVarBind l -> m (VarName, l)
@@ -359,7 +353,7 @@ parseFuncPatDecls str t
      patt <- parsePatterns str pat
      bnd <- parseBinds str t b
      rules <- mapM (parseRulesOutOfGuarded str t) gds
-     let rulesR = makeRules rules
+     let rulesR = makeRules l rules
      let n = newRule l patt rulesR bnd
      return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
 parseFuncPatDecls str t
@@ -374,7 +368,7 @@ parseFuncPatDecls str t
      rh <- parseExprOutOfGrd str t (head gds)
      patt <- parsePatterns str pat
      rules <- mapM (parseRulesOutOfGuarded str t) gds
-     let rulesR = makeRules rules
+     let rulesR = makeRules l rules
      let n = newRule l patt rulesR []
      return $ LocalFunc $ Func l (("",name),l) 0 Public Untyped (Rules [n])
 parseFuncPatDecls str t
@@ -389,9 +383,9 @@ newRule :: a -> Pattern a -> AH.Rhs a -> [LocalDecl a] -> AH.Rule a
 newRule l pat rhs b = AH.Rule l NoTypeAnn [pat] rhs b
 
 -- | Makes one right hand side out of a list of right hand sides
-makeRules :: [AH.Rhs a] -> AH.Rhs a
-makeRules xs = let r =  makeRules' xs
-                  in SimpleRhs $ AH.List undefined NoTypeAnn r
+-- makeRules :: [AH.Rhs a] -> AH.Rhs a
+makeRules l xs = let r =  makeRules' xs
+                  in SimpleRhs $ AH.List l NoTypeAnn r
 
 -- | transforms tupel into a list
 toExprList :: [(t, t)] -> [t]
@@ -766,7 +760,6 @@ parseTypName modu (TyCon l qname)         =
 parseTypName modu (TyParen l t)           =
   parseTypName modu t
 parseTypName modu (TyApp l t1 t2) = parseTypName modu t1
-
 
 -- | Parses the arity
 parseArity :: [Match l] -> Int
