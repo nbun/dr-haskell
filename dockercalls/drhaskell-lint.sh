@@ -8,4 +8,4 @@ do
     fi
 done
 eval $(docker-machine env)
-docker run -e DRHASKELLHOSTPATH="$dname" -v "$dname"/:/tmp/drhaskell-src --rm -it jonasbusse/drhaskell:latest drhaskell-lint "$@"
+docker run -e DRHASKELLHOSTPATH="$dname" -v "$dname"/:/tmp/drhaskell-src --rm jonasbusse/drhaskell:latest drhaskell-lint "$@"
