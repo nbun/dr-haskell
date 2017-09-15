@@ -1,6 +1,6 @@
-;;; haskell-drhaskell.el --- simplistic interaction mode with a
+;;; haskell-drhaskell.el --- simplistic interaction mode with drhaskell
 
-;; TODO: Add proper description and adapt old text
+;; Adapted to work with drhaskell. Original creator:
 
 ;; Copyright 2004, 2005, 2006, 2007  Free Software Foundation, Inc.
 ;; Copyright 1998, 1999  Guy Lapalme
@@ -31,42 +31,16 @@
 
 ;;; Commentary:
 
-;; Purpose:
-;;
-;; To send a Haskell buffer to another buffer running a Hugs interpreter
-;; The functions are adapted from  the Hugs Mode developed by
-;;         Chris Van Humbeeck <chris.vanhumbeeck@cs.kuleuven.ac.be>
-;; which used to be available at:
-;; http://www-i2.informatik.rwth-aachen.de/Forschung/FP/Haskell/hugs-mode.el
-;;
 ;; Installation:
-;; 
-;; To use with the Haskell mode of 
+;;
+;; To use with the Haskell mode of
 ;;        Moss&Thorn <http://www.haskell.org/haskell-mode>
 ;; add this to .emacs:
 ;;
 ;;    (add-hook 'haskell-mode-hook 'turn-on-haskell-drhaskell)
 ;;
-;; Customisation:
-;;       The name of the drhaskell interpreter is in variable
-;;          haskell-drhaskell-program-name
-;;       Arguments can be sent to the Drhaskell interpreter when it is called
-;;       by setting the value of the variable
-;;          haskell-drhaskell-program-args
-;;       which by default contains '("+.") so that the progress of the
-;;       interpreter is visible without any "^H" in the *drhaskell* Emacs buffer.
-;;
-;;       This value can be interactively by calling C-cC-s with an
-;;       argument. 
-;;
-;;       If the command does not seem to respond, see the
-;;          content of the `comint-prompt-regexp' variable
-;;          to check that it waits for the appropriate Drhaskell prompt
-;;          the current value is appropriate for Drhaskell 1.3 and 1.4
-;;
-;;
 ;;    `haskell-drhaskell-hook' is invoked in the *drhaskell* once it is started.
-;;    
+;;
 ;;; All functions/variables start with
 ;;; `(turn-(on/off)-)haskell-drhaskell' or `haskell-drhaskell-'.
 
@@ -86,7 +60,9 @@ Maps the followind commands in the haskell keymap.
      \\[haskell-drhaskell-reload-file]
        to send the :reload command to Drhaskell without saving the buffer.
      \\[haskell-drhaskell-show-drhaskell-buffer]
-       to show the Drhaskell buffer and go to it."
+       to show the Drhaskell buffer and go to it.
+     \\[turn-on-haskell-drhaskell-linter] to start the linter
+     \\[haskell-drhaskell-set-level] to set the linter's level manually"
   (setq haskell-doc-show-prelude nil)
   (local-set-key "\C-c\C-s" 'haskell-drhaskell-start-process)
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
@@ -107,7 +83,6 @@ Maps the followind commands in the haskell keymap.
   (interactive)
   "Turn on DrHaskell linter"
   (setq flycheck-haskell-hlint-executable "drhaskell-lint")
-  (setq flycheck-hlint-args (list "--hint=l1"))
   (unless (memq 'haskell-ghc flycheck-disabled-checkers)
     (push 'haskell-ghc flycheck-disabled-checkers))
   (message "DrHaskell linter is enabled")
@@ -290,7 +265,7 @@ the Drhaskell buffer."
   (interactive "P")
   (haskell-drhaskell-gen-load-file ":load " cd)
   )
- 
+
 (defun haskell-drhaskell-reload-file (cd)
   "Save a drhaskell buffer file and load its file.
 If CD (prefix argument if interactive) is non-nil, change the Drhaskell
