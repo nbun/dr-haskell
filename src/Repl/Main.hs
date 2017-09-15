@@ -7,7 +7,7 @@ import Control.Monad.Catch                  as MC
 import Control.Monad.State
 import Data.Char
 import Data.List
-import Data.Maybe                           (fromJust)
+import Data.Maybe                           (fromJust, isJust)
 import Data.Version                         (showVersion)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
@@ -76,7 +76,7 @@ main = do
 replEval :: String -> Repl (Maybe String, Bool)
 replEval q = case q of
   ':':xs -> replEvalCommand xs
-  _      -> liftInterpreter $ (,True) <$> replEvalExp q
+  _      -> (,True) <$> replEvalExp q
 
 replHelp :: Maybe String -> Repl String
 replHelp input = return $ init $ unlines $ hint [
@@ -90,25 +90,41 @@ replHelp input = return $ init $ unlines $ hint [
                     Just  s -> ("Unrecognized option '" ++ s ++ "'") : xs
                     Nothing -> xs
 
-replEvalExp :: String -> ReplInterpreter (Maybe String)
+replEvalExp :: String -> Repl (Maybe String)
 replEvalExp q = case filter (not . isSpace) q of
-  "" -> return Nothing
-  _  ->
-    MC.handleAll (\e -> do
-                        liftIO $ putStrLn (displayException e)
-                        return Nothing) $ do
-      t <- typeOf q
-      if t == "IO ()"
-        then do
-          --apparently the interpreter does not put the output through 'our'
-          --stdout, so we need to flush the buffer *within* the interpreter,
-          --which makes this really messy. Seems to work though.
-          action <- interpret
-                      ("("++q++")>>System.IO.hFlush System.IO.stdout")
-                      (as :: IO ())
-          liftIO action
-          return Nothing
-        else Just <$> eval q
+    "" -> return Nothing
+    _  ->
+      MC.handleAll (\e -> do
+                          liftIO $ putStrLn (displayException e)
+                          return Nothing) $ do
+        errors <- checkType q
+        if isJust errors
+        then return errors
+        else do
+          t <- liftInterpreter $ typeOf q
+          if t == "IO ()"
+            then do
+              --apparently the interpreter does not put the output through 'our'
+              --stdout, so we need to flush the buffer *within* the interpreter,
+              --which makes this really messy. Seems to work though.
+              action <- liftInterpreter $ interpret
+                          ("("++q++")>>System.IO.hFlush System.IO.stdout")
+                          (as :: IO ())
+              liftIO action
+              return Nothing
+            else liftInterpreter $ Just <$> eval q
+  where
+    checkType :: String -> Repl (Maybe String)
+    checkType q = do
+      p' <- use tiProg
+      case p' of
+           [] -> return Nothing
+           ps -> case parseExp q of
+                      ParseFailed _ f -> return $ Just f
+                      ParseOk e       ->
+                        case inferHSEExp ps e of
+                             Left e -> return $ Just $ show e
+                             Right e -> return Nothing
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = if null cmd then invalid cmd else
