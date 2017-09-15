@@ -123,7 +123,7 @@ replEvalExp q = case filter (not . isSpace) q of
                       ParseFailed _ f -> return $ Just f
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return $ Just $ show e
+                             Left e -> return $ Just $ showTIError defaultAHOptions e
                              Right e -> return Nothing
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
