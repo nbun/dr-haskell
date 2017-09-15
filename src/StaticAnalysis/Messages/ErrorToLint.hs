@@ -182,7 +182,8 @@ manipulatePathWithHostvar file = do
     hostpath <- lookupEnv "DRHASKELLHOSTPATH"
     case hostpath of
         Nothing   -> return file
-        Just path -> return $ replace path "/tmp/drhaskell-src" file
+        Just path -> do msg <- replace path "/tmp/drhaskell-src/" file
+                        return replace "\\/" "" $ replace "//" "" msg
 
 
 manipulatePathWithHostvarREV :: String -> IO String
@@ -190,4 +191,4 @@ manipulatePathWithHostvarREV file = do
     hostpath <- lookupEnv "DRHASKELLHOSTPATH"
     case hostpath of
         Nothing   -> return file
-        Just path -> return $ replace "/tmp/drhaskell-src" path file
+        Just path -> return $ replace "/tmp/drhaskell-src/" path file
