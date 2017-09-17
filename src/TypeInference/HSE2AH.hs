@@ -44,9 +44,9 @@ nlahToAH :: MonadState LState m => Prog l -> m (Prog l )
 nlahToAH p@(Prog m q t fs) =
   do
    p1 <- addFreeVariablesInProg p
-   v@(Prog n i t fd) <- abstrProg p1
-   let list = transFormLocalProg [] v
-   let newProg = Prog n i t (fd ++ list)
+   v@(Prog (n,m) i t fd) <- abstrProg p1
+   let list = transFormLocalProg n [] v
+   let newProg = Prog (n,m) i t (fd ++ list)
    let rProg = removeLocals newProg
    return $ rProg
 
@@ -117,102 +117,101 @@ removeLocalsBExpr (Branch a pat expr) = Branch a (removeLocalsPatter pat) (remov
 -------------------------------------------------------------------------------
 
 -- | Lifts all local declarations of a programm to toplevel
-transFormLocalProg :: [FuncDecl l] -> Prog l -> [FuncDecl l]
-transFormLocalProg list (Prog n x y fundecls) =
-  list ++ concatMap (transFormLocalFuncDecl list) fundecls
+transFormLocalProg :: String -> [FuncDecl l] -> Prog l -> [FuncDecl l]
+transFormLocalProg modu list (Prog n x y fundecls) =
+  list ++ concatMap (transFormLocalFuncDecl  modu list) fundecls
 
 -- | Lifts all local declarations of the function declarations to toplevel
-transFormLocalFuncDecl :: [FuncDecl l] -> FuncDecl l -> [FuncDecl l]
-transFormLocalFuncDecl list (Func x y z a b rules) =
-  list ++ transFormLocalRules list rules
+transFormLocalFuncDecl :: String -> [FuncDecl l] -> FuncDecl l -> [FuncDecl l]
+transFormLocalFuncDecl modu list (Func x y z a b rules) =
+  list ++ transFormLocalRules modu list rules
 
 -- | Lifts all local declarations of rules to toplevel
-transFormLocalRules :: [FuncDecl l] -> Rules l -> [FuncDecl l]
-transFormLocalRules list (Rules rule) =
-  list ++ concatMap (transFormLocalRule list) rule
+transFormLocalRules :: String -> [FuncDecl l] -> Rules l -> [FuncDecl l]
+transFormLocalRules modu list (Rules rule) =
+  list ++ concatMap (transFormLocalRule modu list) rule
 
 -- | Lifts all local declarations of a rule to toplevel
-transFormLocalRule :: [FuncDecl l] -> AH.Rule l -> [FuncDecl l]
-transFormLocalRule list (AH.Rule a b c d e) =
-  list ++ transFormLocalRhs list d ++ concatMap transFormLocal e
+transFormLocalRule :: String -> [FuncDecl l] -> AH.Rule l -> [FuncDecl l]
+transFormLocalRule modu list (AH.Rule a b c d e) =
+  list ++ transFormLocalRhs modu list d ++ concatMap (transFormLocal modu) e
 
 -- | Lifts all local declarations of a right hand side to toplevel
-transFormLocalRhs :: [FuncDecl l] -> AH.Rhs l -> [FuncDecl l]
-transFormLocalRhs list (SimpleRhs expr)        =
-  list ++ transFormLocalExpr list expr
-transFormLocalRhs list (AH.GuardedRhs a exprs) =
-  list ++ concatMap (transFormLocalListExpr list) exprs
+transFormLocalRhs :: String -> [FuncDecl l] -> AH.Rhs l -> [FuncDecl l]
+transFormLocalRhs modu list (SimpleRhs expr)        =
+  list ++ transFormLocalExpr modu list expr
+transFormLocalRhs modu list (AH.GuardedRhs a exprs) =
+  list ++ concatMap (transFormLocalListExpr modu list) exprs
 
 -- | Lifts all local declarations of a exprtupel to toplevel
-transFormLocalListExpr :: [FuncDecl l] -> (Expr l, Expr l) -> [FuncDecl l]
-transFormLocalListExpr list (a,b) =
-  list ++ transFormLocalExpr list a ++  transFormLocalExpr list b
+transFormLocalListExpr :: String -> [FuncDecl l] -> (Expr l, Expr l) -> [FuncDecl l]
+transFormLocalListExpr modu list (a,b) =
+  list ++ transFormLocalExpr modu list a ++  transFormLocalExpr modu list b
 
 -- | Lifts all local declarations of an expr to toplevel
-transFormLocalExpr :: [FuncDecl l] -> Expr l -> [FuncDecl l]
-transFormLocalExpr list x@(AH.Var _ _)                          =
+transFormLocalExpr :: String -> [FuncDecl l] -> Expr l -> [FuncDecl l]
+transFormLocalExpr modu list x@(AH.Var _ _)                          =
   list
-transFormLocalExpr list x@(AH.Lit _ _)                          =
+transFormLocalExpr modu list x@(AH.Lit _ _)                          =
   list
-transFormLocalExpr list x@(AH.Symbol _ _)                       =
+transFormLocalExpr modu list x@(AH.Symbol _ _)                       =
   list
-transFormLocalExpr list (Apply a tyanno expr1 expr2)            =
-  list ++ transFormLocalExpr list expr1 ++ transFormLocalExpr list expr2
-transFormLocalExpr list (InfixApply a tyanno expr1 name expr2)  =
-  list ++ transFormLocalExpr list expr1 ++ transFormLocalExpr list expr2
-transFormLocalExpr list (AH.Case a tyanno expr bexprs)          =
-  list ++ transFormLocalExpr list expr ++
-  concatMap (transFormLocalExprBranches list) bexprs
-transFormLocalExpr list (Typed a tyanno expr texpr)             =
-  list ++ transFormLocalExpr list expr
-transFormLocalExpr list (IfThenElse a tyanno expr1 expr2 expr3) =
-  list ++ transFormLocalExpr list expr1 ++
-  transFormLocalExpr list expr2 ++
-  transFormLocalExpr list expr3
-transFormLocalExpr list (AH.Tuple a tyanno exprs)               =
-  list ++ concatMap (transFormLocalExpr list) exprs
-transFormLocalExpr list (AH.List a tyanno exprs)                =
-  list ++ concatMap (transFormLocalExpr list) exprs
-transFormLocalExpr list (AH.Lambda a tyanno pats expr)          =
-  list ++ transFormLocalExpr list expr
-transFormLocalExpr list (AH.Let a tyanno locals expr)           =
-  list ++ transFormLocalExpr list expr ++ concatMap transFormLocal locals
-  --list ++ transFormLocalExpr list expr
-transFormLocalExpr list (DoExpr a tyanno stmts)                 =
-  list ++ concatMap (transFormLocalStmt list) stmts
-transFormLocalExpr list (AH.ListComp a tyanno expr stmts)       =
-  list ++ transFormLocalExpr list expr ++
-  concatMap (transFormLocalStmt list) stmts
+transFormLocalExpr modu list (Apply a tyanno expr1 expr2)            =
+  list ++ transFormLocalExpr modu list expr1 ++ transFormLocalExpr modu list expr2
+transFormLocalExpr modu list (InfixApply a tyanno expr1 name expr2)  =
+  list ++ transFormLocalExpr modu list expr1 ++ transFormLocalExpr modu list expr2
+transFormLocalExpr modu list (AH.Case a tyanno expr bexprs)          =
+  list ++ transFormLocalExpr modu list expr ++
+  concatMap (transFormLocalExprBranches modu list) bexprs
+transFormLocalExpr modu list (Typed a tyanno expr texpr)             =
+  list ++ transFormLocalExpr modu list expr
+transFormLocalExpr modu list (IfThenElse a tyanno expr1 expr2 expr3) =
+  list ++ transFormLocalExpr modu list expr1 ++
+  transFormLocalExpr modu list expr2 ++
+  transFormLocalExpr modu list expr3
+transFormLocalExpr modu list (AH.Tuple a tyanno exprs)               =
+  list ++ concatMap (transFormLocalExpr modu list) exprs
+transFormLocalExpr modu list (AH.List a tyanno exprs)                =
+  list ++ concatMap (transFormLocalExpr modu list) exprs
+transFormLocalExpr modu list (AH.Lambda a tyanno pats expr)          =
+  list ++ transFormLocalExpr modu list expr
+transFormLocalExpr modu list (AH.Let a tyanno locals expr)           =
+  list ++ transFormLocalExpr modu list expr ++ concatMap (transFormLocal modu) locals
+transFormLocalExpr modu list (DoExpr a tyanno stmts)                 =
+  list ++ concatMap (transFormLocalStmt modu list) stmts
+transFormLocalExpr modu list (AH.ListComp a tyanno expr stmts)       =
+  list ++ transFormLocalExpr modu list expr ++
+  concatMap (transFormLocalStmt modu list) stmts
 
 -- | Lifts all local declarations of a statemen to toplevel
-transFormLocalStmt :: [FuncDecl l] -> Statement l -> [FuncDecl l]
-transFormLocalStmt list (SExpr expr)      =
-  list ++ transFormLocalExpr list expr
-transFormLocalStmt list (SPat a pat expr) =
-  list ++ transFormLocalExpr list expr
-transFormLocalStmt list (SLet a locals)   =
-  list ++ concatMap transFormLocal locals
+transFormLocalStmt :: String -> [FuncDecl l] -> Statement l -> [FuncDecl l]
+transFormLocalStmt modu list (SExpr expr)      =
+  list ++ transFormLocalExpr modu list expr
+transFormLocalStmt modu list (SPat a pat expr) =
+  list ++ transFormLocalExpr modu list expr
+transFormLocalStmt modu list (SLet a locals)   =
+  list ++ concatMap (transFormLocal modu) locals
 
 -- | Lifts all local declarations of a branchexpr to toplevel
-transFormLocalExprBranches :: [FuncDecl l] -> BranchExpr l -> [FuncDecl l]
-transFormLocalExprBranches list (Branch a pat expr) =
-  list ++ transFormLocalExpr list expr
+transFormLocalExprBranches :: String -> [FuncDecl l] -> BranchExpr l -> [FuncDecl l]
+transFormLocalExprBranches modu list (Branch a pat expr) =
+  list ++ transFormLocalExpr modu  list expr
 
 -- | Lifts all local declarations to toplevel
-transFormLocal :: LocalDecl l -> [FuncDecl l]
-transFormLocal (LocalFunc (Func a b c _ d e)) = [(Func a b c Public d e)]
-transFormLocal (LocalPat l pat expr lcs) =
-  [Func l (getNameLocalPat pat,l) 0 Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
-  ++ (concatMap transFormLocal lcs)
+transFormLocal :: String -> LocalDecl l -> [FuncDecl l]
+transFormLocal modu (LocalFunc (Func a b c _ d e)) = [(Func a b c Public d e)]
+transFormLocal modu (LocalPat l pat expr lcs) =
+  [Func l (getNameLocalPat  modu pat,l) 0 Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
+  ++ (concatMap (transFormLocal modu) lcs)
 
 
-getNameLocalPat :: Pattern a -> AH.QName
-getNameLocalPat (AH.PVar _ ((x,y),_))   = ("",y)
-getNameLocalPat (AH.PLit _ (x,_) )      = ("",getLitName x)
-getNameLocalPat (PComb _ _ (x, _) _) = x
-getNameLocalPat (PAs _ _ ((x,y),_) _) = ("",y)
-getNameLocalPat (AH.PTuple _ _ p) = tupleName $ length p
-getNameLocalPat (AH.PList _ _ _) = ("","")
+getNameLocalPat :: String -> Pattern a -> AH.QName
+getNameLocalPat modu (AH.PVar _ ((x,y),_))   = (modu,y)
+getNameLocalPat modu (AH.PLit _ (x,_) )      = (modu,getLitName x)
+getNameLocalPat modu (PComb _ _ (x, _) _) = x
+getNameLocalPat modu (PAs _ _ ((x,y),_) _) = (modu,y)
+getNameLocalPat modu (AH.PTuple _ _ p) = tupleName $ length p
+getNameLocalPat modu (AH.PList _ _ _) = (modu,"")
 
 getLitName :: AH.Literal -> String
 getLitName (Intc x) = "x"

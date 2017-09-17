@@ -54,7 +54,6 @@ hseToNLAH mapTE modu = evalState (astToAbstractHaskell mapTE modu) initialState
 hseExpToAHExpr :: Map AH.QName a -> Exp a1 -> Expr a1
 hseExpToAHExpr mapTE expr = evalState (astExprToAbstractHaskellExpr mapTE expr) initialState
 
--- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astExprToAbstractHaskellExpr :: MonadState AHState m => Map AH.QName a -> Exp a1 -> m (Expr a1)
 astExprToAbstractHaskellExpr mapTE expr =
   do
@@ -64,7 +63,6 @@ astExprToAbstractHaskellExpr mapTE expr =
     exprNew <- parseExpr "" [] expr
     return exprNew
 
--- TODO hier jeweils noch aus der PRelude geladene Typen auch mit isOperator umformen
 astToAbstractHaskell ::
   MonadState AHState m => Map AH.QName a -> Module a1 -> m (Prog a1)
 astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
@@ -74,7 +72,7 @@ astToAbstractHaskell mapTE modu@(Module l modh mp imps declas) =
     st <- get
     let qNamesMap = keys mapTE
     let allFunctionNames = qNamesMap ++ fctNames st
-    --put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
+    put AHState {idx = idx st, vmap = vmap st, fctNames = fctNames st ++ allFunctionNames}
     let ts = parseTypeSignatur modu
     let il = parseImportList imps
     tdcl <- mapM (parseTypDecls mn) $ filterdecls declas
