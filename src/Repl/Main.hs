@@ -119,11 +119,19 @@ replEvalExp q = case filter (not . isSpace) q of
       p' <- use tiProg
       case p' of
            [] -> return Nothing
-           ps -> case parseExp q of
+           ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) q of
                       ParseFailed _ f -> return $ Just f
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return $ Just $ showTIError defaultAHOptions e
+                             Left e -> return $ Just
+                                              $ showTIError
+                                                defaultAHOptions {
+                                                  unqModules =
+                                                    "Prelude" :
+                                                    unqModules
+                                                      defaultAHOptions
+                                                }
+                                                e
                              Right e -> return Nothing
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
@@ -181,11 +189,18 @@ commandTypeof args = do
       p' <- use tiProg
       case p' of
            [] -> return (Nothing, True)
-           ps -> case parseExp expression of
+           ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) expression of
                       ParseFailed _ f -> return (Just f, True)
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return (Just $ show e, True)
+                             Left e -> return (Just $ showTIError
+                                                      defaultAHOptions {
+                                                        unqModules =
+                                                          "Prelude" :
+                                                          unqModules
+                                                            defaultAHOptions
+                                                      }
+                                                      e, True)
                              Right e -> return (Just
                                                  (expression ++
                                                   " :: "     ++
