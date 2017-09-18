@@ -147,7 +147,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                  in MC.handleAll handler' $ do
                       liftInterpreter $ loadModules [cfn]
                       mods <- liftInterpreter getLoadedModules
-                      liftInterpreter $ setTopLevelModules mods
+                      liftInterpreter $ setTopLevelModules $ filter (/= "Tests") mods
                       liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
