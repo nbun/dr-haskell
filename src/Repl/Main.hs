@@ -83,6 +83,7 @@ replHelp input = return $ init $ unlines $ hint [
   "Usage:",
   ":? - This help",
   ":l - load module",
+  ":q - quit",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
