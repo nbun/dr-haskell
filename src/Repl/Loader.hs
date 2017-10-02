@@ -48,6 +48,8 @@ printLoadMessage (DirectMessage m) = m
 --for proper putStrLn
 loadInitialModules :: Repl ()
 loadInitialModules = do
+    ps <- liftIO initEmptyTI
+    tiProg .= ps
     Just level <- use forceLevel `mplusM` return (Just Level1)
     currentLevel .= level
     liftInterpreter $ setImportsQ [("Prelude", Nothing),
@@ -141,7 +143,9 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
 
           if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ adjustGHCerror transModule $ displayException e
-                     handler' e = return $ levelSelectErrors ++
+                     handler' e = do
+                       loadInitialModules
+                       return $ levelSelectErrors ++
                                            errors ++
                                            [dm e]
                  in MC.handleAll handler' $ do
@@ -156,7 +160,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                       return $ levelSelectErrors ++
                                errors ++
                                map DirectMessage testErrors
-            else
+            else do
+              loadInitialModules
               return $ levelSelectErrors ++ errors
     --adjusts path for easier usage (appends .hs suffix)
     adjustPath :: FilePath -> FilePath

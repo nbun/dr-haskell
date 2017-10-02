@@ -54,8 +54,6 @@ initInterpreter = do
   datadir <- liftIO getDataDir
   liftInterpreter $ Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
-  ps <- liftIO initEmptyTI
-  tiProg .= ps
   loadInitialModules
 
 main :: IO ()
