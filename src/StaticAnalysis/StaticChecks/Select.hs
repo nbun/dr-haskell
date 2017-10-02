@@ -1,15 +1,15 @@
 -- | Utility functions to work with names, modules, etc.
 module StaticAnalysis.StaticChecks.Select
-  (declName, defFuncs, defNames, expsOfDecl, getNameOfQName, importedModules
+  (declName, declsOfModule, defFuncs, defNames, expsOfDecl, getNameOfQName
   , modName, namePos, nameOfModule, nameString, typeSigs, qNameName, qNamesOfExps
-  , similar3, varsOfDecl
+  , similar3, varsOfDecl, infixQNames, importedModules
   ) where
 
 import AstChecks.Check                      (mapOverDecls, mapOverExp,
                                              mapOverExpRec)
 import Data.Char                            (ord)
 import Data.List                            (sortBy)
-import Data.Maybe                           (catMaybes)
+import Data.Maybe                           (catMaybes, mapMaybe)
 import Language.Haskell.Exts
 import StaticAnalysis.Messages.StaticErrors (Entity (..))
 import Text.EditDistance                    (defaultEditCosts,
@@ -25,7 +25,8 @@ defFuncs _          = []
 
 -- | Returns names of definitions of a module
 defNames :: Module l -> [(Name l, Entity)]
-defNames m@Module{} = concatMap declName $ funBinds m ++ patBinds m ++ dataDecls m
+defNames m@Module{} = concatMap declName $
+  funBinds m ++ patBinds m ++ dataDecls m 
 defNames _          = []
 
 -- | Returns name and type of a declaration
@@ -33,10 +34,14 @@ declName :: Decl l -> [(Name l, Entity)]
 declName d = case d of
                TypeSig _ ns _                 -> map (\n -> (n, Signature)) ns
                FunBind _ (Match _ n _ _ _ :_) -> [(n, Function)]
+               FunBind _ (InfixMatch _ _ n _ _ _:_) -> [(n, Function)]
                -- functions without arguments
                PatBind _ (PVar _ n) _ _       -> [(n, Definition)]
                DataDecl _ _ _ (DHead _ n) _ _ -> [(n, Datatype)]
                DataDecl _ _ _ (DHApp _ (DHead _ n) _) _ _ -> [(n, Datatype)]
+               InfixDecl _ _ _ ops            -> map opName ops
+                 where opName (VarOp _ name) = (name, Function)
+                       opName (ConOp _ name) = (name, Function)
                _                              -> []
 
 -- | Returns name of a QName
@@ -108,13 +113,19 @@ patBinds = declFilter isPatBind
     isPatBind PatBind{} = True
     isPatBind _         = False
 
--- Returns function bindings of a module
+-- | Returns function bindings of a module
 funBinds :: Module l -> [Decl l]
 funBinds = declFilter isFunBind
   where
-    isFunBind :: Decl l -> Bool
     isFunBind FunBind{} = True
     isFunBind _         = False
+
+-- | Returns infix operators of a module
+infixDecls :: Module l -> [Decl l]
+infixDecls = declFilter isInfixDecl
+  where
+    isInfixDecl InfixDecl{} = True
+    isInfixDecl _           = False
 
 -- | Returns data declarations of a module
 dataDecls :: Module l -> [Decl l]
@@ -161,6 +172,11 @@ expsOfModule :: Module l -> [Exp l]
 expsOfModule (Module _ _ _ _ decls) = mapOverDecls (: []) decls
 expsOfModule _                      = []
 
+-- | Returns declarations of a module
+declsOfModule :: Module l -> [Decl l]
+declsOfModule (Module _ _ _ _ decls) = decls
+declsOfModule _                      = []
+
 -- | Returns expressions of a declaration
 expsOfDecl :: Decl l -> [Exp l]
 expsOfDecl d = mapOverDecls (: []) [d]
@@ -168,6 +184,15 @@ expsOfDecl d = mapOverDecls (: []) [d]
 -- | Returns qualified names of a list of expressions
 qNamesOfExps :: [Exp l] -> [QName l]
 qNamesOfExps exps = catMaybes $ concatMap (mapOverExp expQName) exps
+
+-- | Returns qualified names of infix operators of a list of expressions
+infixQNames :: [Exp l] -> [QName l]
+infixQNames = mapMaybe infQn
+  where infQn (InfixApp _ _ qop _) = Just $ qOpQn qop
+        infQn _                    = Nothing
+
+        qOpQn (QVarOp _ qn) = qn
+        qOpQn (QConOp _ qn) = qn
 
 -- | Returns qualified names of an expression
 expQName :: Exp l -> [Maybe (QName l)]
