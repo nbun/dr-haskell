@@ -26,7 +26,7 @@ defFuncs _          = []
 -- | Returns names of definitions of a module
 defNames :: Module l -> [(Name l, Entity)]
 defNames m@Module{} = concatMap declName $
-  funBinds m ++ patBinds m ++ dataDecls m 
+  funBinds m ++ patBinds m ++ dataDecls m
 defNames _          = []
 
 -- | Returns name and type of a declaration

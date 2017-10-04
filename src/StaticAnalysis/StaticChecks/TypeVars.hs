@@ -11,4 +11,3 @@ checkForTypVar t =
     case t of
         (TyVar _ n) -> [TypeVar n]
         _           -> mapOverTyTypesRec False checkForTypVar [t]
-checkForTypVar _ = []

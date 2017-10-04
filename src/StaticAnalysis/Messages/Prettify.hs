@@ -87,7 +87,7 @@ prettyErrorWithInfoSwitchAndLevel s level e =
     TypeVar name ->
       infoLine name
       ++ appendLevelTag level e
-      ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
+      ++ "Found type variable " ++ prettyPrintQ name ++ " at "
       ++ prettyNameLoc name ++ "."
     Imported name ->
       infoLineMod name
