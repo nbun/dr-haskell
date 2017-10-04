@@ -123,6 +123,7 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                   else [DirectMessage
                                         ("No valid level selection "++
                                          "found. Using Level 1")]
+          liftRepl $ currentLevel .= level
 
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
@@ -153,7 +154,6 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                       liftInterpreter $ loadModules [cfn]
                       mods <- liftInterpreter getLoadedModules
                       liftInterpreter $ setTopLevelModules $ filter (/= "Tests") mods
-                      liftRepl $ currentLevel .= level
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
                       liftRepl $ promptModule .= determineModuleName transModule fname
@@ -258,13 +258,20 @@ addMyPrelude hideDefs = addImport ImportDecl
                             IVar noSrcSpan $ Ident noSrcSpan "(==)",
                             IVar noSrcSpan $ Ident noSrcSpan "(/=)"]}
 
+wantCustomPrelude :: ReplState -> Bool
+wantCustomPrelude s = s ^. customPrelude &&
+                      case s ^. currentLevel of
+                           LevelFull -> False
+                           _         -> True
+
+
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude
 transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule $ AG.generateArbitraryInModule m
-  if s ^. customPrelude
+  if wantCustomPrelude s
   then return
     (addMyPrelude
       hide $
