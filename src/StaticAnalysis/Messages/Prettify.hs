@@ -177,6 +177,8 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
       "Usage of TypeInstance is forbidden on " --level...
     appendLevelErrorTag' (TypeClassDecl _) =
       "Usage of TypeClass is forbidden on " --level...
+    appendLevelErrorTag' (TypeVar _) =
+      "Usage of type variables is forbidden on "
     appendLevelErrorTag' _ = ""
 
     levelString :: Level -> String
