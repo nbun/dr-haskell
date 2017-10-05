@@ -731,9 +731,9 @@ parseTyp modu (TyParen l t)              =
   parseTyp modu t
 parseTyp modu (TyApp l t1 t2)            =
   do
-    t1p <- parseTyp modu t1
+    (TCons _ _ args) <- parseTyp modu t1
     t2p <- parseTyp modu t2
-    return $ TCons l ((parseTypName modu t1),l) [t2p]
+    return $ TCons l ((parseTypName modu t1),l) (args ++ [t2p])
     --return $ FuncType l t1p t2p
 parseTyp modu (TyWildCard l (Just name)) =
   return $ TCons l ((modu,parsename name), l) []
