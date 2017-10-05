@@ -1,3 +1,0 @@
-docker_build:
-  script:
-    - curl https://registry.hub.docker.com/u/jonasbusse/drhaskell/trigger/491e2698-4e13-4708-b4f6-9ed3fe23a60f/
