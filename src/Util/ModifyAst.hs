@@ -109,9 +109,9 @@ pushCommentAfter :: Int -> Int -> Comment -> Comment
 pushCommentAfter start len (Comment ml (SrcSpan f sl sc el ec) t) =
   Comment ml
     (SrcSpan f
-           (sl + if sl >= start then len else 0)
+           (sl + if sl > start then len else 0)
            sc
-           (el + if el >= start then len else 0)
+           (el + if el > start then len else 0)
            ec) t
 
 -- counts the number of lines that an AST element spans
