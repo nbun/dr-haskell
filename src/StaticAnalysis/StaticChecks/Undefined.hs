@@ -28,7 +28,9 @@ undef m@(Module _ _ _ _ ds) ms = if impModsAsArg then concatMap undef' ds
                                                 (qNameName qn)) ms
     undef' d     = do
       qn <- qns d
-      guard $ (nameString . qNameName) qn `notElem` defStrs d ++ impDefs
+      let name       = nameString (qNameName qn)
+          predefined = name == ":" || name == "(:)"
+      guard $ (not predefined) && name `notElem` defStrs d ++ impDefs
       return $ Undefined (qNameName qn) (sims qn d)
 undef _ _ = []
 
