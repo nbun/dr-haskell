@@ -123,7 +123,12 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                   then []
                                   else [DirectMessage
                                         ("No valid level selection "++
-                                         "found. Using Level 1")]
+                                         "found. Using Level 1.\n"++
+                                         "In order to select a level, add "++
+                                         "the following pragma to the top "++
+                                         "of your program: `{-# DRHASKELL "++
+                                         "LEVELN #-}`, where N is in "++
+                                         "{1,2,3,4}.")]
           liftRepl $ currentLevel .= level
 
           checkErrors <- liftIO $ runCheckLevel level fn
