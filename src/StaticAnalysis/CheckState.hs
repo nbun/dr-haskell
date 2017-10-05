@@ -106,7 +106,6 @@ levelTwo p = do
   check recordUsed
   checkExt undef p
   checkExt duplicated p
-  check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
   check $ checkASTv2 cId cId cId cId pragmaCheck
