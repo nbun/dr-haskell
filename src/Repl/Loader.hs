@@ -5,6 +5,7 @@ module Repl.Loader (
   printLoadMessage,
   determineLevel,
   transformModule,
+  duplPrelImps,
   loadModule,
   loadInitialModules,
   inferModule,
@@ -203,7 +204,9 @@ runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\e -> return [displayException e]) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
-
+-- | Searches a list of errors for Duplicated errors and returns
+-- the remaining errors plus a list of ImportSpecs of the duplicated
+-- entities.
 duplPrelImps :: [Error l] -> ([Error l], [ImportSpec l])
 duplPrelImps []     = ([],[])
 duplPrelImps (e:es) =
