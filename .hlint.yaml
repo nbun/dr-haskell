@@ -7,3 +7,4 @@
 - warn: {name: Use explicit module export list}
 
 - ignore: {name: Reduce duplication, within: [TypeInference.Main, TypeInference.Normalization]}
+- ignore: {name: Used otherwise as a pattern, within: [MyPrelude]}
