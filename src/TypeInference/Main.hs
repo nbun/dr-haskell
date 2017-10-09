@@ -411,8 +411,12 @@ annRhs (GuardedRhs x eqs) = do eqs' <- mapM (bothM annExpr) eqs
 
 -- | Annotates the given local declaration with fresh type variables.
 annLocalDecl :: LocalDecl a -> TIMonad a (LocalDecl a)
+annLocalDecl (LocalPat x p e lds) = do p' <- annPattern p
+                                       e' <- annExpr e
+                                       lds' <- mapM annLocalDecl lds
+                                       return (LocalPat x p' e' lds')
 annLocalDecl _
-  = throwError (TIError "Local declarations are not supported yet!")
+  = throwError (TIError "Local function declarations are not supported yet!")
 
 -- | Annotates the given statement with fresh type variables.
 annStatement :: Statement a -> TIMonad a (Statement a)
@@ -553,13 +557,14 @@ eqsRules _  _                          = return []
 -- | Returns the type expression equations for the given function rule and the
 --   given function type expression.
 eqsRule :: TypeExpr a -> Rule a -> TIMonad a (TypeExprEqs a)
-eqsRule te (Rule x (TypeAnn tae) ps rhs _)
+eqsRule te (Rule x (TypeAnn tae) ps rhs lds)
   = let rhstes = catMaybes (rhsTypes' rhs)
         ptes = mapMaybe patternType' ps
         eqs = map (\te' -> foldr (FuncType x) te' ptes) rhstes
      in return ((te =.= tae) : map (tae =.=) eqs)
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsRhs rhs
+          ++= concatMapM eqsLocalDecl lds
 eqsRule _  _                               = return []
 
 -- | Returns the type expression equations for the given guard expression.
@@ -573,6 +578,13 @@ eqsRhs :: Rhs a -> TIMonad a (TypeExprEqs a)
 eqsRhs (SimpleRhs e)      = eqsExpr e
 eqsRhs (GuardedRhs _ eqs)
   = concatMapM (eqsGuard . fst) eqs ++= concatMapM (eqsExpr . snd) eqs
+
+-- | Returns the type expression equations for the given local declaration.
+eqsLocalDecl :: LocalDecl a -> TIMonad a (TypeExprEqs a)
+eqsLocalDecl (LocalFunc _)        = return []
+eqsLocalDecl (LocalPat _ p e lds)
+  = return [fromJust (patternType' p) =.= fromJust (exprType' e)]
+      ++= concatMapM eqsLocalDecl lds
 
 -- | Returns the type expression equations for the given branch expression and
 --   the given case type expression and case expression type expression.
@@ -646,6 +658,8 @@ eqsExpr (Lambda x (TypeAnn te) ps e)
      in return [te =.= foldr (FuncType x) te' ptes]
           ++= concatMapM (uncurry eqsPattern) (zip ptes ps)
           ++= eqsExpr e
+eqsExpr (Let _ (TypeAnn te) lds e)
+  = concatMapM eqsLocalDecl lds ++= return [te =.= fromJust (exprType' e)]
 eqsExpr DoExpr{}
   = throwError (TIError "do-expressions are not supported yet!")
 eqsExpr ListComp{}
