@@ -64,6 +64,7 @@ Maps the followind commands in the haskell keymap.
      \\[turn-on-haskell-drhaskell-linter] to start the linter
      \\[haskell-drhaskell-set-level] to set the linter's level manually"
   (setq haskell-doc-show-prelude nil)
+  (flycheck-mode -1)
   (local-set-key "\C-c\C-s" 'haskell-drhaskell-start-process)
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
