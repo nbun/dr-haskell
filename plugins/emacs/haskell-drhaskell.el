@@ -28,7 +28,7 @@
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
 
-
+
 ;;; Commentary:
 
 ;; Installation:
@@ -82,6 +82,7 @@ Maps the followind commands in the haskell keymap.
 (defun turn-on-haskell-drhaskell-linter ()
   (interactive)
   "Turn on DrHaskell linter"
+  (flycheck-mode)
   (setq flycheck-haskell-hlint-executable "drhaskell-lint")
   (unless (memq 'haskell-ghc flycheck-disabled-checkers)
     (push 'haskell-ghc flycheck-disabled-checkers))
