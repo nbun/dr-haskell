@@ -44,7 +44,7 @@ parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs))
     | otherwise = parseMT mix (Tix xs) -- next tix if hashed dont match
         where loopMixPos :: [MixEntry] -> [Lint] -- build the lintoutput
               loopMixPos []            = []
-              loopMixPos ((pos,_):mes) = Lint "HPC"
+              loopMixPos ((pos,_):mes) = Lint "Test.hs"
                                               (restorePosition $ fromHpcPos pos)
                                               Warning "Covered"
                                          : loopMixPos mes
