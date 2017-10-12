@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleContexts      #-}
 
 module TypeInference.HSEConversion
-  ( hseToNLAH, parseNamePattern, findDifference,hseExpToAHExpr
+  ( hseToNLAH, parseNamePattern, findDifference,hseExpToAHExpr,start
   ) where
 
 import           Control.Monad.State.Lazy
@@ -115,7 +115,7 @@ evt (DHApp l declhead tyVarBind) =
     return $ e1 ++ e2
 
 -- | Parses a typevariable
---parseTVB :: MonadState AHState m => TyVarBind l -> m (VarName, l)
+parseTVB :: MonadState AHState m => TyVarBind l -> m [((Int, String), l)]
 parseTVB (KindedVar l name _) = do
                                   y <- getidx (parsename name)
                                   return [((y, parsename name),l)]
@@ -230,8 +230,13 @@ parseFunDecls modu ts  _                          =
     return $ Func undefined fname 0 Public Untyped (Rules [])
 
 -- | parses rules out of patterns
---parseRulesOutOfPats ::
---  MonadState AHState m => MName -> TypeS a -> Pat a -> HSE.Rhs a -> m (Rules a)
+parseRulesOutOfPats ::
+   MonadState AHState m => MName ->
+                           TypeS a ->
+                           t ->
+                           HSE.Rhs a ->
+                           Maybe (Binds a) ->
+                           m (Rules a)
 parseRulesOutOfPats modu ts pat rhs mbinds =
   do
     case mbinds of
@@ -309,7 +314,6 @@ parseStmtsToExpr ::
 parseStmtsToExpr str t (Qualifier l expr) =
   parseExpr str t expr
 
-
 -- | Parses functions and pattern bindings
 parseFuncPatDecls ::
   MonadState AHState m => String -> TypeS a -> Decl a -> m (LocalDecl a)
@@ -381,7 +385,7 @@ newRule :: a -> Pattern a -> AH.Rhs a -> [LocalDecl a] -> AH.Rule a
 newRule l pat rhs b = AH.Rule l NoTypeAnn [pat] rhs b
 
 -- | Makes one right hand side out of a list of right hand sides
--- makeRules :: [AH.Rhs a] -> AH.Rhs a
+makeRules :: a -> [AH.Rhs a] -> AH.Rhs a
 makeRules l xs = let r =  makeRules' xs
                   in SimpleRhs $ AH.List l NoTypeAnn r
 
@@ -566,7 +570,7 @@ parseExpr mn t (RightSection l qop expr)         =
     let e2 =  AH.Var NoTypeAnn ((-1,"error"), l)
     return $ AH.Lambda l NoTypeAnn [AH.PVar NoTypeAnn ((-1,"error"), l)] (InfixApply l NoTypeAnn e2 (q,l) e1)
 
---parseMaybeExpr :: MonadState AHState m => MName -> TypeS l -> [Maybe (Exp l)] -> [Expr l]
+parseMaybeExpr :: MonadState AHState m => MName -> TypeS a -> [Maybe (Exp a)] -> m [Expr a]
 parseMaybeExpr mn t [] = return []
 parseMaybeExpr mn t (Nothing:xs) = parseMaybeExpr mn t xs
 parseMaybeExpr mn t ((Just x):xs)=
@@ -832,16 +836,32 @@ parseNamePattern (AH.PList a t pats)     = ("","List")
 
 -- | Returns the name to a hse pattern
 parseNameOutOfPattern :: Pat l -> String
-parseNameOutOfPattern (HSE.PVar l name)         =
+parseNameOutOfPattern (HSE.PVar l name)              =
   parsename name
-parseNameOutOfPattern (HSE.PTuple l Boxed pats) =
+parseNameOutOfPattern (HSE.PLit l sign lit)          =
+  parseNameOutOfLiteral lit
+parseNameOutOfPattern (HSE.PTuple l Boxed pats)      =
   "Tupel " ++ concatMap parseNameOutOfPattern pats
-parseNameOutOfPattern (HSE.PList l pats)        =
+parseNameOutOfPattern (HSE.PList l pats)             =
   "Liste " ++ concatMap parseNameOutOfPattern pats
-parseNameOutOfPattern (PParen _ pat)            =
+parseNameOutOfPattern (PParen _ pat)                 =
   parseNameOutOfPattern pat
-parseNameOutOfPattern (PAsPat l name pat)       =
+parseNameOutOfPattern (PAsPat l name pat)            =
   parsename name
+parseNameOutOfPattern (PApp l qname pats)            =
+  parseQName qname
+parseNameOutOfPattern (HSE.PInfixApp l pat1 qn pat2) =
+  (parseNameOutOfPattern pat1) ++ parseQName qn ++ (parseNameOutOfPattern pat2)
+parseNameOutOfPattern (HSE.PWildCard l)              =
+  "_"
+parseNameOutOfPattern _ = error "parseNameOutOfPattern"
+
+parseNameOutOfLiteral :: HSE.Literal l -> String
+parseNameOutOfLiteral (Char _ _ s)    = s
+parseNameOutOfLiteral (String _ _ s)  = s
+parseNameOutOfLiteral (Int _ _ s)     = s
+parseNameOutOfLiteral (Frac _ _ s)     = s
+parseNameOutOfLiteral _ = error "parseNameOutOfLiteral"
 
 -- | For functions declarations only
 --   FunBind,
@@ -898,7 +918,24 @@ getFunctionNames modu (Module l mdh mdP imps decl) =
   do
    mapM (getFunctionNamesDecls modu) decl
    ahs <- get
-   return $ fctNames ahs
+   let f = fctNames ahs
+   let newFctNames = filterFctNames f
+   let ndNewFct = rmDup newFctNames
+   return $ ndNewFct--fctNames ahs
+
+rmDup :: Eq a => [a] -> [a]
+rmDup [] = []
+rmDup (x:xs) = x : rmDup (Prelude.filter (\y -> not(x == y)) xs)
+
+filterFctNames :: [AH.QName] -> [AH.QName]
+filterFctNames [] = []
+filterFctNames ((x,"True"):xs) = filterFctNames xs
+filterFctNames ((x,"False"):xs)= filterFctNames xs
+filterFctNames ((x,"Just"):xs) = filterFctNames xs
+filterFctNames ((x,"Nothing"):xs)=filterFctNames xs
+filterFctNames ((x,"Left"):xs)=filterFctNames xs
+filterFctNames ((x,"Right"):xs)=filterFctNames xs
+filterFctNames (y:xs) = y:filterFctNames xs
 
 getFunctionNamesDecls :: MonadState AHState m => String -> Decl l -> m ()
 getFunctionNamesDecls modu (FunBind l matches)               =
