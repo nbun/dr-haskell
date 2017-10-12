@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DRHASKELL_PATH="$(dirname "$(realpath "$0")")"
+
+cd "$DRHASKELL_PATH"
 
 function main() {
 	echo "============================================"
@@ -8,7 +11,16 @@ function main() {
 	echo
 	echo -n "Checking required dependencies... "
 
-	check_dependencies
+	check_dependencies || exit
+	update_cabal || exit
+	sandbox_init || exit
+	#cabal_install quickcheck || exit
+	#cabal_install happy || exit
+	cabal_install_dependencies || exit
+	cabal_build || exit
+	cabal_install_drhaskell || exit
+	show_bashrc_mod
+	show_uninstall_information
 }
 
 function check_dependencies() {
@@ -26,13 +38,13 @@ function check_dependencies() {
 }
 
 function check_ghc() {
-	if ! which ghca >/dev/null 2>/dev/null; then
+	if ! which ghc >/dev/null 2>/dev/null; then
 		echo -n "ghc"
 	fi
 }
 
 function check_cabal() {
-	if ! which cabala >/dev/null 2>/dev/null; then
+	if ! which cabal >/dev/null 2>/dev/null; then
 		echo -n "cabal-install"
 	fi
 }
@@ -150,6 +162,70 @@ function print_install_command_Unknown() {
 	echo
 	echo "  However, you need these packages, in order to proceed:$@"
 	echo "  Note, that they may be called differently on your system."
+}
+
+function update_cabal() {
+	echo "Updating cabal..."
+	cabal update || return 1
+	echo "Ok"
+	return 0
+}
+
+function sandbox_init() {
+	echo "Initializing sandbox..."
+	cabal sandbox init || return 1
+	echo "Ok"
+	return 0
+}
+
+function cabal_install() {
+	echo "Installing $1 into sandbox..."
+	cabal install --avoid-reinstalls $1 || return 1
+	echo "Ok"
+	return 0
+}
+
+function cabal_install_dependencies() {
+	local N=1
+	if type nproc >/dev/null 2>&1; then
+		N=$(nproc)
+	fi
+	echo "Installing dependencies needed for DrHaskell..."
+	cabal install --only-dependencies -j$N || return 1
+	echo "Ok"
+	return 0
+}
+
+function cabal_build() {
+	echo "Building DrHaskell..."
+	cabal build || return 1
+	echo "Ok"
+	return 0
+}
+
+function cabal_install_drhaskell() {
+	echo "Installing DrHaskell..."
+	cabal install || return 1
+	echo "Ok"
+	return 0
+}
+
+function show_bashrc_mod() {
+	echo
+	echo
+	echo "======================================================================================"
+	echo "======================================================================================"
+	echo
+	echo "To use the commands 'drhaskell' and 'drhaskell-lint', add this line to your .bashrc:"
+	echo "    PATH=\"\$PATH $DRHASKELL_PATH/.cabal-sandbox/bin\""
+	echo
+}
+
+function show_uninstall_information() {
+	echo "To uninstall DrHaskell, simply delete this whole directory."
+	echo "If you modify your .bashrc, you may want to remove the respective line."
+	echo "If you installed ghc or cabal, you may uninstall them using your package"
+	echo "manager. Or you keep them to continue writing Haskell programs."
 }
 
 main
