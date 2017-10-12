@@ -583,8 +583,10 @@ eqsRhs (GuardedRhs _ eqs)
 eqsLocalDecl :: LocalDecl a -> TIMonad a (TypeExprEqs a)
 eqsLocalDecl (LocalFunc _)        = return []
 eqsLocalDecl (LocalPat _ p e lds)
-  = return [fromJust (patternType' p) =.= fromJust (exprType' e)]
+  = eqsPattern (fromJust (patternType' p)) p
+      ++= return [fromJust (patternType' p) =.= fromJust (exprType' e)]
       ++= concatMapM eqsLocalDecl lds
+      ++= eqsExpr e
 
 -- | Returns the type expression equations for the given branch expression and
 --   the given case type expression and case expression type expression.
