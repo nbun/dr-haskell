@@ -398,8 +398,8 @@ annRules (External x _) = do te <- nextTVar x
 annRule :: Rule a -> TIMonad a (Rule a)
 annRule (Rule x _ ps rhs lds) = do te <- nextTVar x
                                    ps' <- mapM annPattern ps
-                                   rhs' <- annRhs rhs
                                    lds' <- mapM annLocalDecl lds
+                                   rhs' <- annRhs rhs
                                    return (Rule x (TypeAnn te) ps' rhs' lds')
 
 -- | Annotates the given right-hand side with fresh type variables.
@@ -412,8 +412,8 @@ annRhs (GuardedRhs x eqs) = do eqs' <- mapM (bothM annExpr) eqs
 -- | Annotates the given local declaration with fresh type variables.
 annLocalDecl :: LocalDecl a -> TIMonad a (LocalDecl a)
 annLocalDecl (LocalPat x p e lds) = do p' <- annPattern p
-                                       e' <- annExpr e
                                        lds' <- mapM annLocalDecl lds
+                                       e' <- annExpr e
                                        return (LocalPat x p' e' lds')
 annLocalDecl _
   = throwError (TIError "Local function declarations are not supported yet!")
