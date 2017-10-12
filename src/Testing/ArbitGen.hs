@@ -29,6 +29,12 @@ tyConToGenExp :: QualConDecl () -> Exp ()
 tyConToGenExp (QualConDecl _ _ _ (ConDecl _ n ts)) =
   Do () ([Generator () (PVar () (Ident () ('x':show i))) (Var () (Qual () (ModuleName () "Tests") (Ident () "arbitrary"))) | i <- [1..(length ts)]]++
   [Qualifier () (InfixApp () (Var () (Qual () (ModuleName () "Prelude") (Ident () "return"))) (QVarOp () (Qual () (ModuleName () "Prelude") (Symbol () "$"))) (multiApplication (Con () (UnQual () n)) [Var () (UnQual () (Ident () ('x':show i))) | i <- [1..(length ts)]]))])
+tyConToGenExp (QualConDecl l1 tv c (RecDecl l2 n ts)) = tyConToGenExp (QualConDecl l1 tv c (ConDecl l2 n $ fieldsToTypes ts))
+  where
+    fieldsToTypes :: [FieldDecl ()] -> [Type ()]
+    fieldsToTypes = concatMap fieldToTypes
+    fieldToTypes :: FieldDecl () -> [Type ()]
+    fieldToTypes (FieldDecl l ns t) = replicate (length ns) t
 
 typeToInstance :: Decl () -> Decl ()
 typeToInstance (DataDecl _ _ _ h qds _) =

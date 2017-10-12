@@ -28,7 +28,7 @@
 ;; Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 ;; Boston, MA 02111-1307, USA.
 
-
+
 ;;; Commentary:
 
 ;; Installation:
@@ -64,6 +64,7 @@ Maps the followind commands in the haskell keymap.
      \\[turn-on-haskell-drhaskell-linter] to start the linter
      \\[haskell-drhaskell-set-level] to set the linter's level manually"
   (setq haskell-doc-show-prelude nil)
+  (flycheck-mode -1)
   (local-set-key "\C-c\C-s" 'haskell-drhaskell-start-process)
   (local-set-key "\C-c\C-l" 'haskell-drhaskell-load-file)
   (local-set-key "\C-c\C-r" 'haskell-drhaskell-reload-file)
@@ -82,6 +83,7 @@ Maps the followind commands in the haskell keymap.
 (defun turn-on-haskell-drhaskell-linter ()
   (interactive)
   "Turn on DrHaskell linter"
+  (flycheck-mode)
   (setq flycheck-haskell-hlint-executable "drhaskell-lint")
   (unless (memq 'haskell-ghc flycheck-disabled-checkers)
     (push 'haskell-ghc flycheck-disabled-checkers))

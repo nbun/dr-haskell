@@ -58,8 +58,9 @@ runWithRepl hlintHints file format = do
             lvl <- case determineLevel m1 of
                         Just l -> return l
                         _      -> return Level1
-            (m2, errs) <- transformModule [] state m1 -- "
-            errs' <- runCheckLevel lvl file -- run checks
+            errors <- runCheckLevel lvl file -- run checks
+            let (errs', duplDecls) = duplPrelImps errors
+            (m2, errs) <- transformModule duplDecls state m1
             tires <- inferModule (modifiedModule m1)
             let tiErrors = case (useOwnTI lvl, tires) of -- run type inference
                             (True, Left e)  -> let pos = posOfTIError e

@@ -87,7 +87,7 @@ prettyErrorWithInfoSwitchAndLevel s level e =
     TypeVar name ->
       infoLine name
       ++ appendLevelTag level e
-      ++ "Found typevariable " ++ prettyPrintQ name ++ " at "
+      ++ "Found type variable " ++ prettyPrintQ name ++ " at "
       ++ prettyNameLoc name ++ "."
     Imported name ->
       infoLineMod name
@@ -117,11 +117,11 @@ prettyErrorWithInfoSwitchAndLevel s level e =
     InvalidTest l t ->
       infoLinePos l
       ++ appendLevelTag level e
-      ++ "Invalid Test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
+      ++ "Invalid test \"" ++ t ++ "\" at line " ++ prettyLineNum l ++ "."
     Pragma l name ->
       infoLinePos l
       ++ appendLevelTag level e
-      ++ "Use of Pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
+      ++ "Use of pragma \"" ++ name ++ "\" at line " ++ prettyLineNum l ++ "."
     TypeError l tiError ->
       infoLinePos l
       ++ appendLevelTag level e
@@ -129,11 +129,16 @@ prettyErrorWithInfoSwitchAndLevel s level e =
     InstanceDecl l ->
       infoLinePos l
       ++ appendLevelTag level e
-      ++ "Use of TypeInstance at line " ++ prettyLineNum l ++ "."
+      ++ "Use of type instance at line " ++ prettyLineNum l ++ "."
     TypeClassDecl l ->
       infoLinePos l
       ++ appendLevelTag level e
-      ++ "Use of TypeClass at line " ++ prettyLineNum l ++ "."
+      ++ "Use of type class at line " ++ prettyLineNum l ++ "."
+    RecordUsed l ->
+      infoLinePos l
+      ++ appendLevelTag level e
+      ++ "Record syntax found at line " ++ prettyLineNum l
+      ++ ". Records are not supported by DrHaskell."
   where infoLine name =
           let (filename, pos) = extractFilenameAndPositionFromName name
           in printFilenameAndPosWithSwitch s filename pos
@@ -172,11 +177,13 @@ appendLevelTag (Just l) e = case appendLevelErrorTag' e of
     appendLevelErrorTag' (DoUsed _) =
       "Usage of the do construct is forbidden on " --level...
     appendLevelErrorTag' (Pragma _ _) =
-      "Usage of Pragma is forbidden on " --level...
+      "Usage of pragmas is forbidden on " --level...
     appendLevelErrorTag' (InstanceDecl _) =
-      "Usage of TypeInstance is forbidden on " --level...
+      "Usage of type instances is forbidden on " --level...
     appendLevelErrorTag' (TypeClassDecl _) =
-      "Usage of TypeClass is forbidden on " --level...
+      "Usage of type classs is forbidden on " --level...
+    appendLevelErrorTag' (TypeVar _) =
+      "Usage of type variables is forbidden on "
     appendLevelErrorTag' _ = ""
 
     levelString :: Level -> String

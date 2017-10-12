@@ -5,6 +5,7 @@ module Repl.Loader (
   printLoadMessage,
   determineLevel,
   transformModule,
+  duplPrelImps,
   loadModule,
   loadInitialModules,
   inferModule,
@@ -48,8 +49,11 @@ printLoadMessage (DirectMessage m) = m
 --for proper putStrLn
 loadInitialModules :: Repl ()
 loadInitialModules = do
+    ps <- liftIO initEmptyTI
+    tiProg .= ps
     Just level <- use forceLevel `mplusM` return (Just Level1)
     currentLevel .= level
+    liftInterpreter $ reset
     liftInterpreter $ setImportsQ [("Prelude", Nothing),
                                    ("System.IO", Just "System.IO")]
     case level of
@@ -119,7 +123,13 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                                   then []
                                   else [DirectMessage
                                         ("No valid level selection "++
-                                         "found. Using Level 1")]
+                                         "found. Using Level 1.\n"++
+                                         "In order to select a level, add "++
+                                         "the following pragma to the top "++
+                                         "of your program: `{-# DRHASKELL "++
+                                         "LEVELN #-}`, where N is in "++
+                                         "{1,2,3,4}.")]
+          liftRepl $ currentLevel .= level
 
           checkErrors <- liftIO $ runCheckLevel level fn
           let (checkErrors', duplDecls) = duplPrelImps checkErrors
@@ -141,14 +151,17 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
 
           if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ adjustGHCerror transModule $ displayException e
-                     handler' e = return $ levelSelectErrors ++
+                     handler' e = do
+                       loadInitialModules
+                       return $ levelSelectErrors ++
                                            errors ++
                                            [dm e]
                  in MC.handleAll handler' $ do
                       liftInterpreter $ loadModules [cfn]
                       mods <- liftInterpreter getLoadedModules
-                      liftInterpreter $ setTopLevelModules mods
-                      liftRepl $ currentLevel .= level
+                      liftInterpreter $ setTopLevelModules $ filter (liftM2 (&&)
+                                                                     (/= "MyPrelude")
+                                                                     (/= "Tests")) mods
                       liftRepl $ modify $ Control.Lens.set filename fn
                       rt <- use runTests
                       liftRepl $ promptModule .= determineModuleName transModule fname
@@ -156,7 +169,8 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
                       return $ levelSelectErrors ++
                                errors ++
                                map DirectMessage testErrors
-            else
+            else do
+              loadInitialModules
               return $ levelSelectErrors ++ errors
     --adjusts path for easier usage (appends .hs suffix)
     adjustPath :: FilePath -> FilePath
@@ -195,7 +209,9 @@ runAllTests :: Repl [String]
 runAllTests = MC.handleAll (\e -> return [displayException e]) $
   liftInterpreter (interpret "runAllTests" (as :: IO [String])) >>= liftIO
 
-
+-- | Searches a list of errors for Duplicated errors and returns
+-- the remaining errors plus a list of ImportSpecs of the duplicated
+-- entities.
 duplPrelImps :: [Error l] -> ([Error l], [ImportSpec l])
 duplPrelImps []     = ([],[])
 duplPrelImps (e:es) =
@@ -252,13 +268,20 @@ addMyPrelude hideDefs = addImport ImportDecl
                             IVar noSrcSpan $ Ident noSrcSpan "(==)",
                             IVar noSrcSpan $ Ident noSrcSpan "(/=)"]}
 
+wantCustomPrelude :: ReplState -> Bool
+wantCustomPrelude s = s ^. customPrelude &&
+                      case s ^. currentLevel of
+                           LevelFull -> False
+                           _         -> True
+
+
 -- do the actual modifications to a module
 -- currently this adds the 'runAllTests' declaration and a custom prelude
 transformModule :: MonadIO m => [ImportSpec SrcSpanInfo] -> ReplState
                 -> ModifiedModule -> m (ModifiedModule, [Error SrcSpanInfo])
 transformModule hide s m = do
   (m', es) <- liftIO $ Tee.transformModule $ AG.generateArbitraryInModule m
-  if s ^. customPrelude
+  if wantCustomPrelude s
   then return
     (addMyPrelude
       hide $

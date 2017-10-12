@@ -54,8 +54,6 @@ initInterpreter = do
   datadir <- liftIO getDataDir
   liftInterpreter $ Language.Haskell.Interpreter.set
     [searchPath := [".", datadir </> "TargetModules"]]
-  ps <- liftIO initEmptyTI
-  tiProg .= ps
   loadInitialModules
 
 main :: IO ()
@@ -83,6 +81,7 @@ replHelp input = return $ init $ unlines $ hint [
   "Usage:",
   ":? - This help",
   ":l - load module",
+  ":q - quit",
   ":r - reload module",
   ":t - evaluate type",
   "expression - evaluate expression" ]
@@ -119,11 +118,19 @@ replEvalExp q = case filter (not . isSpace) q of
       p' <- use tiProg
       case p' of
            [] -> return Nothing
-           ps -> case parseExp q of
+           ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) q of
                       ParseFailed _ f -> return $ Just f
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return $ Just $ showTIError defaultAHOptions e
+                             Left e -> return $ Just
+                                              $ showTIError
+                                                defaultAHOptions {
+                                                  unqModules =
+                                                    "Prelude" :
+                                                    unqModules
+                                                      defaultAHOptions
+                                                }
+                                                e
                              Right e -> return Nothing
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
@@ -181,11 +188,18 @@ commandTypeof args = do
       p' <- use tiProg
       case p' of
            [] -> return (Nothing, True)
-           ps -> case parseExp expression of
+           ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) expression of
                       ParseFailed _ f -> return (Just f, True)
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return (Just $ show e, True)
+                             Left e -> return (Just $ showTIError
+                                                      defaultAHOptions {
+                                                        unqModules =
+                                                          "Prelude" :
+                                                          unqModules
+                                                            defaultAHOptions
+                                                      }
+                                                      e, True)
                              Right e -> return (Just
                                                  (expression ++
                                                   " :: "     ++

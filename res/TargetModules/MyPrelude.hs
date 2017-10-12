@@ -1,5 +1,7 @@
 {-|
   Simplified version of the 'Prelude' without type classes.
+  Only the type classes 'Eq', 'Ord' and 'Show' are used, because every
+  user-defined data type has an implicit instance of these three type classes.
 -}
 
 module MyPrelude (
@@ -11,7 +13,8 @@ module MyPrelude (
   Prelude.Bool (..),
   Prelude.Maybe (..),
   Prelude.Either (..),
-  -- | Arithmetic operators +, -, * and / for 'Int' and 'Float'.
+  Prelude.Ordering (..),
+  -- | Arithmetic operators for 'Int' and 'Float'.
   (+),
   (-),
   (*),
@@ -20,55 +23,84 @@ module MyPrelude (
   (-.),
   (*.),
   (/.),
-  -- | Simple versions of list functions that use 'Foldable' or 'Num'.
+  -- | Infix operators from the 'Eq' and 'Ord' type classes.
+  (Prelude.==),
+  (Prelude./=),
+  (Prelude.<),
+  (Prelude.<=),
+  (Prelude.>),
+  (Prelude.>=),
+  -- | Other infix operators.
+  (Prelude.++),
+  (Prelude..),
+  (Prelude.$),
+  (Prelude.||),
+  (Prelude.&&),
+  (Prelude.!!),
+  -- | Simple versions of functions that use 'Foldable', 'Integral' or 'Num'.
   length,
   concat,
   foldl,
   foldr,
   sum,
+  product,
+  any,
   all,
-  -- | 'lookup' has an extra @eq :: a -> a -> Bool@ argument.
-  lookup,
-  -- | More infix operators.
-  (++),
-  (.),
-  (||),
-  (&&),
-  (!!),
-  -- | Functions that appear in the lecture or exercises.
-  last,
-  head,
-  tail,
-  init,
-  fst,
-  snd,
-  zip,
-  unzip,
-  take,
-  flip,
-  map,
-  filter,
-  curry,
-  uncurry,
-  const,
-  repeat,
-  iterate,
-  reverse,
-  replicate,
-  otherwise
+  null,
+  elem,
+  abs,
+  div,
+  mod,
+  even,
+  odd,
+  and,
+  or,
+  -- | Other functions that appear in the lecture or exercises.
+  Prelude.lookup,
+  Prelude.last,
+  Prelude.head,
+  Prelude.tail,
+  Prelude.init,
+  Prelude.fst,
+  Prelude.snd,
+  Prelude.zip,
+  Prelude.unzip,
+  Prelude.take,
+  Prelude.flip,
+  Prelude.map,
+  Prelude.filter,
+  Prelude.curry,
+  Prelude.uncurry,
+  Prelude.const,
+  Prelude.repeat,
+  Prelude.iterate,
+  Prelude.reverse,
+  Prelude.replicate,
+  Prelude.otherwise,
+  Prelude.not,
+  Prelude.compare,
+  Prelude.min,
+  Prelude.max,
+  Prelude.drop,
+  Prelude.zipWith,
+  Prelude.lines,
+  Prelude.unlines,
+  Prelude.words,
+  Prelude.unwords,
+  Prelude.show,
   ) where
 
 import qualified Prelude
 
 -- -----------------------------------------------------------------------------
--- Arithmetic operators
+-- Arithmetic operators for 'Int' and 'Float'
 -- -----------------------------------------------------------------------------
-
-(-) :: Prelude.Int -> Prelude.Int -> Prelude.Int
-(-) = (Prelude.-)
 
 (+) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (+) = (Prelude.+)
+
+(-) :: Prelude.Int -> Prelude.Int -> Prelude.Int
+(-) = (Prelude.-)
 
 (*) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (*) = (Prelude.*)
@@ -76,11 +108,11 @@ import qualified Prelude
 (/) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (/) = Prelude.div
 
-(-.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
-(-.) = (Prelude.-)
-
 (+.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (+.) = (Prelude.+)
+
+(-.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
+(-.) = (Prelude.-)
 
 (*.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (*.) = (Prelude.*)
@@ -89,7 +121,7 @@ import qualified Prelude
 (/.) = (Prelude./)
 
 -- -----------------------------------------------------------------------------
--- List functions
+-- Simple versions of functions that use 'Foldable', 'Integral' or 'Num'
 -- -----------------------------------------------------------------------------
 
 length :: [a] -> Prelude.Int
@@ -107,23 +139,82 @@ foldr = Prelude.foldr
 sum :: [Prelude.Int] -> Prelude.Int
 sum = Prelude.sum
 
+product :: [Prelude.Int] -> Prelude.Int
+product = Prelude.product
+
+any :: (a -> Prelude.Bool) -> [a] -> Prelude.Bool
+any = Prelude.any
+
 all :: (a -> Prelude.Bool) -> [a] -> Prelude.Bool
 all = Prelude.all
 
-lookup :: (a -> a -> Prelude.Bool) -> a -> [(a, b)] -> Prelude.Maybe b
-lookup _  _ []                              = Prelude.Nothing
-lookup eq x ((a, b):xs) | eq x a            = Prelude.Just b
-                        | Prelude.otherwise = lookup eq x xs
+null :: [a] -> Prelude.Bool
+null = Prelude.null
+
+elem :: Prelude.Eq a => a -> [a] -> Prelude.Bool
+elem = Prelude.elem
+
+abs :: Prelude.Int -> Prelude.Int
+abs = Prelude.abs
+
+div :: Prelude.Int -> Prelude.Int -> Prelude.Int
+div = Prelude.div
+
+mod :: Prelude.Int -> Prelude.Int -> Prelude.Int
+mod = Prelude.mod
+
+even :: Prelude.Int -> Prelude.Bool
+even = Prelude.even
+
+odd :: Prelude.Int -> Prelude.Bool
+odd = Prelude.odd
+
+and :: [Prelude.Bool] -> Prelude.Bool
+and = Prelude.and
+
+or :: [Prelude.Bool] -> Prelude.Bool
+or = Prelude.or
 
 -- -----------------------------------------------------------------------------
--- Prelude functions
+-- Data types and functions only loaded by the type inference (NOT EXPORTED)
 -- -----------------------------------------------------------------------------
+
+type String = [Prelude.Char]
+
+data Bool = False | True
+
+data Maybe a = Nothing | Just a
+
+data Either a b = Left a | Right b
+
+data Ordering = LT | EQ | GT
+
+(==) :: Prelude.Eq a => a -> a -> Prelude.Bool
+(==) = (Prelude.==)
+
+(/=) :: Prelude.Eq a => a -> a -> Prelude.Bool
+(/=) = (Prelude./=)
+
+(<) :: Prelude.Ord a => a -> a -> Prelude.Bool
+(<) = (Prelude.<)
+
+(<=) :: Prelude.Ord a => a -> a -> Prelude.Bool
+(<=) = (Prelude.<=)
+
+(>) :: Prelude.Ord a => a -> a -> Prelude.Bool
+(>) = (Prelude.>)
+
+(>=) :: Prelude.Ord a => a -> a -> Prelude.Bool
+(>=) = (Prelude.>=)
 
 (++) :: [a] -> [a] -> [a]
 (++) = (Prelude.++)
 
 (.) :: (b -> c) -> (a -> b) -> a -> c
 (.) = (Prelude..)
+
+($) :: (a -> b) -> a -> b
+($) = (Prelude.$)
 
 (||) :: Prelude.Bool -> Prelude.Bool -> Prelude.Bool
 (||) = (Prelude.||)
@@ -133,6 +224,9 @@ lookup eq x ((a, b):xs) | eq x a            = Prelude.Just b
 
 (!!) :: [a] -> Prelude.Int -> a
 (!!) = (Prelude.!!)
+
+lookup :: Prelude.Eq a => a -> [(a, b)] -> Prelude.Maybe b
+lookup = Prelude.lookup
 
 last :: [a] -> a
 last = Prelude.last
@@ -194,34 +288,35 @@ replicate = Prelude.replicate
 otherwise :: Prelude.Bool
 otherwise = Prelude.otherwise
 
--- -----------------------------------------------------------------------------
--- Data types and functions only loaded by the type inference (NOT EXPORTED)
--- -----------------------------------------------------------------------------
+not :: Prelude.Bool -> Prelude.Bool
+not = Prelude.not
 
-data Bool = False | True
+compare :: Prelude.Ord a => a -> a -> Prelude.Ordering
+compare = Prelude.compare
 
-data Maybe a = Nothing | Just a
+min :: Prelude.Ord a => a -> a -> a
+min = Prelude.min
 
-data Either a b = Left a | Right b
+max :: Prelude.Ord a => a -> a -> a
+max = Prelude.max
 
-data Ordering = LT | EQ | GT
+drop :: Prelude.Int -> [a] -> [a]
+drop = Prelude.drop
 
-type String = [Prelude.Char]
+zipWith :: (a -> b -> c) -> [a] -> [b] -> [c]
+zipWith = Prelude.zipWith
 
-(==) :: Prelude.Eq a => a -> a -> Prelude.Bool
-(==) = (Prelude.==)
+lines :: Prelude.String -> [Prelude.String]
+lines = Prelude.lines
 
-(/=) :: Prelude.Eq a => a -> a -> Prelude.Bool
-(/=) = (Prelude./=)
+unlines :: [Prelude.String] -> Prelude.String
+unlines = Prelude.unlines
 
-(<) :: Prelude.Ord a => a -> a -> Prelude.Bool
-(<) = (Prelude.<)
+words :: Prelude.String -> [Prelude.String]
+words = Prelude.words
 
-(<=) :: Prelude.Ord a => a -> a -> Prelude.Bool
-(<=) = (Prelude.<=)
+unwords :: [Prelude.String] -> Prelude.String
+unwords = Prelude.unwords
 
-(>) :: Prelude.Ord a => a -> a -> Prelude.Bool
-(>) = (Prelude.>)
-
-(>=) :: Prelude.Ord a => a -> a -> Prelude.Bool
-(>=) = (Prelude.>=)
+show :: Prelude.Show a => a -> Prelude.String
+show = Prelude.show

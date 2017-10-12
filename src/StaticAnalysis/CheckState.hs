@@ -21,6 +21,7 @@ import StaticAnalysis.StaticChecks.NoFunDef           (noFunDef)
 import StaticAnalysis.StaticChecks.NoTypeDef          (noTypeDef)
 import StaticAnalysis.StaticChecks.OwnDataDecl        (ownDataDecl)
 import StaticAnalysis.StaticChecks.Pragma             (pragmaCheck)
+import StaticAnalysis.StaticChecks.Record             (recordUsed)
 import StaticAnalysis.StaticChecks.Shadowing          (shadowing)
 import StaticAnalysis.StaticChecks.TypeInstance       (typeinstanceCheck)
 import StaticAnalysis.StaticChecks.TypeVarApplication (typeVarApplication)
@@ -74,6 +75,7 @@ levelOne p = do
   check noFunDef
   check typeVarApplication
   check doUsed
+  check recordUsed
   checkExt undef p
   checkExt duplicated p
   check $ checkAST cId cId cId checkForHigherOrderFunction
@@ -101,13 +103,11 @@ levelTwo p = do
   check noFunDef
   check typeVarApplication
   check doUsed
+  check recordUsed
   checkExt undef p
   checkExt duplicated p
-  check $ checkAST cId cId cId checkForHigherOrderFunction
-  check $ checkAST cId cId lambdaCheck cId
   check $ checkASTv2 cId cId cId cId noTypeDef
   check $ checkAST cId shadowing cId cId
-  check $ checkAST cId cId cId checkForTypVar
   check $ checkASTv2 cId cId cId cId pragmaCheck
   check $ checkASTv2 cId typeinstanceCheck cId cId cId
 
@@ -126,6 +126,7 @@ levelThree p = do
   check noFunDef
   check typeVarApplication
   check doUsed
+  check recordUsed
   checkExt undef p
   checkExt duplicated p
   check $ checkASTv2 cId cId cId cId noTypeDef
