@@ -741,9 +741,9 @@ parseTyp modu (TyApp l t1 t2)            =
     --return $ FuncType l t1p t2p
 parseTyp modu (TyWildCard l (Just name)) =
   return $ TCons l ((modu,parsename name), l) []
-parseTyp modu (TyWildCard l Nothing) =
+parseTyp modu (TyWildCard l Nothing)     =
   return $ TCons l ((modu,""), l) []
-parseTyp modu (TyForall l mtv mc t) = do
+parseTyp modu (TyForall l mtv mc t)      = do
   parseTyp modu t
 
 parseTypName :: String -> Type a -> AH.QName
@@ -908,7 +908,7 @@ filterQualsStmts (x@(QualStmt _ stm ):xs) = x : filterQualsStmts xs
 filterQualsStmts (x:xs)                   = filterQualsStmts xs
 
 ------------------------------------------------------------------------------
-
+start :: Monad m => String -> Module l -> m [AH.QName]
 start mn modu = do
   let (a,b) = runState (getFunctionNames mn modu) initialState
   return a
@@ -990,10 +990,16 @@ getFunctionNamesMatches modu (InfixMatch l pat name pats rhs mbinds) =
 getFunctionNamesBinds :: MonadState AHState m => String -> Binds l -> m ()
 getFunctionNamesBinds modu (BDecls l decls) =
   do
-    mapM (getFunctionNamesDecls modu) decls
+    let cbd = checkDecls decls
+    mapM (getFunctionNamesDecls modu) cbd
     return ()
 getFunctionNamesBinds _ _               =
   return ()
+
+checkDecls :: [Decl l] -> [Decl l]
+checkDecls [] = []
+checkDecls ((PatBind _ _ _ _):xs) = checkDecls xs
+checkDecls (x:xs) = x:checkDecls xs
 
 getFunctionNamesRhs :: MonadState AHState m => String -> HSE.Rhs l -> m ()
 getFunctionNamesRhs modu (UnGuardedRhs l expr)          =
@@ -1023,6 +1029,7 @@ getFunctionNamesPats modu pat                =
     put AHState {idx = idx ahs, vmap = vmap ahs, fctNames = fctNames ahs ++ [(modu,fn)]}
     return ()
 
+getFunctionNamesStmts :: MonadState AHState m => String -> Stmt l -> m ()
 getFunctionNamesStmts modu (Qualifier l expr)=
   do
     getFunctionNamesExpr modu expr

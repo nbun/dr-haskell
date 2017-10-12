@@ -60,7 +60,14 @@ removeLocalsRules :: Rules a -> Rules a
 removeLocalsRules (Rules rules) = Rules $ Prelude.map removeLocalsRule rules
 
 removeLocalsRule :: AH.Rule a -> AH.Rule a
-removeLocalsRule (AH.Rule h g pat rhs _) = AH.Rule h  g (Prelude.map removeLocalsPatter pat) (removeLocalsRhs rhs) []
+removeLocalsRule x@(AH.Rule h g pat rhs ls) =
+  AH.Rule h  g (Prelude.map removeLocalsPatter pat) (removeLocalsRhs rhs) $ checkLocal ls
+
+checkLocal :: [LocalDecl l] -> [LocalDecl l]
+checkLocal []     = []
+checkLocal (x:xs) = case (lookupLocalPatBind x) of
+    True  -> x:checkLocal xs
+    False -> checkLocal xs
 
 removeLocalsPatter :: Pattern a -> Pattern a
 removeLocalsPatter x@(AH.PVar _ _) = x
@@ -84,6 +91,7 @@ removeLocalsExpr x@(InfixApply a b e1 c e2) =
   InfixApply a b (removeLocalsExpr e1) c (removeLocalsExpr e2)
 removeLocalsExpr x@(AH.Lambda a b pats expr)=
   AH.Lambda a b (Prelude.map removeLocalsPatter pats) (removeLocalsExpr expr)
+-- TODO gucken wie es sich bei einem let verhält mit den PatternBindings
 removeLocalsExpr x@(AH.Let a ty lcs e) = e
 removeLocalsExpr x@(DoExpr a b sts) = DoExpr a b (Prelude.map removeLocalsSt sts)
 removeLocalsExpr x@(AH.ListComp a b expr stmst) =
@@ -111,6 +119,10 @@ removeLocalsSt x@(SLet a l) = x
 
 removeLocalsBExpr :: BranchExpr a -> BranchExpr a
 removeLocalsBExpr (Branch a pat expr) = Branch a (removeLocalsPatter pat) (removeLocalsExpr expr)
+
+lookupLocalPatBind :: LocalDecl l -> Bool
+lookupLocalPatBind (LocalFunc _ )     = False
+lookupLocalPatBind (LocalPat _ _ _ _) = True
 
 -------------------------------------------------------------------------------
 -- LIFTING TO TOPLEVEL --------------------------------------------------------
@@ -200,9 +212,9 @@ transFormLocalExprBranches modu list (Branch a pat expr) =
 -- | Lifts all local declarations to toplevel
 transFormLocal :: String -> LocalDecl l -> [FuncDecl l]
 transFormLocal modu (LocalFunc (Func a b c _ d e)) = [(Func a b c Public d e)]
-transFormLocal modu (LocalPat l pat expr lcs) =
-  [Func l (getNameLocalPat  modu pat,l) 0 Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
-  ++ (concatMap (transFormLocal modu) lcs)
+transFormLocal modu (LocalPat l pat expr lcs) = []
+  --[Func l (getNameLocalPat  modu pat,l) 0 Public Untyped (Rules [AH.Rule l NoTypeAnn [pat] (SimpleRhs expr) []])]
+  -- ++ (concatMap (transFormLocal modu) lcs)
 
 
 getNameLocalPat :: String -> Pattern a -> AH.QName

@@ -89,10 +89,10 @@ abstrLocal name (LocalFunc (Func a qn ar v t rls)) =
     newName <- abstrFuncName name qn
     rulesN <- abstrRules name rls
     return $ LocalFunc (Func a newName ar v t rulesN)
-abstrLocal name (LocalPat a pat expr locals) = do
-  exprN <- abstrExpr name expr
-  localsN <- mapM (abstrLocal name) locals
-  return $ LocalPat a pat exprN localsN
+abstrLocal name x@(LocalPat a pat expr locals) = do
+  --exprN <- abstrExpr name expr
+  --localsN <- mapM (abstrLocal name) locals
+  return $ x--LocalPat a pat exprN localsN
 
 -- | Builds the abstract representation of an expr
 abstrExpr :: MonadState LState m => String -> Expr a -> m (Expr a)

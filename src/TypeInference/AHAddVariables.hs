@@ -186,13 +186,13 @@ addFreeVariablesInLocals (LocalFunc funcdecl) =
   do
     newfunc <- addFreeVariablesAsParametersForFuncDecl funcdecl
     return newfunc
-addFreeVariablesInLocals (LocalPat a pat expr locals) =
-  do
-    newLocals <- mapM addFreeVariablesInLocals locals
-    newExpr <- addFreeVariablesInExpr expr
-    let f = LocalPat a pat newExpr newLocals
-    res <- addFreeVariablesAsParametersForPattern f
-    return $ res --LocalPat a pat newExpr newLocals
+addFreeVariablesInLocals x@(LocalPat a pat expr locals) =
+  --do
+  --  newLocals <- mapM addFreeVariablesInLocals locals
+  --  newExpr <- addFreeVariablesInExpr expr
+  --  let f = LocalPat a pat newExpr newLocals
+  --  res <- addFreeVariablesAsParametersForPattern f
+    return $ x--res --LocalPat a pat newExpr newLocals
 
 -- | Adds the found free variables out of local definitions in a local
 --   functiondefinition
@@ -206,17 +206,16 @@ addFreeVariablesAsParametersForFuncDecl (Func a name arity _ t rules) =
 
 
 -- | Adds the found free variables out of local definitions in a pattern
-addFreeVariablesAsParametersForPattern :: MonadState LState m => LocalDecl a -> m (LocalDecl a)
-addFreeVariablesAsParametersForPattern x@(LocalPat l pat expr locals) = do
-  let ev  =  extractFreeVariablesExpr expr
-  let pn = parseNamePattern pat
-  insertFrees (snd pn) ev--varsToAdd
-  let f = addToPatterns ev [] l--[pat] l
-  let t = AH.Rule l NoTypeAnn f (SimpleRhs expr) locals
-  let r = Rules [t]
-  case length(ev) of
-  --  0 -> return x
-    _ -> return $ LocalFunc $ Func l (pn,l) (length ev) Public Untyped r
+--addFreeVariablesAsParametersForPattern x@(LocalPat l pat expr locals) = do
+--  let ev  =  extractFreeVariablesExpr expr
+--  let pn = parseNamePattern pat
+--  insertFrees (snd pn) ev--varsToAdd
+--  let f = addToPatterns ev [] l--[pat] l
+--  let t = AH.Rule l NoTypeAnn f (SimpleRhs expr) locals
+--  let r = Rules [t]
+--  case length(ev) of
+--  --  0 -> return x
+--    _ -> return $ LocalFunc $ Func l (pn,l) (length ev) Public Untyped r
 
 -------------------------------------------------------------------------------
 -- FINDING FREE VARIABLES -----------------------------------------------------
