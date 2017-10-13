@@ -41,7 +41,7 @@ parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs)) file
             -- filter only the lines hit
             filteredMixPos = foldr (\(_,x) xs -> x : xs) [] filtered
         in loopMixPos filteredMixPos -- lint them
-    | otherwise = parseMT mix (Tix xs) -- next tix if hashed dont match
+    | otherwise = parseMT mix (Tix xs) file -- next tix if hashed dont match
         where loopMixPos :: [MixEntry] -> [Lint] -- build the lintoutput
               loopMixPos []            = []
               loopMixPos ((pos,_):mes) = Lint file
