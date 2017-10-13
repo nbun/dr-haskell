@@ -19,22 +19,22 @@ import Trace.Hpc.Util
 import Util.ModifyAst
 
 -- | Main interface for running the coverage analysis
-getConverageOutput :: ModifiedModule -> IO [Lint]
-getConverageOutput m = do
+getConverageOutput :: ModifiedModule -> String -> IO [Lint]
+getConverageOutput m file = do
     let plainFile = printModified m -- get plain filecontent
     -- compile, run and check inside a temp dir
     mixtix <- withSystemTempDirectory "drhaskell-lint."
                     $ runInTempDir plainFile
     case mixtix of
-        Just (mix, tix) -> return $ parseMT mix tix -- parse the check output
+        Just (mix, tix) -> return $ parseMT mix tix file -- parse the check output
         Nothing         -> return []
 
 -- | Takes the Mix and the Tix information provided by the hpc impl
 --   and converts it into coverage information
 --   readable by the linter
 -- Mix FilePath UTCTime Hash Int [MixEntry]
-parseMT :: Mix -> Tix -> [Lint]
-parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs))
+parseMT :: Mix -> Tix -> String -> [Lint]
+parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs)) file
     | hash1 == hash2 = -- get the right mix tix combination
         let zipped = zip tixpos mixpos
             filtered = filter (\(i,_) -> i /= 0) zipped
@@ -44,7 +44,7 @@ parseMT mix@(Mix _ _ hash1 _ mixpos) (Tix (TixModule _ hash2 _ tixpos:xs))
     | otherwise = parseMT mix (Tix xs) -- next tix if hashed dont match
         where loopMixPos :: [MixEntry] -> [Lint] -- build the lintoutput
               loopMixPos []            = []
-              loopMixPos ((pos,_):mes) = Lint "HPC"
+              loopMixPos ((pos,_):mes) = Lint file
                                               (restorePosition $ fromHpcPos pos)
                                               Warning "Covered"
                                          : loopMixPos mes

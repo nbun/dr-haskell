@@ -66,7 +66,7 @@ runWithRepl hlintHints file format = do
                             (True, Left e)  -> let pos = posOfTIError e
                                                 in [TypeError pos e]
                             (_,         _) -> []
-            coverage <- getConverageOutput m2 -- run coverage
+            coverage <- getConverageOutput m2 file -- run coverage
             output <- manipulatePathWithHostvarREV
                         (lintErrorHlint (hlintHints ++ coverage) format (Just lvl)
                             (errs ++ errs' ++ if null errs' then tiErrors else []))
