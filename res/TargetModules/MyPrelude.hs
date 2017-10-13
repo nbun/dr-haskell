@@ -300,6 +300,12 @@ min = Prelude.min
 max :: Prelude.Ord a => a -> a -> a
 max = Prelude.max
 
+minimum :: Prelude.Ord a => [a] -> a
+minimum = Prelude.minimum
+
+maximum :: Prelude.Ord a => [a] -> a
+maximum = Prelude.maximum
+
 drop :: Prelude.Int -> [a] -> [a]
 drop = Prelude.drop
 
