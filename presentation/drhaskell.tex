@@ -37,47 +37,12 @@
 \begin{frame}
 	\titlepage
 \end{frame}
-\begin{frame}
-	\frametitle{Softwarearchitektur}
-\end{frame}
-\begin{frame}
-	\frametitle{Installation}
-	\begin{itemize}[<+->]
-		\item{Zwei Möglichkeiten}
-		\item{Cabal}
-			\begin{enumerate}
-				\item{Klonen des Git-Repositorys}
-				\item{cabal sandbox init}
-				\item{cabal install}
-				\item{Direktes Aufrufen der Programme aus der Cabal-Sandbox}
-			\end{enumerate}
-		\item{Docker}
-			\begin{enumerate}
-				\item{docker pull jonasbusse/drhaskell}
-				\item{Benutzung über vorgefertigte DockerCall-Skript}
-			\end{enumerate}
-	\end{itemize}
-\end{frame}
-\begin{frame}
-	\frametitle{Fazit}
-	\begin{itemize}[<+->]
-		\item{Erweiterbare REPL mit eigener Typinferenz und Testrunner}
-		\item{Erweiterbares Stufensystem}
-		\item{Ausführen statischer Check vor dem Laden}
-		\item{Leichter verständliche Fehlermeldungen durch Einschränkung der Möglichkeiten}
-		\item{Einfaches Schreiben von Testfällen}
-		\item{Linter mit CodeCoverage-Anzeige der Testfälle}
-		\item{Untersützt den Benutzer beim Lernen von Haskell}
-	\end{itemize}
-\end{frame}
-\begin{frame}
-	\frametitle{Ausblick}
-	\begin{itemize}[<+->]
-		\item{Typinferenz mit Typklassen}
-		\item{Vorbedingungen für CheckExpect-Syntax}
-		\item{Benutzerdefinierte Levelkonfiguration}
-	\end{enumerate}
-\end{frame}
+
+\include{softwarearchitektur}
+\include{installation}
+\include{fazit}
+\include{ausblick}
+
 \end{document}
 
 
