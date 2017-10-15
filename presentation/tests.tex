@@ -17,8 +17,20 @@
 \begin{frame}
 	\frametitle{Code Coverage}
 	\begin{itemize}
+		\item Was führen wir aus? \hspace{2em} \only<1->{Unsere Testfälle}
 		\item Womit? \hspace{7.2em} \only<2->{HPC}
-		\item Was führen wir aus? \hspace{2em} \only<3->{Unsere Testfälle}
-		\item Wie zeigen wir an? \hspace{2.65em} \only<4->{Linter}
+		\item Wie zeigen wir an? \hspace{2.65em} \only<3->{Linter}
 	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Code Coverage II}
+	Ablauf:
+	\begin{enumerate}
+		\item Umformung in das Zwischenformat \pause
+		\item Kompilieren mit \texttt{-fhpc} \pause
+		\item Ausführen des Kompilats \pause
+		\item Umrechnen der HPC-spezifischen \texttt{*.mix}- und \texttt{*.tix}-Dateien in ausgeführte Codestellen \pause
+		\item Ausgabe mit anderen Linter-Meldungen
+	\end{enumerate}
 \end{frame}
