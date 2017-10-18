@@ -13,22 +13,29 @@
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{Schritt 1 - initialPlaneHypothesis}
-\begin{lstlisting}
+\frametitle{DrHaskell -- Die Beispiele}
+  \begin{lstlisting}
+  data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
-#Data: inputCloud, viewDirection
-#Result: initial plane hypothesis
+  mirrorTree l@(Leaf _)   = l
+  mirrorTree (Branch l r) = Branch (mirrorTree r) (mirrorTree l)
+  
+  sumTree2 :: Tree Int -> Int
+  sumTree2 = sumTree 0
+    where  sumTree k (Leaf n) = n + k
+           sumTree k (Branch l r) = sumTree (sumTree k l) r 
 
-v = setInverseViewDirection(viewDirection)
+  \end{lstlisting}
+\end{frame}
 
-covMatrix = computeCovarianceMatrix (*inputCloud, centroid);
-eigenValues = computeEigenValues(covarianceMatrix);
-
-or(i = 0; i < 3; i++) {
-  if(maxEigen < eigenValues[i]) maxEigen = eigenValues[i]; if(minEigen > eigenValues[i])
-  minEigen = eigenValues[i];
-  }
-}
-
-%\end{lstlisting}
+\begin{frame}
+  \frametitle{DrHaskell -- Die Typeinferenz}
+  \begin{itemize}
+    \item Grundlagen
+    \item Preludefunktionen und Datetypen
+    \item Nicht getypte Funktionen
+    \item Typsignaturen in Typeumgebung aufnehmen
+    \item Restliches Programm (mit Signaturen)
+    \item "Too General Check"
+  \end{itemize}
 \end{frame}
