@@ -1,19 +1,33 @@
 \begin{frame}
-	\frametitle{Tests und Intermediate Format}
+	\frametitle{Tests und transformierter Quellcode}
 	\begin{itemize}
 		\item Manuelles Testen?
 		\item Test Suites?
 		\vspace{1em}\pause
-		\item Check Expect wie in DrRacket!
+		\item \texttt{check-expect} wie in DrRacket!
 		\item Integration von QuickCheck!
 		\vspace{1em}\pause
 		\item Zusätzliche Konstrukte
-		\item Umformung in ein Zwischenformat
+		\item Anreicherung des Quelltextes um Testmechanismus
 	\end{itemize}
-	\vspace{1em}\pause
+\end{frame}
+\begin{frame}
+	\frametitle{QuickCheck Arbitrary?}
+	\only<1>{QuickCheck braucht}
+	%Here be dragons...
+	\only<2->{\parbox{\widthof{QuickCheck braucht}-\widthof{Wir generieren}}{\hspace{-100cm}a} Wir generieren}
+	Arbitrary-Instanzen, um eigene Datentypen testen zu können!\only<1>{?}
+	
+	\begin{itemize}
+		\item Naiv
+		\item Betrachtet alle Konstruktoren
+		\item Erzeugt für jeden einen \texttt{Gen}-Ausdruck
+		\item $\Rightarrow$ ruft \texttt{arbitrary} für alle Argumente rekursiv auf
+		\item Verknüpft sie per \texttt{oneof}
+	\end{itemize}
+	
 	$\Rightarrow$ Beispiel
 \end{frame}
-
 \begin{frame}
 	\frametitle{Code Coverage}
 	\begin{itemize}
@@ -27,10 +41,10 @@
 	\frametitle{Code Coverage II}
 	Ablauf:
 	\begin{enumerate}
-		\item Umformung in das Zwischenformat \pause
-		\item Kompilieren mit \texttt{-fhpc} \pause
-		\item Ausführen des Kompilats \pause
-		\item Umrechnen der HPC-spezifischen \texttt{*.mix}- und \texttt{*.tix}-Dateien in ausgeführte Codestellen \pause
+		\item Umformung in das Zwischenformat
+		\item Kompilieren mit \texttt{-fhpc}
+		\item Ausführen des Kompilats
+		\item Umrechnen der HPC-spezifischen \texttt{*.mix}- und \texttt{*.tix}-Dateien in ausgeführte Codestellen
 		\item Ausgabe mit anderen Linter-Meldungen
 	\end{enumerate}
 \end{frame}
