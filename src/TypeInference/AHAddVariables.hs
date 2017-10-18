@@ -36,7 +36,7 @@ getCountOfFrees name = do
 -- | Adds a variable to a list of patterns
 addToPatterns :: [VarName] -> [Pattern l] -> l -> [Pattern l]
 addToPatterns xs ys l =
- Prelude.foldl (\ys x -> ys ++ [AH.PVar NoTypeAnn (x, l)])
+ Prelude.foldl (\ys x -> [AH.PVar NoTypeAnn (x, l)] ++ ys)
                ys
                xs
 
