@@ -5,11 +5,23 @@
 		\item Implementierung als Teil der statischen Analyse
 		\item Integration als Pragma: \texttt{\{-\# DRHASKELL LEVEL1 \#-\}}
 	\end{itemize}
-	Vorhandene Level:
-	\begin{itemize}
-		\item 1:
-		\item 2:
-		\item 3:
-		\item 4:
-	\end{itemize}
+	Vorhandene Level: \par
+	\begin{minipage}[T]{.55 \textwidth}
+		\begin{itemize}
+			\item 1: Die Basics
+			\item 2: Datentypen
+			\item 3: Polymorphie und Higher-Order
+			\item 4: Voller Sprachumfang
+		\end{itemize}
+	\end{minipage}
+	\begin{minipage}[T]{.4 \textwidth}
+			\scalebox{5}{\}} Eigene Typinferenz \par \qquad \quad ohne Typklassen
+	\end{minipage}
+\end{frame}
+
+\begin{frame}[fragile]
+	\begin{lstlisting}
+		module Test where
+		test = 42
+	\end{lstlisting}
 \end{frame}
