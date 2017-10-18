@@ -1,0 +1,9 @@
+-- Beispiele:
+-- - Kommandozeile:
+--   * :h
+--   * 1 + 2
+--   * foldr (+) 0 [1,2,3]
+--   * :t foldr
+--   * :t (==)
+--   * 2 == 2
+--   * 2 == 'a'
