@@ -1,0 +1,34 @@
+\begin{frame}
+	\frametitle{DrHaskell -- Die Konvertierung}
+	\begin{itemize}
+		\item Transformation von HSE zu AH
+		  \begin{itemize}
+		    \item Umgang mit Funktionen
+		    \item Umgang mit Variablen
+		  \end{itemize}
+		\item Ergänzen von Argumenten
+		\item Abstrakte Repräsentation bilden
+		\item Liften der Funktionen
+	\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{Schritt 1 - initialPlaneHypothesis}
+\begin{lstlisting}
+
+#Data: inputCloud, viewDirection
+#Result: initial plane hypothesis
+
+v = setInverseViewDirection(viewDirection)
+
+covMatrix = computeCovarianceMatrix (*inputCloud, centroid);
+eigenValues = computeEigenValues(covarianceMatrix);
+
+or(i = 0; i < 3; i++) {
+  if(maxEigen < eigenValues[i]) maxEigen = eigenValues[i]; if(minEigen > eigenValues[i])
+  minEigen = eigenValues[i];
+  }
+}
+
+%\end{lstlisting}
+\end{frame}
