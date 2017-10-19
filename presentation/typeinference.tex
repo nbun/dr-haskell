@@ -1,10 +1,10 @@
 \begin{frame}[fragile]
-\frametitle{DrHaskell -- Beispiel}
+\frametitle{Beispiel}
 \lstinputlisting{../examples/Tree.hs}
 \end{frame}
 
 \begin{frame}
-	\frametitle{DrHaskell -- Konvertierung HSE nach AH}
+	\frametitle{Konvertierung HSE nach AH}
 	\begin{itemize}
 		\item Transformation von HSE zu AH
 		  \begin{itemize}
@@ -18,23 +18,49 @@
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{DrHaskell -- Konvertiertes Beispiel}
+\frametitle{Konvertiertes Beispiel}
 \lstinputlisting{../examples/TreeConv.hs}
 \end{frame}
 
-\begin{frame}
-  \frametitle{DrHaskell -- Typinferenz}
+\begin{frame}[fragile]
+  \frametitle{Typinferenz}
   \begin{itemize}
-    \item Grundlagen
-    \item Preludefunktionen und Datentypen
-    \item Nicht getypte Funktionen
-    \item Typsignaturen in Typumgebung aufnehmen
-    \item Restliches Programm (mit Signaturen)
-    \item \glqq{}Too General Check\grqq{}
+    \item Datentypen und Funktionen aus \glqq{}MyPrelude\grqq{} laden
+    \item Typen in Typumgebung einfügen
+  \end{itemize}
+  \begin{lstlisting}
+type TypeEnv a = DM.Map QName (TypeExpr a)
+  \end{lstlisting}
+  \begin{itemize}
+    \item Programm wird separiert: getytpt -- ungetypt
+    \item Nicht getypte Funktionen werden inferiert
+    \item Typumgebung wird erweitert
+    \item Getypte Funktionen werden inferiert
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Grundlagen Typinferenz}
+  \begin{itemize}
+    \item Jedes AH-Konstrukt wird mit Typausdruck annotiert
+    \item Typvariable oder Typausdruck aus Typumgebung
+    \item Gleichungen zwischen Typen werden formuliert
+    \item Gleichungen werden mittels Unifikation gelöst
+    \item Substitution wird auf Programm angewendet
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
-\frametitle{DrHaskell -- Konvertiertes getyptes Beispiel}
+\frametitle{ Konvertiertes getyptes Beispiel}
 \lstinputlisting{../examples/TreeConvTyped.hs}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Too General Check}
+  \begin{lstlisting}
+sumTree :: Tree a -> a
+  \end{lstlisting}
+  \begin{quote}
+    Couldn't match expected but too general type \grqq{}a\grqq{} with actual more specific type \grqq{}Int\grqq{}!
+  \end{quote}
 \end{frame}
