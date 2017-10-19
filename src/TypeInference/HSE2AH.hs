@@ -13,6 +13,7 @@ import TypeInference.AHAddVariables
 import TypeInference.HSEConversion
 import TypeInference.TypeSig
 import TypeInference.AbstractHaskellGoodies
+import TypeInference.TypeSyn
 
 parseFile' :: FilePath -> IO (Module SrcSpanInfo)
 parseFile' f = do
@@ -48,7 +49,8 @@ nlahToAH p@(Prog m q t fs) =
    let list = transFormLocalProg n [] v
    let newProg = Prog (n,m) i t (fd ++ list)
    let rProg = removeLocals newProg
-   return $ rProg
+   let tProg = collectTypeSyns rProg
+   return $ tProg
 
 removeLocals :: Prog a -> Prog a
 removeLocals (Prog a b c funcs) = Prog a b c $ Prelude.map removeLocalsFuncs funcs
