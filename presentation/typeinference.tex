@@ -14,18 +14,7 @@
 
 \begin{frame}[fragile]
 \frametitle{DrHaskell -- Die Beispiele}
-  \begin{lstlisting}
-  data Tree a = Leaf a | Branch (Tree a) (Tree a)
-
-  mirrorTree l@(Leaf _)   = l
-  mirrorTree (Branch l r) = Branch (mirrorTree r) (mirrorTree l)
-  
-  sumTree2 :: Tree Int -> Int
-  sumTree2 = sumTree 0
-    where  sumTree k (Leaf n) = n + k
-           sumTree k (Branch l r) = sumTree (sumTree k l) r 
-
-  \end{lstlisting}
+\lstinputlisting{../examples/Tree.hs}
 \end{frame}
 
 \begin{frame}
