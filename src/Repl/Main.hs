@@ -224,7 +224,7 @@ commandTypeof args = do
 showBanner :: ReplInput ()
 showBanner = outputStrLn $ unlines [
   "",
-  "\\ \\      Dr. Haskell version " ++ showVersion version,
+  "\\ \\      DrHaskell version " ++ showVersion version,
   " \\ \\",
   " /  \\    Type \":?\" for help.",
   "/ /\\ \\"]
