@@ -19,6 +19,7 @@ extra-source-files: CHANGELOG.md
 data-dir:           res
 data-files:         TargetModules/*.hs
                     Testing/*.hs
+                    Sounds/*.wav
 
 source-repository head
   type:     git

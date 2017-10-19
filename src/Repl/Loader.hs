@@ -32,6 +32,8 @@ import           StaticAnalysis.CheckState
 import           StaticAnalysis.Level                 (useOwnTI)
 import           StaticAnalysis.Messages.Prettify
 import           StaticAnalysis.Messages.StaticErrors
+import           System.Process
+import           System.FilePath
 import qualified Testing.ArbitGen                     as AG
 import qualified Testing.TestExpExtractor             as Tee
 import qualified TypeInference.AbstractHaskell        as AH
@@ -148,6 +150,10 @@ loadModule fname = MC.handleAll handler $ loadModule' $ adjustPath fname
           let errors' = checkErrors' ++ transErrors ++ if null checkErrors'
                                                        then tiErrors else []
               errors  = map (CheckError (Just level)) errors'
+              sound   = if null errors then "tada.wav" else "sad_trombone.wav"
+
+          datadir <- liftIO getDataDir
+          liftIO $ createProcess (proc "aplay" [datadir </> "Sounds" </> sound])
 
           if null errors || (nonstrict && not (any isCritical errors'))
             then let dm e = DirectMessage $ adjustGHCerror transModule $ displayException e
