@@ -19,7 +19,7 @@ import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
 import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..), Expr(..), TypeAnn(..), TypeExpr(..))
-import TypeInference.AbstractHaskellGoodies (exprType', exprType)
+import TypeInference.AbstractHaskellGoodies (exprType')
 import TypeInference.Main
 
 {-
@@ -131,7 +131,7 @@ replEvalExp q = case filter (not . isSpace) q of
                                                       defaultAHOptions
                                                 }
                                                 e
-                             Right e -> case fromJust $ exprType e of
+                             Right e -> case fromJust $ exprType' e of
                                              t@(FuncType _ _ _) ->
                                                return $ Just $
                                                  "Function with type " ++
