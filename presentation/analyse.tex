@@ -1,14 +1,19 @@
 \begin{frame}{Statische Analyse}
 	Die statische Analyse arbeitet auf dem AST:
 	\begin{itemize}
-		\item Durchsetzung der Levelbeschränkungen
-		\item Statische Checks:
+		\item Durchsetzung der Levelbeschränkungen (12 Checks)
+		\item Statische Checks zur Fehlersuche:
 		\begin{itemize}
-			\item 12 Levelchecks
 			\item Undefinierte Namen $\rightarrow$ Vorschläge
 			\item Doppelte Definitionen
 			\item Shadowing
 			\item Applikation von Typvariablen
 		\end{itemize}
+	\end{itemize}
+	Function hiding:
+	\begin{itemize}
+		\item \texttt{Duplicated} Fehler $\rightarrow$ Name der Funktion
+		\item Modifikation des MyPrelude Imports
+		\item \texttt{import MyPrelude hiding (...)}
 	\end{itemize}
 \end{frame}
