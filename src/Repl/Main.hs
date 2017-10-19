@@ -19,7 +19,7 @@ import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
 import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..), Expr(..), TypeAnn(..), TypeExpr(..))
-import TypeInference.AbstractHaskellGoodies (exprType')
+import TypeInference.AbstractHaskellGoodies (exprType', exprType)
 import TypeInference.Main
 
 {-
@@ -131,17 +131,19 @@ replEvalExp q = case filter (not . isSpace) q of
                                                       defaultAHOptions
                                                 }
                                                 e
-                             Right (Symbol (TypeAnn t@(FuncType _ _ _)) _) ->
-                               return $ Just $ "Function with type " ++
-                                               showTypeExpr
-                                                 defaultAHOptions {
-                                                   unqModules =
-                                                     "Prelude" :
-                                                     unqModules
-                                                       defaultAHOptions
-                                                 }
-                                                 t
-                             Right _ -> return Nothing
+                             Right e -> case fromJust $ exprType e of
+                                             t@(FuncType _ _ _) ->
+                                               return $ Just $
+                                                 "Function with type " ++
+                                                 showTypeExpr
+                                                   defaultAHOptions {
+                                                     unqModules =
+                                                       "Prelude" :
+                                                       unqModules
+                                                         defaultAHOptions
+                                                   }
+                                                   t
+                                             _ -> return Nothing
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = if null cmd then invalid cmd else
