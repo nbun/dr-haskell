@@ -5,33 +5,39 @@
 \usepackage{subcaption}
 \usepackage{graphicx}
 \usepackage{listings}
+
+\lstdefinestyle{haskell}{
+	language=haskell,
+	basicstyle=\ttfamily\small,
+	commentstyle=\color{gray},
+	identifierstyle=\color{black},
+	keywordstyle=\color[RGB]{28,0,207},
+	stringstyle=\color[RGB]{196,26,22}
+}
+
 \lstset{
 	frame=none,
 	xleftmargin=2pt,
 	stepnumber=1,
 	numbers=left,
 	numbersep=5pt,
-	numberstyle=\ttfamily\tiny\color[gray]{0.3},
+	numberstyle=\tiny\color{gray},
 	belowcaptionskip=\bigskipamount,
 	captionpos=b,
 	escapeinside={*'}{'*},
-	language=haskell,
 	tabsize=2,
-	emphstyle={\bf},
-	commentstyle=\it,
-	stringstyle=\mdseries\rmfamily,
 	showspaces=false,
-	keywordstyle=\bfseries\rmfamily,
 	columns=flexible,
-	basicstyle=\small\sffamily,
 	showstringspaces=false,
 	morecomment=[l]\%,
+	style=haskell,
+	inputencoding=utf8,
 }
+
 \mode<presentation>
 {
   \usetheme{metropolis}
 }
-
 
 \usepackage[german]{babel}
 % or whatever
