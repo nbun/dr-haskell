@@ -54,3 +54,6 @@ hpc_*
 *.synctex.gz
 *.snm
 *.nav
+*.vrb
+
+presentation/drhaskell.pdf
