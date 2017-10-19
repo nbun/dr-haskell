@@ -1,3 +1,3 @@
-# Dr. Haskell - Master Project 2017
+# Master Project SS17 - DrHaskell
 
 *More information will be coming soon!*
