@@ -1,16 +1,12 @@
-FROM ubuntu:16.04
+FROM ubuntu:latest
 
-RUN apt-get update
-
-RUN apt-get install -y cabal-install ghc
+RUN apt-get update && apt-get install -y cabal-install ghc
 
 COPY . /tmp/drhaskell-build
 
 RUN ls -la /tmp/drhaskell-build
 
-RUN cabal update
-
-RUN cabal install 'happy >=1.19.7'
+RUN cabal update && cabal install 'happy >=1.19.7'
 
 RUN cd /tmp/drhaskell-build && cabal install --flags="multicall"
 

@@ -16,7 +16,7 @@ import StaticAnalysis.Level                 (Level (..))
 import StaticAnalysis.Messages.StaticErrors (Error (..))
 import StaticAnalysis.StaticChecks.Select   (getNameOfQName)
 
-import TypeInference.AbstractHaskell        (defaultAHOptions)
+import TypeInference.AbstractHaskell        (defaultAHOptions, AHOptions(..))
 import TypeInference.Main                   (showTIError)
 
 -- | An ordinary filename
@@ -125,7 +125,8 @@ prettyErrorWithInfoSwitchAndLevel s level e =
     TypeError l tiError ->
       infoLinePos l
       ++ appendLevelTag level e
-      ++ showTIError defaultAHOptions tiError
+      ++ showTIError defaultAHOptions {unqModules = "Prelude" : unqModules defaultAHOptions}
+                     tiError
     InstanceDecl l ->
       infoLinePos l
       ++ appendLevelTag level e
