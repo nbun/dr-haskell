@@ -23,9 +23,12 @@ transformTypeSigFDecl ntd (Func a b c d tsig rls) =
 transformSig :: [(QName,TypeExpr a)] -> TypeSig a -> TypeSig a
 transformSig _ Untyped                       = Untyped
 transformSig [] z@(TypeSig (TVar ((a,b), c)))  |  b == "String" = TypeSig (TCons c (("Prelude","[]"),c) [TCons c (("Prelude","Char"),c) []])
-                                             | otherwise = z
+                                               | otherwise = z
 transformSig [] z@(TypeSig(TCons a (qn@(e,g),b) ts)) | g == "String" = TypeSig (TCons b (("Prelude","[]"),b) [TCons b (("Prelude","Char"),b) []])
-                                                   | otherwise = z
+                                                     | otherwise = z
+transformSig [] z@(TypeSig (FuncType a t1 t2)) = let TypeSig t1' = transformSig [] (TypeSig t1)
+                                                     TypeSig t2' = transformSig [] (TypeSig t2)
+                                                     in TypeSig (FuncType a t1' t2')
 transformSig ((x,y):xs) z@(TypeSig (TVar ((a,b), c))) | (snd x) == b = TypeSig y
                                                       | b == "String" = TypeSig (TCons c (("Prelude","[]"),c) [TCons c (("Prelude","Char"),c) []])
                                                       | otherwise  = transformSig xs z
