@@ -79,7 +79,7 @@ replEval q = case q of
 replHelp :: Maybe String -> Repl String
 replHelp input = return $ init $ unlines $ hint [
   "Usage:",
-  ":? - This help",
+  ":? - show this help message",
   ":l - load module",
   ":q - quit",
   ":r - reload module",
