@@ -93,8 +93,7 @@ removeLocalsExpr x@(InfixApply a b e1 c e2) =
   InfixApply a b (removeLocalsExpr e1) c (removeLocalsExpr e2)
 removeLocalsExpr x@(AH.Lambda a b pats expr)=
   AH.Lambda a b (Prelude.map removeLocalsPatter pats) (removeLocalsExpr expr)
--- TODO gucken wie es sich bei einem let verhält mit den PatternBindings
-removeLocalsExpr x@(AH.Let a ty lcs e) = e
+removeLocalsExpr x@(AH.Let a ty lcs e) = x
 removeLocalsExpr x@(DoExpr a b sts) = DoExpr a b (Prelude.map removeLocalsSt sts)
 removeLocalsExpr x@(AH.ListComp a b expr stmst) =
   AH.ListComp a b (removeLocalsExpr expr) (Prelude.map removeLocalsSt stmst)
