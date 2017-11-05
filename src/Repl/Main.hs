@@ -81,6 +81,7 @@ replHelp input = return $ init $ unlines $ hint [
   "Usage:",
   ":? - show this help message",
   ":l - load module",
+  ":L - set level manually, disable with :L 0"
   ":q - quit",
   ":r - reload module",
   ":t - evaluate type",
@@ -185,7 +186,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
                                    when (l == Just LevelFull) (tiProg .= [])
                                    return (Nothing, True)
                        emsg l = "Invalid level '" ++ concat (tail l)
-                                ++ "' , possible values: {1, 2, 3, 4}"
+                                ++ "' , possible values: {0, 1, 2, 3, 4}"
                    in case tail args of
                         ["0"] -> setL Nothing
                         ["1"] -> setL $ Just Level1
