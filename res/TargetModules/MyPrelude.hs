@@ -22,7 +22,6 @@ module MyPrelude (
   (+.),
   (-.),
   (*.),
-  (/.),
   -- | Infix operators from the 'Eq' and 'Ord' type classes.
   (Prelude.==),
   (Prelude./=),
@@ -105,8 +104,8 @@ import qualified Prelude
 (*) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (*) = (Prelude.*)
 
-(/) :: Prelude.Int -> Prelude.Int -> Prelude.Int
-(/) = Prelude.div
+(/) :: Prelude.Int -> Prelude.Int -> Prelude.Float
+(/) = (Prelude./)
 
 (+.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (+.) = (Prelude.+)
@@ -116,9 +115,6 @@ import qualified Prelude
 
 (*.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (*.) = (Prelude.*)
-
-(/.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
-(/.) = (Prelude./)
 
 -- -----------------------------------------------------------------------------
 -- Simple versions of functions that use 'Foldable', 'Integral' or 'Num'
