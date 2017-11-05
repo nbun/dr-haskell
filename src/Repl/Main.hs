@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE TupleSections, FlexibleContexts #-}
 
 module Repl.Main (module Repl.Main) where
 
@@ -159,6 +159,8 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     "?"      -> help
     "h"      -> help
     "help"   -> help
+    "L"      -> setLevel
+    "level"  -> setLevel
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
@@ -178,6 +180,20 @@ replEvalCommand cmd = if null cmd then invalid cmd else
             errors <- loadModule md
             return (Just $ unlines $ map printLoadMessage errors, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
+        setLevel = let setL l = do forceLevel .= l
+                                   loadInitialModules
+                                   tiProg .= []
+                                   return (Nothing, True)
+                       emsg l = "Invalid level '" ++ concat (tail l)
+                                ++ "' , possible values: {1, 2, 3, 4}"
+                   in case tail args of
+                        ["0"] -> setL Nothing
+                        ["1"] -> setL $ Just Level1
+                        ["2"] -> setL $ Just Level2
+                        ["3"] -> setL $ Just Level3
+                        ["4"] -> setL $ Just LevelFull
+                        ["F"] -> setL $ Just LevelFull
+                        l -> return (Just $ emsg l, True)
         help = (,True) . Just <$> replHelp Nothing
 
 commandTypeof :: [String] -> Repl (Maybe String, Bool)
