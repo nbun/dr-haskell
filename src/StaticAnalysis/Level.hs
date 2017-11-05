@@ -3,7 +3,7 @@ module StaticAnalysis.Level (Level (..), useOwnTI) where
 
 -- | A level determine the checks applied to a module
 data Level = Level1 | Level2 | Level3 | LevelFull
-  deriving Show
+  deriving (Eq, Show)
 
 -- | Is our type inference active for a given level?
 useOwnTI :: Level -> Bool

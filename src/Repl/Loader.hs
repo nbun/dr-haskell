@@ -51,7 +51,7 @@ loadInitialModules :: Repl ()
 loadInitialModules = do
     ps <- liftIO initEmptyTI
     tiProg .= ps
-    Just level <- use forceLevel `mplusM` return (Just Level1)
+    Just level <- use forceLevel `mplusM` return (Just Level2)
     currentLevel .= level
     liftInterpreter $ reset
     liftInterpreter $ setImportsQ [("Prelude", Nothing),

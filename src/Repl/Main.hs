@@ -182,7 +182,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
         setLevel = let setL l = do forceLevel .= l
                                    loadInitialModules
-                                   tiProg .= []
+                                   when (l == Just LevelFull) (tiProg .= [])
                                    return (Nothing, True)
                        emsg l = "Invalid level '" ++ concat (tail l)
                                 ++ "' , possible values: {1, 2, 3, 4}"

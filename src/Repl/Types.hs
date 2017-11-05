@@ -49,7 +49,7 @@ initialReplState = ReplState {
   _runTests      = True,
   _nonStrict     = False,
   _customPrelude = True,
-  _currentLevel  = Level1,
+  _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = []
 }
@@ -62,7 +62,7 @@ initialLintReplState = ReplState {
   _runTests      = False,
   _nonStrict     = False,
   _customPrelude = False,
-  _currentLevel  = Level1,
+  _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = []
 }
