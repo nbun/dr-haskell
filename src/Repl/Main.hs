@@ -237,6 +237,9 @@ showBanner :: ReplInput ()
 showBanner = outputStrLn $ unlines [
   "",
   "\\ \\      DrHaskell version " ++ showVersion version,
-  " \\ \\",
-  " /  \\    Type \":?\" for help.",
-  "/ /\\ \\"]
+  " \\ \\     CAU Kiel",
+  " /  \\",
+  "/ /\\ \\   Type \":?\" for help",
+  "\n",
+  "If you encounter any issues with DrHaskell, please contact us at "
+  ++ "stu114713@informatik.uni-kiel.de"]

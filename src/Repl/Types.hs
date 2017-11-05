@@ -23,6 +23,7 @@ import Control.Monad.Catch
 import Control.Monad.State
 import Language.Haskell.Exts
 import Language.Haskell.Interpreter
+import Language.Haskell.Interpreter.Unsafe
 import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import TypeInference.AbstractHaskell
@@ -79,7 +80,7 @@ type Repl = StateT ReplState ReplInterpreter
 
 runRepl :: ReplState -> Repl a -> IO (Either InterpreterError a)
 runRepl state = runInputT defaultSettings .
-                runInterpreter .
+                (unsafeRunInterpreterWithArgs []) .
                 (`evalStateT` state)
 
 -- no idea if these instances are valid
