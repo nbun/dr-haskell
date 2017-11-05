@@ -81,7 +81,7 @@ replHelp input = return $ init $ unlines $ hint [
   "Usage:",
   ":? - show this help message",
   ":l - load module",
-  ":L - set level manually, disable with :L 0"
+  ":L - set level manually, disable with :L 0",
   ":q - quit",
   ":r - reload module",
   ":t - evaluate type",
