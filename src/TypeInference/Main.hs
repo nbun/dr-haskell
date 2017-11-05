@@ -195,7 +195,7 @@ type TIMonad a = ExceptT (TIError a) (TIState a)
 
 -- | Representation of a type inference error, parameterized over the type of
 --   annotations.
-data TIError a = TIError String
+data TIError a = TIError a String
                | TIClash (TypeExpr a) (TypeExpr a)
                | TIOccurCheck VarName (TypeExpr a)
                | TITooGeneral (TypeExpr a) (TypeExpr a)
@@ -203,7 +203,7 @@ data TIError a = TIError String
 
 -- | Transforms a type inference error into a string representation.
 showTIError :: AHOptions -> TIError SrcSpanInfo -> String
-showTIError _    (TIError e)            = e
+showTIError _    (TIError _ e)          = e
 showTIError opts (TIClash te1 te2)
   = let x = srcInfoSpan (typeExprAnn te1)
         y = srcInfoSpan (typeExprAnn te2)
@@ -236,7 +236,7 @@ showTIError opts (TITooGeneral te1 te2)
 
 -- | Returns the position of a type inference error.
 posOfTIError :: TIError SrcSpanInfo -> SrcSpanInfo
-posOfTIError (TIError _)         = noSrcSpan
+posOfTIError (TIError x _)       = x
 posOfTIError (TIClash _ te)      = typeExprAnn te
 posOfTIError (TIOccurCheck _ te) = typeExprAnn te
 posOfTIError (TITooGeneral _ te) = typeExprAnn te
@@ -346,16 +346,16 @@ freshVariant te = snd <$> rename DM.empty te
                                        return (sub', TCons x qn tes')
 
 -- | Returns a type variant for the given qualified name.
-getTypeVariant :: QName -> TIMonad a (TypeExpr a)
-getTypeVariant qn = do (tenv, _, tsenv, _) <- get
-                       case lookupType qn tenv of
-                         Nothing -> case lookupType qn tsenv of
-                                      Nothing -> throwError err
-                                      Just te -> return te
-                         Just te -> freshVariant te
+getTypeVariant :: QName -> a -> TIMonad a (TypeExpr a)
+getTypeVariant qn x = do (tenv, _, tsenv, _) <- get
+                         case lookupType qn tenv of
+                           Nothing -> case lookupType qn tsenv of
+                                        Nothing -> throwError err
+                                        Just te -> return te
+                           Just te -> freshVariant te
   where
-    err = TIError ("The function " ++ bquotes (showQName defaultAHOptions qn)
-                                   ++ " is not defined!")
+    err = TIError x ("The function " ++ bquotes (showQName defaultAHOptions qn)
+                                     ++ " is not defined!")
 
 -- -----------------------------------------------------------------------------
 -- Functions for type annotation of abstract Haskell programs
@@ -368,8 +368,8 @@ annProg (Prog mn is tds fds) = do fds' <- mapM annFunc fds
 
 -- | Annotates the given function declaration with fresh type variables.
 annFunc :: FuncDecl a -> TIMonad a (FuncDecl a)
-annFunc (Func x y@(qn, _) a v ts rs) = do initVarTypes
-                                          te <- getTypeVariant qn
+annFunc (Func x y@(qn, z) a v ts rs) = do initVarTypes
+                                          te <- getTypeVariant qn z
                                           rs' <- annRules rs
                                           return (Func x y a v (TypeSig te) rs')
 
@@ -415,8 +415,9 @@ annLocalDecl (LocalPat x p e lds) = do p' <- annPattern p
                                        lds' <- mapM annLocalDecl lds
                                        e' <- annExpr e
                                        return (LocalPat x p' e' lds')
-annLocalDecl _
-  = throwError (TIError "Local function declarations are not supported yet!")
+annLocalDecl (LocalFunc (Func x _ _ _ _ _))
+  = throwError
+      (TIError x "Local function declarations are not supported yet!")
 
 -- | Annotates the given statement with fresh type variables.
 annStatement :: Statement a -> TIMonad a (Statement a)
@@ -445,7 +446,7 @@ annPattern (PVar _ y@((v, _), x))      = do te <- nextTVar x
 annPattern (PLit _ l@(_, x))           = do te <- nextTVar x
                                             return (PLit (TypeAnn te) l)
 annPattern (PComb x _ y@(qn, z) ps)
-  = do te <- getTypeVariant qn
+  = do te <- getTypeVariant qn z
        ps' <- mapM annPattern ps
        return (PComb x (TypeAnn (replaceTEAnn z te)) y ps')
 annPattern (PAs x _ vn@((v, _), vx) p) = do te <- nextTVar vx
@@ -470,13 +471,13 @@ annExpr (Var _ x@(vn@(v, _), vx))
       >>= maybe (throwError err)
                 (\te -> return (Var (TypeAnn (replaceTEAnn vx te)) x))
   where
-    err = TIError ("The variable " ++ bquotes (showVarName vn)
-                                   ++ " is not defined!")
+    err = TIError vx ("The variable " ++ bquotes (showVarName vn)
+                                      ++ " is not defined!")
 annExpr (Lit _ l@(_, x))
   = do te <- nextTVar x
        return (Lit (TypeAnn te) l)
 annExpr (Symbol _ x@(qn, y))
-  = do te <- getTypeVariant qn
+  = do te <- getTypeVariant qn y
        return (Symbol (TypeAnn (replaceTEAnn y te)) x)
 annExpr (Apply x _ e1 e2)
   = do te <- nextTVar x
@@ -484,7 +485,7 @@ annExpr (Apply x _ e1 e2)
        e2' <- annExpr e2
        return (Apply x (TypeAnn te) e1' e2')
 annExpr (InfixApply x _ e1 z@(qn, y) e2)
-  = do te <- getTypeVariant qn
+  = do te <- getTypeVariant qn y
        e1' <- annExpr e1
        e2' <- annExpr e2
        return (InfixApply x (TypeAnn (replaceTEAnn y te)) e1' z e2')
@@ -662,10 +663,10 @@ eqsExpr (Lambda x (TypeAnn te) ps e)
           ++= eqsExpr e
 eqsExpr (Let _ (TypeAnn te) lds e)
   = concatMapM eqsLocalDecl lds ++= return [te =.= fromJust (exprType' e)]
-eqsExpr DoExpr{}
-  = throwError (TIError "do-expressions are not supported yet!")
-eqsExpr ListComp{}
-  = throwError (TIError "List comprehensions are not supported yet!")
+eqsExpr (DoExpr x _ _)
+  = throwError (TIError x "do-expressions are not supported yet!")
+eqsExpr (ListComp x _ _ _)
+  = throwError (TIError x "List comprehensions are not supported yet!")
 eqsExpr (Case _ (TypeAnn te) e bs)
   = eqsExpr e ++= concatMapM (eqsBranch te (fromJust (exprType' e))) bs
 eqsExpr (Typed _ (TypeAnn tae) e te)
@@ -726,9 +727,9 @@ inferFuncDecl ps = inferFuncDeclEnv (getTypeEnv ps)
 
 -- | Infers the given function declaration with the given type environment.
 inferFuncDeclEnv :: TypeEnv a -> FuncDecl a -> Either (TIError a) (FuncDecl a)
-inferFuncDeclEnv tenv fd
+inferFuncDeclEnv tenv fd@(Func _ (_, x) _ _ _ _)
   | DM.member (funcName fd) tenv
-    = Left (TIError err)
+    = Left (TIError x err)
   | otherwise
     = evalState (runExceptT (insertFunType (funcName fd) (funcDeclType fd)
                                >> annFunc fd >>= inferFunc))
