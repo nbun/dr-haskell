@@ -9,6 +9,7 @@ import Data.Char
 import Data.List
 import Data.Maybe                           (fromJust, isJust)
 import Data.Version                         (showVersion)
+import Language.Haskell.Exts                (SrcSpanInfo)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
 import Paths_drhaskell
@@ -97,10 +98,11 @@ replEvalExp q = case filter (not . isSpace) q of
       MC.handleAll (\e -> do
                           liftIO $ putStrLn (displayException e)
                           return Nothing) $ do
-        errors <- checkType q
+        (errors, tExp) <- checkType q
         if isJust errors
         then return errors
         else do
+          liftIO $ print (fromJust tExp)
           t <- liftInterpreter $ typeOf q
           if t == "IO ()"
             then do
@@ -114,16 +116,16 @@ replEvalExp q = case filter (not . isSpace) q of
               return Nothing
             else liftInterpreter $ Just <$> eval q
   where
-    checkType :: String -> Repl (Maybe String)
+    checkType :: String -> Repl (Maybe String, Maybe (TypeExpr SrcSpanInfo))
     checkType q = do
       p' <- use tiProg
       case p' of
-           [] -> return Nothing
+           [] -> return (Nothing, Nothing)
            ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) q of
-                      ParseFailed _ f -> return $ Just f
+                      ParseFailed _ f -> return $ (Just f, Nothing)
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return $ Just
+                             Left e -> return (Just
                                               $ showTIError
                                                 defaultAHOptions {
                                                   unqModules =
@@ -131,10 +133,10 @@ replEvalExp q = case filter (not . isSpace) q of
                                                     unqModules
                                                       defaultAHOptions
                                                 }
-                                                e
+                                                e, Nothing)
                              Right e -> case fromJust $ exprType' e of
                                              t@(FuncType _ _ _) ->
-                                               return $ Just $
+                                               return (Just $
                                                  "Function with type " ++
                                                  showTypeExpr
                                                    defaultAHOptions {
@@ -143,8 +145,8 @@ replEvalExp q = case filter (not . isSpace) q of
                                                        unqModules
                                                          defaultAHOptions
                                                    }
-                                                   t
-                                             _ -> return Nothing
+                                                   t, Nothing)
+                                             t -> return (Nothing, Just t)
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = if null cmd then invalid cmd else
