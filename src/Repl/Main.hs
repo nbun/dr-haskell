@@ -1,16 +1,21 @@
-{-# LANGUAGE TupleSections #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections    #-}
+{-# OverloadedStrings #-}
 
 module Repl.Main (module Repl.Main) where
 
 import Control.Lens                         hiding (Level)
 import Control.Monad.Catch                  as MC
 import Control.Monad.State
+import Data.ByteString.Lazy                 (unpack)
 import Data.Char
 import Data.List
 import Data.Maybe                           (fromJust, isJust)
 import Data.Version                         (showVersion)
+import Language.Haskell.Exts                (SrcSpanInfo)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
+import Network.HTTP.Conduit
 import Paths_drhaskell
 import Repl.CmdOptions
 import Repl.Loader
@@ -18,7 +23,9 @@ import Repl.Types
 import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
-import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..), Expr(..), TypeAnn(..), TypeExpr(..))
+import TypeInference.AbstractHaskell        (AHOptions (..), Expr (..),
+                                             TypeAnn (..), TypeExpr (..),
+                                             defaultAHOptions, showTypeExpr)
 import TypeInference.AbstractHaskellGoodies (exprType')
 import TypeInference.Main
 
@@ -27,6 +34,9 @@ Current Limitations:
   - history is not used
   - no let-constructs
 -}
+
+cabalURL :: String
+cabalURL =  "https://git.ps.informatik.uni-kiel.de/student-projects/mapro-2017-ss/raw/master/drhaskell.cabal"
 
 
 replRead :: Repl (Maybe String)
@@ -56,11 +66,20 @@ initInterpreter = do
     [searchPath := [".", datadir </> "TargetModules"]]
   loadInitialModules
 
+updateCheck :: IO (Maybe String)
+updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
+  s <- simpleHttp cabalURL
+  let findVersion s = head $ filter (isPrefixOf "version") (lines s)
+      versionLine   = findVersion $ map (chr . fromEnum) (unpack s)
+      version  = stripPrefix "version:" (filter (/= ' ') versionLine)
+  return version
+
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
+  remoteVersion <- updateCheck
   res <- runRepl initialState $ do
-    liftInput showBanner
+    liftInput (showBanner remoteVersion)
     initInterpreter
     fname <- use filename
     unless (null fname) $ do
@@ -81,6 +100,7 @@ replHelp input = return $ init $ unlines $ hint [
   "Usage:",
   ":? - show this help message",
   ":l - load module",
+  ":L - set level manually, disable with :L 0",
   ":q - quit",
   ":r - reload module",
   ":t - evaluate type",
@@ -96,10 +116,11 @@ replEvalExp q = case filter (not . isSpace) q of
       MC.handleAll (\e -> do
                           liftIO $ putStrLn (displayException e)
                           return Nothing) $ do
-        errors <- checkType q
+        (errors, tExp) <- checkType q
         if isJust errors
         then return errors
         else do
+          liftIO $ print (fromJust tExp)
           t <- liftInterpreter $ typeOf q
           if t == "IO ()"
             then do
@@ -113,16 +134,16 @@ replEvalExp q = case filter (not . isSpace) q of
               return Nothing
             else liftInterpreter $ Just <$> eval q
   where
-    checkType :: String -> Repl (Maybe String)
+    checkType :: String -> Repl (Maybe String, Maybe (TypeExpr SrcSpanInfo))
     checkType q = do
       p' <- use tiProg
       case p' of
-           [] -> return Nothing
+           [] -> return (Nothing, Nothing)
            ps -> case parseExpWithMode (defaultParseMode{parseFilename = "<interactive>"}) q of
-                      ParseFailed _ f -> return $ Just f
+                      ParseFailed _ f -> return $ (Just f, Nothing)
                       ParseOk e       ->
                         case inferHSEExp ps e of
-                             Left e -> return $ Just
+                             Left e -> return (Just
                                               $ showTIError
                                                 defaultAHOptions {
                                                   unqModules =
@@ -130,10 +151,10 @@ replEvalExp q = case filter (not . isSpace) q of
                                                     unqModules
                                                       defaultAHOptions
                                                 }
-                                                e
+                                                e, Nothing)
                              Right e -> case fromJust $ exprType' e of
                                              t@(FuncType _ _ _) ->
-                                               return $ Just $
+                                               return (Just $
                                                  "Function with type " ++
                                                  showTypeExpr
                                                    defaultAHOptions {
@@ -142,8 +163,8 @@ replEvalExp q = case filter (not . isSpace) q of
                                                        unqModules
                                                          defaultAHOptions
                                                    }
-                                                   t
-                                             _ -> return Nothing
+                                                   t, Nothing)
+                                             t -> return (Nothing, Just t)
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
 replEvalCommand cmd = if null cmd then invalid cmd else
@@ -159,6 +180,8 @@ replEvalCommand cmd = if null cmd then invalid cmd else
     "?"      -> help
     "h"      -> help
     "help"   -> help
+    "L"      -> setLevel
+    "level"  -> setLevel
     s        -> invalid s
   where args = words cmd
         quit = return (Nothing, False)
@@ -178,6 +201,20 @@ replEvalCommand cmd = if null cmd then invalid cmd else
             errors <- loadModule md
             return (Just $ unlines $ map printLoadMessage errors, True)
         invalid s =  replHelp (Just s) >>= \res -> return (Just res, True)
+        setLevel = let setL l = do forceLevel .= l
+                                   loadInitialModules
+                                   when (l == Just LevelFull) (tiProg .= [])
+                                   return (Nothing, True)
+                       emsg l = "Invalid level '" ++ concat (tail l)
+                                ++ "' , possible values: {0, 1, 2, 3, 4}"
+                   in case tail args of
+                        ["0"] -> setL Nothing
+                        ["1"] -> setL $ Just Level1
+                        ["2"] -> setL $ Just Level2
+                        ["3"] -> setL $ Just Level3
+                        ["4"] -> setL $ Just LevelFull
+                        ["F"] -> setL $ Just LevelFull
+                        l     -> return (Just $ emsg l, True)
         help = (,True) . Just <$> replHelp Nothing
 
 commandTypeof :: [String] -> Repl (Maybe String, Bool)
@@ -233,10 +270,22 @@ commandTypeof args = do
     fixType x                            = x
 
 --TODO: some better ascii art?
-showBanner :: ReplInput ()
-showBanner = outputStrLn $ unlines [
+showBanner :: Maybe String -> ReplInput ()
+showBanner rv =
+  let cv         = showVersion version
+      msg v      = "An updated version " ++ "(" ++ v ++ ")"
+                   ++ " of DrHaskell is available! "
+                   ++ "Please update your installation."
+      updateHint = case rv of
+                      Just v  -> if cv < v then msg v else ""
+                      Nothing -> ""
+  in outputStrLn $ unlines [
   "",
   "\\ \\      DrHaskell version " ++ showVersion version,
-  " \\ \\",
-  " /  \\    Type \":?\" for help.",
-  "/ /\\ \\"]
+  " \\ \\     CAU Kiel",
+  " /  \\",
+  "/ /\\ \\   Type \":?\" for help",
+  "\n",
+  "If you encounter any issues with DrHaskell, please contact us at "
+  ++ "stu114713@informatik.uni-kiel.de",
+  updateHint]

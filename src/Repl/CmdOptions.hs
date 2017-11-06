@@ -29,7 +29,10 @@ options = [
          "Try to load module even if problems were found",
   Option ['p'] ["no-custom-prelude"]
          (NoArg $ customPrelude .~ False)
-         "Use a standard Haskell Prelude instead of DrHaskell's"]
+         "Use a standard Haskell Prelude instead of DrHaskell's",
+  Option ['g'] ["ghc-options"]
+         (ReqArg readGHCOpts "OPTS")
+         "Additional GHC options like '-package-db='"]
 
 readFilename :: String -> ReplState -> ReplState
 readFilename fn state = case state ^. filename of
@@ -44,3 +47,6 @@ readLevel "4"    = forceLevel .~ Just LevelFull
 readLevel "full" = forceLevel .~ Just LevelFull
 readLevel "FULL" = forceLevel .~ Just LevelFull
 readLevel _      = error "invalid level" --TODO: improve this...
+
+readGHCOpts :: String -> ReplState -> ReplState
+readGHCOpts args = ghcOptions .~ words args

@@ -105,8 +105,10 @@ import qualified Prelude
 (*) :: Prelude.Int -> Prelude.Int -> Prelude.Int
 (*) = (Prelude.*)
 
-(/) :: Prelude.Int -> Prelude.Int -> Prelude.Int
-(/) = Prelude.div
+(/) :: Prelude.Int -> Prelude.Int -> Prelude.Float
+x / y = Prelude.fromInteger (Prelude.toInteger x)
+        Prelude./
+        Prelude.fromInteger (Prelude.toInteger y)
 
 (+.) :: Prelude.Float -> Prelude.Float -> Prelude.Float
 (+.) = (Prelude.+)
