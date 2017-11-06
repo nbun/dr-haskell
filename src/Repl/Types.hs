@@ -4,7 +4,7 @@ module Repl.Types (
   ReplState(..),
   filename, forceLevel, runTests, nonStrict,
   customPrelude, currentLevel, promptModule,
-  tiProg,
+  tiProg, ghcOptions,
   initialReplState,
   initialLintReplState,
 
@@ -37,7 +37,8 @@ data ReplState = ReplState {
   _customPrelude :: Bool,
   _currentLevel  :: Level,
   _promptModule  :: String,
-  _tiProg        :: [Prog SrcSpanInfo]
+  _tiProg        :: [Prog SrcSpanInfo],
+  _ghcOptions    :: [String]
 }
   deriving (Show)
 
@@ -51,7 +52,8 @@ initialReplState = ReplState {
   _customPrelude = True,
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
-  _tiProg        = []
+  _tiProg        = [],
+  _ghcOptions    = [""]
 }
 
 -- some sane defaults
@@ -64,7 +66,8 @@ initialLintReplState = ReplState {
   _customPrelude = False,
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
-  _tiProg        = []
+  _tiProg        = [],
+  _ghcOptions    = [""]
 }
 
 makeLenses ''ReplState
@@ -80,7 +83,7 @@ type Repl = StateT ReplState ReplInterpreter
 
 runRepl :: ReplState -> Repl a -> IO (Either InterpreterError a)
 runRepl state = runInputT defaultSettings .
-                (unsafeRunInterpreterWithArgs []) .
+                (unsafeRunInterpreterWithArgs $ view ghcOptions state) .
                 (`evalStateT` state)
 
 -- no idea if these instances are valid
