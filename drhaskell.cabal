@@ -1,5 +1,5 @@
 name:               drhaskell
-version:            0.1.0
+version:            0.2.0
 synopsis:           (none)
 description:        (none)
 author:             Niels Bunkenburg, Jonas Busse, Janina Harms, Jan-Hendrik Matthes, Marc André Wittorf
@@ -38,6 +38,7 @@ executable drhaskell
   default-language: Haskell2010
   ghc-options:      -O2 -j4 -main-is Repl.Main
   build-depends:    base >=4.8 && <5.0,
+                    bytestring >=0.10.8.2,
                     containers >=0.5.6.2,
                     directory >=1.3 && <2.0,
                     edit-distance >=0.2.2.1 && <0.3,
@@ -48,6 +49,7 @@ executable drhaskell
                     hint >=0.7 && <0.8,
                     hlint >=2.0.9 && <3.0,
                     hpc >=0.6 && <0.7,
+                    http-conduit >= 2.2.3.2,
                     json >=0.9.1,
                     lens >=4.15 && <5.0,
                     MissingH >=1.4.0.1 && <2.0,

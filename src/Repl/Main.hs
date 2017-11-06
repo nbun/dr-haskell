@@ -1,10 +1,13 @@
-{-# LANGUAGE TupleSections, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TupleSections    #-}
+{-# OverloadedStrings #-}
 
 module Repl.Main (module Repl.Main) where
 
 import Control.Lens                         hiding (Level)
 import Control.Monad.Catch                  as MC
 import Control.Monad.State
+import Data.ByteString.Lazy                 (unpack)
 import Data.Char
 import Data.List
 import Data.Maybe                           (fromJust, isJust)
@@ -12,6 +15,7 @@ import Data.Version                         (showVersion)
 import Language.Haskell.Exts                (SrcSpanInfo)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
+import Network.HTTP.Conduit
 import Paths_drhaskell
 import Repl.CmdOptions
 import Repl.Loader
@@ -19,7 +23,9 @@ import Repl.Types
 import StaticAnalysis.CheckState
 import System.Console.Haskeline
 import System.FilePath
-import TypeInference.AbstractHaskell        (defaultAHOptions, showTypeExpr, AHOptions(..), Expr(..), TypeAnn(..), TypeExpr(..))
+import TypeInference.AbstractHaskell        (AHOptions (..), Expr (..),
+                                             TypeAnn (..), TypeExpr (..),
+                                             defaultAHOptions, showTypeExpr)
 import TypeInference.AbstractHaskellGoodies (exprType')
 import TypeInference.Main
 
@@ -28,6 +34,9 @@ Current Limitations:
   - history is not used
   - no let-constructs
 -}
+
+cabalURL :: String
+cabalURL =  "https://git.ps.informatik.uni-kiel.de/student-projects/mapro-2017-ss/raw/master/drhaskell.cabal"
 
 
 replRead :: Repl (Maybe String)
@@ -57,11 +66,20 @@ initInterpreter = do
     [searchPath := [".", datadir </> "TargetModules"]]
   loadInitialModules
 
+updateCheck :: IO (Maybe String)
+updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
+  s <- simpleHttp cabalURL
+  let findVersion s = head $ filter (isPrefixOf "version") (lines s)
+      versionLine   = findVersion $ map (chr . fromEnum) (unpack s)
+      version  = stripPrefix "version:" (filter (/= ' ') versionLine)
+  return version
+
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
+  remoteVersion <- updateCheck
   res <- runRepl initialState $ do
-    liftInput showBanner
+    liftInput (showBanner remoteVersion)
     initInterpreter
     fname <- use filename
     unless (null fname) $ do
@@ -196,7 +214,7 @@ replEvalCommand cmd = if null cmd then invalid cmd else
                         ["3"] -> setL $ Just Level3
                         ["4"] -> setL $ Just LevelFull
                         ["F"] -> setL $ Just LevelFull
-                        l -> return (Just $ emsg l, True)
+                        l     -> return (Just $ emsg l, True)
         help = (,True) . Just <$> replHelp Nothing
 
 commandTypeof :: [String] -> Repl (Maybe String, Bool)
@@ -252,8 +270,16 @@ commandTypeof args = do
     fixType x                            = x
 
 --TODO: some better ascii art?
-showBanner :: ReplInput ()
-showBanner = outputStrLn $ unlines [
+showBanner :: Maybe String -> ReplInput ()
+showBanner rv =
+  let cv         = showVersion version
+      msg v      = "An updated version " ++ "(" ++ v ++ ")"
+                   ++ " of DrHaskell is available! "
+                   ++ "Please update your installation."
+      updateHint = case rv of
+                      Just v  -> if cv < v then msg v else ""
+                      Nothing -> ""
+  in outputStrLn $ unlines [
   "",
   "\\ \\      DrHaskell version " ++ showVersion version,
   " \\ \\     CAU Kiel",
@@ -261,4 +287,5 @@ showBanner = outputStrLn $ unlines [
   "/ /\\ \\   Type \":?\" for help",
   "\n",
   "If you encounter any issues with DrHaskell, please contact us at "
-  ++ "stu114713@informatik.uni-kiel.de"]
+  ++ "stu114713@informatik.uni-kiel.de",
+  updateHint]
