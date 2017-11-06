@@ -53,7 +53,7 @@ initialReplState = ReplState {
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = [],
-  _ghcOptions    = [""]
+  _ghcOptions    = []
 }
 
 -- some sane defaults
@@ -67,7 +67,7 @@ initialLintReplState = ReplState {
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = [],
-  _ghcOptions    = [""]
+  _ghcOptions    = []
 }
 
 makeLenses ''ReplState
