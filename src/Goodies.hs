@@ -4,14 +4,16 @@
 
 module Goodies
   ( (++=), both, bothM, concatMapM, mapAccumM, one, two, bquotes, brackets
-  , braces, parens, parensIf, tuple, list, indent, vsep
+  , braces, parens, parensIf, tuple, list, indent, vsep, getFullPath
   ) where
 
+import Control.Applicative ((<$>))
 import Control.Monad.State (get, put, runStateT)
 import Control.Monad.Trans (lift)
 import Data.List           (intercalate)
 import Data.Tuple          (swap)
-
+import System.Directory    (getHomeDirectory)
+import System.FilePath     (joinPath, splitPath)
 -- -----------------------------------------------------------------------------
 -- Definition of auxiliary functions
 -- -----------------------------------------------------------------------------
@@ -95,3 +97,9 @@ indent n s = replicate n ' ' ++ s
 --   character between two adjacent strings.
 vsep :: [String] -> String
 vsep = intercalate "\n"
+
+-- | Expands paths with a ~
+getFullPath :: String -> IO FilePath
+getFullPath s = case splitPath s of
+    "~/" : t -> joinPath . (: t) <$> getHomeDirectory
+    _        -> return s

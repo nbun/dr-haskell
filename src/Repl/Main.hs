@@ -12,6 +12,7 @@ import Data.Char
 import Data.List
 import Data.Maybe                           (fromJust, isJust)
 import Data.Version                         (showVersion)
+import Goodies                              (getFullPath)
 import Language.Haskell.Exts                (SrcSpanInfo)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
@@ -26,7 +27,7 @@ import System.FilePath
 import TypeInference.AbstractHaskell        (AHOptions (..), Expr (..),
                                              TypeAnn (..), TypeExpr (..),
                                              defaultAHOptions, showTypeExpr)
-import TypeInference.AbstractHaskellGoodies (exprType')
+import TypeInference.AbstractHaskellGoodies (exprType', removeTypeVars)
 import TypeInference.Main
 
 {-
@@ -66,8 +67,9 @@ initInterpreter = do
     [searchPath := [".", datadir </> "TargetModules"]]
   loadInitialModules
 
-updateCheck :: IO (Maybe String)
-updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
+updateCheck :: Bool -> IO (Maybe String)
+updateCheck True = return Nothing
+updateCheck False = MC.handleAll (\_ -> return Nothing)  $ do
   s <- simpleHttp cabalURL
   let findVersion s = head $ filter (isPrefixOf "version") (lines s)
       versionLine   = findVersion $ map (chr . fromEnum) (unpack s)
@@ -77,8 +79,9 @@ updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
-  remoteVersion <- updateCheck
   res <- runRepl initialState $ do
+    noCheck <- use noUpdateCheck
+    remoteVersion <- liftIO $ updateCheck noCheck
     liftInput (showBanner remoteVersion)
     initInterpreter
     fname <- use filename
@@ -120,7 +123,7 @@ replEvalExp q = case filter (not . isSpace) q of
         if isJust errors
         then return errors
         else do
-          liftIO $ print (fromJust tExp)
+          let tExp' = (showType . removeTypeVars $ fromJust tExp)
           t <- liftInterpreter $ typeOf q
           if t == "IO ()"
             then do
@@ -132,8 +135,11 @@ replEvalExp q = case filter (not . isSpace) q of
                           (as :: IO ())
               liftIO action
               return Nothing
-            else liftInterpreter $ Just <$> eval q
+            else liftInterpreter $ Just <$> eval ("(" ++ q ++ "::" ++ tExp' ++ ")")
   where
+    showType = showTypeExpr defaultAHOptions
+                            {unqModules = "Prelude" : unqModules defaultAHOptions}
+
     checkType :: String -> Repl (Maybe String, Maybe (TypeExpr SrcSpanInfo))
     checkType q = do
       p' <- use tiProg
@@ -156,14 +162,7 @@ replEvalExp q = case filter (not . isSpace) q of
                                              t@(FuncType _ _ _) ->
                                                return (Just $
                                                  "Function with type " ++
-                                                 showTypeExpr
-                                                   defaultAHOptions {
-                                                     unqModules =
-                                                       "Prelude" :
-                                                       unqModules
-                                                         defaultAHOptions
-                                                   }
-                                                   t, Nothing)
+                                                  showType t, Nothing)
                                              t -> return (Nothing, Just t)
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
@@ -189,8 +188,9 @@ replEvalCommand cmd = if null cmd then invalid cmd else
           [_]       -> return (Just "No File specified", True)
           (_:_:_:_) -> return (Just "Cannot load multiple files.", True)
           [_,fn]    -> do
-            liftRepl $ modify (Control.Lens.set filename fn)
-            errors <- loadModule fn
+            fullPath <- liftIO $ getFullPath fn
+            liftRepl $ modify (Control.Lens.set filename fullPath)
+            errors <- loadModule fullPath
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
@@ -273,9 +273,10 @@ commandTypeof args = do
 showBanner :: Maybe String -> ReplInput ()
 showBanner rv =
   let cv         = showVersion version
-      msg v      = "An updated version " ++ "(" ++ v ++ ")"
+      -- Uses ANSI escape codes to print the text green
+      msg v      = "\n\x1b[32mAn updated version " ++ "(" ++ v ++ ")"
                    ++ " of DrHaskell is available! "
-                   ++ "Please update your installation."
+                   ++ "Please update your installation.\x1b[0m"
       updateHint = case rv of
                       Just v  -> if cv < v then msg v else ""
                       Nothing -> ""

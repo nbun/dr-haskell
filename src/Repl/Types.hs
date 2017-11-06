@@ -4,7 +4,7 @@ module Repl.Types (
   ReplState(..),
   filename, forceLevel, runTests, nonStrict,
   customPrelude, currentLevel, promptModule,
-  tiProg, ghcOptions,
+  tiProg, ghcOptions, noUpdateCheck,
   initialReplState,
   initialLintReplState,
 
@@ -18,7 +18,7 @@ module Repl.Types (
   printLevel,
 ) where
 
-import Control.Lens                  hiding (Level)
+import Control.Lens                        hiding (Level)
 import Control.Monad.Catch
 import Control.Monad.State
 import Language.Haskell.Exts
@@ -38,7 +38,8 @@ data ReplState = ReplState {
   _currentLevel  :: Level,
   _promptModule  :: String,
   _tiProg        :: [Prog SrcSpanInfo],
-  _ghcOptions    :: [String]
+  _ghcOptions    :: [String],
+  _noUpdateCheck :: Bool
 }
   deriving (Show)
 
@@ -53,7 +54,8 @@ initialReplState = ReplState {
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = [],
-  _ghcOptions    = []
+  _ghcOptions    = [],
+  _noUpdateCheck = False
 }
 
 -- some sane defaults
@@ -67,7 +69,8 @@ initialLintReplState = ReplState {
   _currentLevel  = Level2,
   _promptModule  = "DrHaskell",
   _tiProg        = [],
-  _ghcOptions    = []
+  _ghcOptions    = [],
+  _noUpdateCheck = True
 }
 
 makeLenses ''ReplState

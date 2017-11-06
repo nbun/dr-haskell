@@ -32,7 +32,10 @@ options = [
          "Use a standard Haskell Prelude instead of DrHaskell's",
   Option ['g'] ["ghc-options"]
          (ReqArg readGHCOpts "OPTS")
-         "Additional GHC options like '-package-db='"]
+         "Additional GHC options like '-package-db='",
+  Option ['n'] ["no-update-check"]
+         (NoArg $ noUpdateCheck .~ True)
+         "Disable update check at startup"]
 
 readFilename :: String -> ReplState -> ReplState
 readFilename fn state = case state ^. filename of

@@ -58,7 +58,7 @@ executable drhaskell
                     QuickCheck >=2.10.1 && <3.0,
                     split >=0.2.3 && <0.3,
                     temporary >=1.2.0 && <2.0,
-                    transformers >=0.5 && <0.6
+                    transformers >=0.4 && <0.6
 
 executable drhaskell-lint
   if flag(multicall)
@@ -88,7 +88,7 @@ executable drhaskell-lint
                     QuickCheck >=2.10.1 && <3.0,
                     split >=0.2.3 && <0.3,
                     temporary >=1.2.0 && <2.0,
-                    transformers >=0.5 && <0.6
+                    transformers >=0.4 && <0.6
 
 executable drhaskell-multicall
   if flag(multicall)
@@ -118,4 +118,4 @@ executable drhaskell-multicall
                     QuickCheck >=2.10.1 && <3.0,
                     split >=0.2.3 && <0.3,
                     temporary >=1.2.0 && <2.0,
-                    transformers >=0.5 && <0.6
+                    transformers >=0.4 && <0.6
