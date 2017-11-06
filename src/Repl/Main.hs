@@ -12,6 +12,7 @@ import Data.Char
 import Data.List
 import Data.Maybe                           (fromJust, isJust)
 import Data.Version                         (showVersion)
+import Goodies                              (getFullPath)
 import Language.Haskell.Exts                (SrcSpanInfo)
 import Language.Haskell.Exts.Parser
 import Language.Haskell.Interpreter
@@ -191,8 +192,9 @@ replEvalCommand cmd = if null cmd then invalid cmd else
           [_]       -> return (Just "No File specified", True)
           (_:_:_:_) -> return (Just "Cannot load multiple files.", True)
           [_,fn]    -> do
-            liftRepl $ modify (Control.Lens.set filename fn)
-            errors <- loadModule fn
+            fullPath <- liftIO $ getFullPath fn
+            liftRepl $ modify (Control.Lens.set filename fullPath)
+            errors <- loadModule fullPath
             return $ (,) (Just (unlines $ map printLoadMessage errors)) True
         reload = do
           md <- gets _filename
