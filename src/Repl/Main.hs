@@ -66,8 +66,9 @@ initInterpreter = do
     [searchPath := [".", datadir </> "TargetModules"]]
   loadInitialModules
 
-updateCheck :: IO (Maybe String)
-updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
+updateCheck :: Bool -> IO (Maybe String)
+updateCheck True = return Nothing
+updateCheck False = MC.handleAll (\_ -> return Nothing)  $ do
   s <- simpleHttp cabalURL
   let findVersion s = head $ filter (isPrefixOf "version") (lines s)
       versionLine   = findVersion $ map (chr . fromEnum) (unpack s)
@@ -77,8 +78,9 @@ updateCheck = MC.handleAll (\_ -> return Nothing)  $ do
 main :: IO ()
 main = do
   initialState <- handleCmdArgs
-  remoteVersion <- updateCheck
   res <- runRepl initialState $ do
+    noCheck <- use noUpdateCheck
+    remoteVersion <- liftIO $ updateCheck noCheck
     liftInput (showBanner remoteVersion)
     initInterpreter
     fname <- use filename
@@ -273,6 +275,7 @@ commandTypeof args = do
 showBanner :: Maybe String -> ReplInput ()
 showBanner rv =
   let cv         = showVersion version
+      -- Uses ANSI escape codes to print the text green
       msg v      = "\n\x1b[32mAn updated version " ++ "(" ++ v ++ ")"
                    ++ " of DrHaskell is available! "
                    ++ "Please update your installation.\x1b[0m"
