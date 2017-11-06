@@ -9,7 +9,7 @@ module TypeInference.AbstractHaskellGoodies
   , literalType, typeSigType, typeAnnType, rulesTypes, ruleType, rhsTypes
   , exprType, exprType', patternType, typeExprAnn, exprAnn, teVar, (=.=)
   , hasTypeSig, funcName, modName, leftFuncType, rightFuncType, returnType
-  , depGraph
+  , depGraph, removeTypeVars
   ) where
 
 import SCC                           (scc)
@@ -221,6 +221,12 @@ returnType :: TypeExpr a -> TypeExpr a
 returnType (FuncType _ _ te) = returnType te
 returnType te                = te
 
+-- | Replaces type variables in a type expression with the unit type.
+removeTypeVars :: TypeExpr a -> TypeExpr a
+removeTypeVars (TVar (_, a))    = TCons a (("Prelude", "()"), a) []
+removeTypeVars (FuncType a d r) = FuncType a (removeTypeVars d) (removeTypeVars r)
+removeTypeVars (TCons a qn ts) = TCons a qn (map removeTypeVars ts)
+
 -- -----------------------------------------------------------------------------
 -- Functions for computation of function dependency graphs
 -- -----------------------------------------------------------------------------
@@ -276,3 +282,4 @@ depGraph mn = scc (pure . funcName) use
 
     calledBE :: BranchExpr a -> [QName]
     calledBE (Branch _ _ e) = called e
+

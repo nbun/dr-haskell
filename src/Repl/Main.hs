@@ -27,7 +27,7 @@ import System.FilePath
 import TypeInference.AbstractHaskell        (AHOptions (..), Expr (..),
                                              TypeAnn (..), TypeExpr (..),
                                              defaultAHOptions, showTypeExpr)
-import TypeInference.AbstractHaskellGoodies (exprType')
+import TypeInference.AbstractHaskellGoodies (exprType', removeTypeVars)
 import TypeInference.Main
 
 {-
@@ -123,7 +123,7 @@ replEvalExp q = case filter (not . isSpace) q of
         if isJust errors
         then return errors
         else do
-          liftIO $ print (fromJust tExp)
+          let tExp' = (showType . removeTypeVars $ fromJust tExp)
           t <- liftInterpreter $ typeOf q
           if t == "IO ()"
             then do
@@ -135,8 +135,11 @@ replEvalExp q = case filter (not . isSpace) q of
                           (as :: IO ())
               liftIO action
               return Nothing
-            else liftInterpreter $ Just <$> eval q
+            else liftInterpreter $ Just <$> eval ("(" ++ q ++ "::" ++ tExp' ++ ")")
   where
+    showType = showTypeExpr defaultAHOptions
+                            {unqModules = "Prelude" : unqModules defaultAHOptions}
+
     checkType :: String -> Repl (Maybe String, Maybe (TypeExpr SrcSpanInfo))
     checkType q = do
       p' <- use tiProg
@@ -159,14 +162,7 @@ replEvalExp q = case filter (not . isSpace) q of
                                              t@(FuncType _ _ _) ->
                                                return (Just $
                                                  "Function with type " ++
-                                                 showTypeExpr
-                                                   defaultAHOptions {
-                                                     unqModules =
-                                                       "Prelude" :
-                                                       unqModules
-                                                         defaultAHOptions
-                                                   }
-                                                   t, Nothing)
+                                                  showType t, Nothing)
                                              t -> return (Nothing, Just t)
 
 replEvalCommand :: String -> Repl (Maybe String, Bool)
