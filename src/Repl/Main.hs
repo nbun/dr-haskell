@@ -273,9 +273,9 @@ commandTypeof args = do
 showBanner :: Maybe String -> ReplInput ()
 showBanner rv =
   let cv         = showVersion version
-      msg v      = "An updated version " ++ "(" ++ v ++ ")"
+      msg v      = "\n\x1b[32mAn updated version " ++ "(" ++ v ++ ")"
                    ++ " of DrHaskell is available! "
-                   ++ "Please update your installation."
+                   ++ "Please update your installation.\x1b[0m"
       updateHint = case rv of
                       Just v  -> if cv < v then msg v else ""
                       Nothing -> ""
