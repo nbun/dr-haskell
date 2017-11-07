@@ -123,7 +123,7 @@ replEvalExp q = case filter (not . isSpace) q of
         if isJust errors
         then return errors
         else do
-          let (replaced, tExpStr) = removeTypeVars $ fromJust tExp
+          p <- use tiProg
           t <- liftInterpreter $ typeOf q
           if t == "IO ()"
             then do
@@ -135,10 +135,13 @@ replEvalExp q = case filter (not . isSpace) q of
                           (as :: IO ())
               liftIO action
               return Nothing
-            else let exp = if replaced
-                             then "(" ++ q ++ "::" ++ showType tExpStr ++ ")"
-                             else q
-                  in liftInterpreter $ Just <$> eval exp
+            else if not $ null p
+                 then let (replaced, tExpStr) = removeTypeVars $ fromJust tExp
+                          exp = if replaced
+                                then "(" ++ q ++ "::" ++ showType tExpStr ++ ")"
+                                else q
+                      in liftInterpreter $ Just <$> eval exp
+                 else liftInterpreter $ Just <$> eval q
   where
     showType = showTypeExpr defaultAHOptions
                             {unqModules = "Prelude" : unqModules defaultAHOptions}

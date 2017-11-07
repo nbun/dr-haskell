@@ -53,15 +53,14 @@ loadInitialModules = do
     tiProg .= ps
     Just level <- use forceLevel `mplusM` return (Just Level2)
     currentLevel .= level
-    liftInterpreter $ reset
+    liftInterpreter reset
     liftInterpreter $ setImportsQ [("Prelude", Nothing),
                                    ("System.IO", Just "System.IO")]
     case level of
-         Level1 -> do
-          liftInterpreter $ loadModules ["StartupEnvironment"]
-          liftInterpreter $ setTopLevelModules ["StartupEnvironment"]
-         _ -> return ()
-
+      LevelFull -> return ()
+      _ -> do
+        liftInterpreter $ loadModules ["StartupEnvironment"]
+        liftInterpreter $ setTopLevelModules ["StartupEnvironment"]
   where
     mplusM = liftM2 mplus
 
