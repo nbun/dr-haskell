@@ -222,10 +222,14 @@ returnType (FuncType _ _ te) = returnType te
 returnType te                = te
 
 -- | Replaces type variables in a type expression with the unit type.
-removeTypeVars :: TypeExpr a -> TypeExpr a
-removeTypeVars (TVar (_, a))    = TCons a (("Prelude", "()"), a) []
-removeTypeVars (FuncType a d r) = FuncType a (removeTypeVars d) (removeTypeVars r)
-removeTypeVars (TCons a qn ts) = TCons a qn (map removeTypeVars ts)
+-- The boolean value indicates if at least one type variable has been replaced.
+removeTypeVars :: TypeExpr a -> (Bool, TypeExpr a)
+removeTypeVars (TVar (_, a))   = (True, TCons a (("Prelude", "()"), a) [])
+removeTypeVars (FuncType a d r) = (db || rb, FuncType a dt rt)
+  where (db, dt) = removeTypeVars d
+        (rb, rt) = removeTypeVars r
+removeTypeVars (TCons a qn ts) = (or bs, TCons a qn ts')
+  where (bs, ts') = unzip $ map removeTypeVars ts
 
 -- -----------------------------------------------------------------------------
 -- Functions for computation of function dependency graphs
