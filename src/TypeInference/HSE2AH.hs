@@ -50,7 +50,7 @@ nlahToAH p@(Prog m q t fs) =
    let newProg = Prog (n,m) i t (fd ++ list)
    let rProg = removeLocals newProg
    let tProg = collectTypeSyns rProg
-   return $ tProg
+   return $ rProg
 
 removeLocals :: Prog a -> Prog a
 removeLocals (Prog a b c funcs) = Prog a b c $ Prelude.map removeLocalsFuncs funcs
